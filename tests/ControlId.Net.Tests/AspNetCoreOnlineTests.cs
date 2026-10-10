@@ -92,6 +92,30 @@ public sealed class AspNetCoreOnlineTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task Online_enroll_results_reach_the_handler()
+    {
+        var http = await StartAsync();
+
+        var card = await http.PostAsync(
+            "/api/card_create.fcgi",
+            new StringContent("""{"user_id": 1, "card_value": 132456789, "device_id": 935107}""", Encoding.UTF8, "application/json"));
+        var face = await http.PostAsync(
+            "/api/face_create.fcgi",
+            new StringContent("""{"user_id": 1, "device_id": 935107, "face": {"image": "AQID", "width": 1, "height": 3}}""", Encoding.UTF8, "application/json"));
+        var invalid = await http.PostAsync("/api/pin_create.fcgi", new StringContent("{oops", Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.OK, card.StatusCode);
+        Assert.Equal(string.Empty, await card.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.OK, face.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+
+        Assert.Collection(
+            _handler.Enrollments,
+            e => Assert.Equal(132456789, e.Result.CardValue),
+            e => Assert.Equal(new byte[] { 1, 2, 3 }, e.Result.Face!.Image));
+    }
+
+    [Fact]
     public async Task User_image_is_served_by_the_handler()
     {
         var http = await StartAsync();
@@ -119,6 +143,8 @@ public sealed class AspNetCoreOnlineTests : IAsyncDisposable
         public List<OnlineIdentificationEvent> Identifications { get; } = new();
 
         public List<ExitButtonEvent> ExitButtons { get; } = new();
+
+        public List<OnlineEnrollEvent> Enrollments { get; } = new();
     }
 
     /// <summary>Regras de exemplo: usuário 6 e cartões conhecidos passam.</summary>
@@ -144,6 +170,12 @@ public sealed class AspNetCoreOnlineTests : IAsyncDisposable
         public Task OnExitButtonAsync(ExitButtonEvent exitButton, CancellationToken cancellationToken)
         {
             _recorder.ExitButtons.Add(exitButton);
+            return Task.CompletedTask;
+        }
+
+        public Task OnRemoteEnrollAsync(OnlineEnrollEvent enrollment, CancellationToken cancellationToken)
+        {
+            _recorder.Enrollments.Add(enrollment);
             return Task.CompletedTask;
         }
 

@@ -31,6 +31,8 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
     /// <c>new_user_id_and_password</c>, <c>new_biometric_image</c>, <c>new_biometric_template</c>) →
     /// <see cref="IOnlineAccessHandler.AuthorizeAsync"/>;</item>
     /// <item><c>new_rex_log</c> → <see cref="IOnlineAccessHandler.OnExitButtonAsync"/>;</item>
+    /// <item>resultados do cadastro remoto (<c>card_create</c>, <c>face_create</c>, <c>fingerprint_create</c>,
+    /// <c>template_create</c>, <c>pin_create</c>, <c>password_create</c>) → <see cref="IOnlineAccessHandler.OnRemoteEnrollAsync"/>;</item>
     /// <item><c>GET user_get_image</c> → <see cref="IOnlineAccessHandler.GetUserImageAsync"/>;</item>
     /// <item><c>device_is_alive</c> e <c>session_is_valid</c> → 200, para o equipamento sair da contingência.</item>
     /// </list>
@@ -46,6 +48,11 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
         foreach (var endpoint in OnlineEvents.IdentificationEndpoints)
         {
             group.MapPost(endpoint + ".fcgi", HandleIdentificationAsync);
+        }
+
+        foreach (var endpoint in OnlineEvents.EnrollEndpoints)
+        {
+            group.MapPost(endpoint + ".fcgi", HandleEnrollAsync);
         }
 
         group.MapPost("new_rex_log.fcgi", HandleExitButtonAsync);
@@ -90,6 +97,33 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
         context.Response.StatusCode = StatusCodes.Status200OK;
         context.Response.ContentType = "application/json";
         await context.Response.WriteAsync(authorization.ToResponseJson(), Encoding.UTF8, context.RequestAborted).ConfigureAwait(false);
+    }
+
+    private static async Task HandleEnrollAsync(HttpContext context)
+    {
+        var endpoint = context.Request.Path.Value ?? string.Empty;
+        string body;
+        using (var reader = new StreamReader(context.Request.Body, Encoding.UTF8))
+        {
+            body = await reader.ReadToEndAsync(context.RequestAborted).ConfigureAwait(false);
+        }
+
+        OnlineEnrollEvent enrollment;
+        try
+        {
+            enrollment = OnlineEvents.ParseEnroll(endpoint, body)!;
+        }
+        catch (ControlId.ControlIdException ex)
+        {
+            GetLogger(context).LogWarning(ex, "Resultado de cadastro remoto inválido em {Endpoint}.", endpoint);
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            return;
+        }
+
+        await GetHandler(context).OnRemoteEnrollAsync(enrollment, context.RequestAborted).ConfigureAwait(false);
+
+        // A documentação define essas rotas sem retorno.
+        context.Response.StatusCode = StatusCodes.Status200OK;
     }
 
     private static async Task HandleExitButtonAsync(HttpContext context)

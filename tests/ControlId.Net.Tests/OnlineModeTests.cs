@@ -190,6 +190,44 @@ public class OnlineModeTests
     }
 
     [Fact]
+    public void Parses_online_enroll_results_from_documentation_examples()
+    {
+        var card = OnlineEvents.ParseEnroll("/api/card_create.fcgi", """{"user_id": 1, "card_value": 132456789, "device_id": 935107}""")!;
+        Assert.Equal(RemoteEnrollType.Card, card.EnrollType);
+        Assert.Equal(132456789, card.Result.CardValue);
+        Assert.Equal(935107, card.Result.DeviceId);
+        Assert.True(card.Result.Success); // sem "success" nem "error"
+
+        var face = OnlineEvents.ParseEnroll("face_create", """{"user_id": 1, "device_id": 935107, "face": {"image": "/9j/4A==", "width": 300, "height": 300}}""")!;
+        Assert.Equal(RemoteEnrollType.Face, face.EnrollType);
+        Assert.Equal(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 }, face.Result.Face!.Image);
+        Assert.Equal(300, face.Result.Face.Width);
+
+        var finger = OnlineEvents.ParseEnroll("fingerprint_create.fcgi", """
+            {"user_id": 1, "finger_type": 0, "device_id": 935107,
+             "fingerprints": [{"image": "AQID", "width": 300, "height": 200}, {"image": "BAUG", "width": 300, "height": 200}]}
+            """)!;
+        Assert.Equal(RemoteEnrollType.Biometry, finger.EnrollType);
+        Assert.Equal(2, finger.Result.Fingerprints!.Count);
+        Assert.Equal(0, finger.Result.FingerType);
+
+        Assert.Equal("1324", OnlineEvents.ParseEnroll("pin_create", """{"user_id": 1, "pin_value": "1324", "device_id": 935107}""")!.Result.PinValue);
+        Assert.Equal("1324", OnlineEvents.ParseEnroll("password_create", """{"user_id": 1, "password_value": "1324", "device_id": 935107}""")!.Result.PasswordValue);
+
+        var template = OnlineEvents.ParseEnroll("template_create", """{"user_id": 1, "device_id": 2, "templates": ["abc"]}""")!;
+        Assert.Equal("template_create", template.Endpoint);
+        Assert.Equal(RemoteEnrollType.Biometry, template.EnrollType);
+        Assert.Equal("abc", template.Result.Raw.GetProperty("templates")[0].GetString()); // formato não documentado: via Raw
+    }
+
+    [Fact]
+    public void Enroll_parser_ignores_other_routes_and_rejects_invalid_json()
+    {
+        Assert.Null(OnlineEvents.ParseEnroll("new_card", "{}"));
+        Assert.Throws<ControlIdException>(() => OnlineEvents.ParseEnroll("card_create", "{oops"));
+    }
+
+    [Fact]
     public void AccessLog_exposes_event_type()
     {
         Assert.Equal(AccessEventType.ExitButton, new AccessLog { Event = 11 }.EventType);

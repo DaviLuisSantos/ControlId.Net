@@ -175,7 +175,14 @@ public sealed class RemoteEnrollResult
 
     /// <summary>Digital: imagem capturada em cada etapa do cadastro.</summary>
     [JsonPropertyName("fingerprints")]
-    public List<FingerprintImage>? Fingerprints { get; set; }
+    public List<CapturedImage>? Fingerprints { get; set; }
+
+    /// <summary>
+    /// Face capturada no modo online (<c>face_create</c>, campo <c>face</c>). No cadastro síncrono e no Monitor a foto
+    /// vem em <see cref="UserImage"/>.
+    /// </summary>
+    [JsonPropertyName("face")]
+    public CapturedImage? Face { get; set; }
 
     /// <summary>JSON original, para campos sem propriedade própria.</summary>
     [JsonIgnore]
@@ -212,8 +219,8 @@ public sealed class RemoteEnrollInfo
     public long? MatchUserId { get; set; }
 }
 
-/// <summary>Imagem de uma etapa do cadastro de digital.</summary>
-public sealed class FingerprintImage
+/// <summary>Imagem capturada no cadastro remoto (etapa da digital ou foto da face).</summary>
+public sealed class CapturedImage
 {
     /// <summary>Largura em pixels.</summary>
     [JsonPropertyName("width")]

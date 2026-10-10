@@ -84,6 +84,7 @@ if (!resultado.Success)
 
 - A espera síncrona é limitada pelo `Timeout` do cliente (30 s por padrão). Se ele estourar ou o `CancellationToken` for cancelado, o cadastro é cancelado no equipamento (`cancel_remote_enroll`), para ele não ficar preso na tela de cadastro.
 - Para esperas longas, use `StartRemoteEnrollAsync(...)`: a chamada volta na hora e o resultado chega pelo Monitor como `RemoteEnrollNotification` (com `EnrollType` e o mesmo `RemoteEnrollResult`).
+- Com o equipamento em **modo online**, o resultado assíncrono não vai pelo Monitor: chega em `card_create`, `face_create`, `fingerprint_create`, `template_create`, `pin_create` ou `password_create`, que o `MapControlIdOnline` entrega em `IOnlineAccessHandler.OnRemoteEnrollAsync`. Nesse caso a foto da face vem em `Result.Face`.
 - Via Push: `PushCommand.RemoteEnroll(request)` e `result.ResponseAs<RemoteEnrollResult>()`.
 - Falhas do cadastro (timeout da pessoa, face repetida) vêm em `Error`, sem exceção; use `EnsureSuccess()` se preferir exceção.
 
@@ -284,15 +285,16 @@ public sealed class RegrasDeAcesso(MeuDbContext db) : IOnlineAccessHandler
         // iDFlex/iDAccess Pro/Nano: DeviceAction.OpenSecBox(); iDBlock: DeviceAction.ReleaseTurnstile(...)
     }
 
-    // Opcionais: acesso pela botoeira e foto exibida no display (com UserImage = true na autorização).
+    // Opcionais: botoeira, resultado de cadastro remoto e foto exibida no display (com UserImage = true na autorização).
     public Task OnExitButtonAsync(ExitButtonEvent e, CancellationToken ct) => Task.CompletedTask;
+    public Task OnRemoteEnrollAsync(OnlineEnrollEvent e, CancellationToken ct) => Task.CompletedTask;
     public Task<byte[]?> GetUserImageAsync(long userId, CancellationToken ct) => Task.FromResult<byte[]?>(null);
 }
 ```
 
 - O equipamento espera a resposta por no máximo `RequestTimeout` (até 5 s). Exceção ou demora contam como falha; depois de `MaxRequestAttempts` falhas ele entra em **contingência** e decide sozinho com os dados locais, até o servidor voltar (`device_is_alive`, já respondido pelas rotas).
 - `client.AuthorizeRemotelyAsync(...)` libera um acesso em tempo real a partir do servidor (`remote_user_authorization`).
-- Sem ASP.NET Core: `OnlineEvents.Parse(rota, campos, corpo)` interpreta a requisição e `authorization.ToResponseJson()` gera a resposta.
+- Sem ASP.NET Core: `OnlineEvents.Parse(rota, campos, corpo)` interpreta a requisição, `authorization.ToResponseJson()` gera a resposta e `OnlineEvents.ParseEnroll(rota, json)` lê os resultados de cadastro remoto.
 
 ## REP iDClass
 

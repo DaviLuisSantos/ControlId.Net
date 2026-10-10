@@ -295,6 +295,52 @@ public static class OnlineEvents
         };
     }
 
+    /// <summary>
+    /// Rotas em que o equipamento em modo online entrega o resultado do cadastro remoto (sem o <c>.fcgi</c>).
+    /// </summary>
+    public static IReadOnlyList<string> EnrollEndpoints { get; } = new[]
+    {
+        "card_create", "fingerprint_create", "template_create", "face_create", "pin_create", "password_create",
+    };
+
+    /// <summary>
+    /// Interpreta o resultado de um cadastro remoto feito em modo online (corpo JSON de <c>card_create</c>,
+    /// <c>face_create</c>, <c>fingerprint_create</c>, <c>template_create</c>, <c>pin_create</c> ou <c>password_create</c>).
+    /// </summary>
+    /// <returns><c>null</c> se a rota não for de cadastro.</returns>
+    /// <exception cref="ControlIdException">O corpo não é um JSON válido.</exception>
+    public static OnlineEnrollEvent? ParseEnroll(string endpoint, string json)
+    {
+        if (endpoint is null)
+        {
+            throw new ArgumentNullException(nameof(endpoint));
+        }
+
+        RemoteEnrollType? type = Name(endpoint) switch
+        {
+            "card_create" => RemoteEnrollType.Card,
+            "fingerprint_create" or "template_create" => RemoteEnrollType.Biometry,
+            "face_create" => RemoteEnrollType.Face,
+            "pin_create" => RemoteEnrollType.Pin,
+            "password_create" => RemoteEnrollType.Password,
+            _ => null,
+        };
+
+        if (type is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return new OnlineEnrollEvent(Name(endpoint), type.Value, RemoteEnrollResult.Parse(json));
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            throw new ControlIdException($"Resultado de cadastro '{Name(endpoint)}' inválido.", responseBody: json, innerException: ex);
+        }
+    }
+
     /// <summary>Decodifica um corpo <c>application/x-www-form-urlencoded</c>.</summary>
     public static IReadOnlyList<KeyValuePair<string, string>> ParseForm(string body)
     {
@@ -340,6 +386,33 @@ public static class OnlineEvents
 
         return path.EndsWith(".fcgi", StringComparison.OrdinalIgnoreCase) ? path.Substring(0, path.Length - 5) : path;
     }
+}
+
+/// <summary>
+/// Resultado de um cadastro remoto entregue pelo equipamento em modo online
+/// (<c>card_create</c>, <c>face_create</c>, <c>fingerprint_create</c>, <c>template_create</c>, <c>pin_create</c>, <c>password_create</c>).
+/// </summary>
+public sealed class OnlineEnrollEvent
+{
+    internal OnlineEnrollEvent(string endpoint, RemoteEnrollType type, RemoteEnrollResult result)
+    {
+        Endpoint = endpoint;
+        EnrollType = type;
+        Result = result;
+    }
+
+    /// <summary>Rota chamada, sem <c>.fcgi</c> (distingue <c>fingerprint_create</c> de <c>template_create</c>).</summary>
+    public string Endpoint { get; }
+
+    /// <summary>O que foi cadastrado.</summary>
+    public RemoteEnrollType EnrollType { get; }
+
+    /// <summary>
+    /// Dados do cadastro: <see cref="RemoteEnrollResult.CardValue"/>, <see cref="RemoteEnrollResult.Face"/>,
+    /// <see cref="RemoteEnrollResult.Fingerprints"/>, <see cref="RemoteEnrollResult.PinValue"/>... O formato de
+    /// <c>template_create</c> não é documentado: use <see cref="RemoteEnrollResult.Raw"/>.
+    /// </summary>
+    public RemoteEnrollResult Result { get; }
 }
 
 /// <summary>Campos recebidos, com leitura tolerante (ausente ou inválido = <c>null</c>).</summary>

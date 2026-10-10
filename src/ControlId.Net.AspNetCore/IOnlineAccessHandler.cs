@@ -26,6 +26,12 @@ public interface IOnlineAccessHandler
     Task OnExitButtonAsync(ExitButtonEvent exitButton, CancellationToken cancellationToken) => Task.CompletedTask;
 
     /// <summary>
+    /// Resultado de um cadastro remoto feito com o equipamento em modo online (<c>card_create</c>, <c>face_create</c>...).
+    /// Nesse modo o resultado vem por aqui, e não pelo Monitor.
+    /// </summary>
+    Task OnRemoteEnrollAsync(OnlineEnrollEvent enrollment, CancellationToken cancellationToken) => Task.CompletedTask;
+
+    /// <summary>
     /// Foto do usuário, pedida pelo equipamento quando a autorização tem <see cref="OnlineAuthorization.UserImage"/>.
     /// Devolva JPEG, PNG ou BMP, ou <c>null</c> se não houver (responde 404).
     /// </summary>
