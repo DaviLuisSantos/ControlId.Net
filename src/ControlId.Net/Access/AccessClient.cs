@@ -255,6 +255,122 @@ public sealed class AccessClient : IAccessClient
         LoadObjectsAsync<AccessPortal>(new LoadObjectsRequest("portals"), cancellationToken);
 
     /// <inheritdoc/>
+    public Task<IReadOnlyList<AccessArea>> GetAreasAsync(CancellationToken cancellationToken = default) =>
+        LoadObjectsAsync<AccessArea>(new LoadObjectsRequest("areas"), cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<long> CreateAreaAsync(AccessArea area, CancellationToken cancellationToken = default) =>
+        CreateOneAsync("areas", area, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<bool> DeleteAreaAsync(long areaId, CancellationToken cancellationToken = default) =>
+        DeleteByIdAsync("areas", areaId, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<AccessHoliday>> GetHolidaysAsync(CancellationToken cancellationToken = default) =>
+        LoadObjectsAsync<AccessHoliday>(new LoadObjectsRequest("holidays"), cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<long> CreateHolidayAsync(AccessHoliday holiday, CancellationToken cancellationToken = default) =>
+        CreateOneAsync("holidays", holiday, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<bool> DeleteHolidayAsync(long holidayId, CancellationToken cancellationToken = default) =>
+        DeleteByIdAsync("holidays", holidayId, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<AccessDeviceEvent>> GetAccessEventsAsync(long afterId = 0, int? limit = null, CancellationToken cancellationToken = default) =>
+        LoadAfterAsync<AccessDeviceEvent>("access_events", afterId, limit, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<AlarmLog>> GetAlarmLogsAsync(long afterId = 0, int? limit = null, CancellationToken cancellationToken = default) =>
+        LoadAfterAsync<AlarmLog>("alarm_logs", afterId, limit, cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<SecBox?> GetSecBoxAsync(CancellationToken cancellationToken = default)
+    {
+        var boxes = await LoadObjectsAsync<SecBox>(new LoadObjectsRequest("sec_boxs"), cancellationToken).ConfigureAwait(false);
+        return boxes.Count > 0 ? boxes[0] : null;
+    }
+
+    /// <inheritdoc/>
+    public async Task UpdateSecBoxAsync(SecBox secBox, CancellationToken cancellationToken = default)
+    {
+        if (secBox is null)
+        {
+            throw new ArgumentNullException(nameof(secBox));
+        }
+
+        await ModifyObjectsAsync("sec_boxs", secBox, Where.Equal("sec_boxs", "id", secBox.Id), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public async Task<string> GenerateReportAsync(ReportRequest request, CancellationToken cancellationToken = default)
+    {
+        if (request is null)
+        {
+            throw new ArgumentNullException(nameof(request));
+        }
+
+        var (content, charSet) = await _transport.PostForBytesAsync("report_generate.fcgi", request, cancellationToken).ConfigureAwait(false);
+        return TextDecoding.Decode(content, charSet);
+    }
+
+    /// <inheritdoc/>
+    public async Task<string> ExportAfdAsync(
+        long? initialNsr = null, DateTime? initialDate = null, bool portaria671 = true, CancellationToken cancellationToken = default)
+    {
+        if (initialNsr is not null && initialDate is not null)
+        {
+            throw new ArgumentException("Filtre por NSR ou por data, não pelos dois.", nameof(initialDate));
+        }
+
+        var body = new Dictionary<string, object>();
+        if (initialNsr is { } nsr)
+        {
+            body["initial_nsr"] = nsr;
+        }
+
+        if (initialDate is { } date)
+        {
+            body["initial_date"] = new Dictionary<string, int> { ["day"] = date.Day, ["month"] = date.Month, ["year"] = date.Year };
+        }
+
+        var (content, charSet) = await _transport.PostForBytesAsync(
+            "export_afd.fcgi", body, cancellationToken, portaria671 ? "mode=671" : null).ConfigureAwait(false);
+        return TextDecoding.Decode(content, charSet);
+    }
+
+    /// <inheritdoc/>
+    public async Task<Rep.Afd.AfdFile> ExportAfdFileAsync(
+        long? initialNsr = null, DateTime? initialDate = null, bool portaria671 = true, CancellationToken cancellationToken = default) =>
+        Rep.Afd.AfdParser.Parse(await ExportAfdAsync(initialNsr, initialDate, portaria671, cancellationToken).ConfigureAwait(false));
+
+    /// <inheritdoc/>
+    public async Task<string> ExportAuditLogsAsync(AuditLogCategories categories = AuditLogCategories.All, CancellationToken cancellationToken = default)
+    {
+        if (categories == AuditLogCategories.None)
+        {
+            throw new ArgumentException("Escolha ao menos uma categoria.", nameof(categories));
+        }
+
+        int Flag(AuditLogCategories category) => (categories & category) != 0 ? 1 : 0;
+        var body = new Dictionary<string, object>
+        {
+            ["config"] = Flag(AuditLogCategories.Config),
+            ["api"] = Flag(AuditLogCategories.Api),
+            ["usb"] = Flag(AuditLogCategories.Usb),
+            ["network"] = Flag(AuditLogCategories.Network),
+            ["time"] = Flag(AuditLogCategories.Time),
+            ["online"] = Flag(AuditLogCategories.Online),
+            ["menu"] = Flag(AuditLogCategories.Menu),
+        };
+
+        var (content, charSet) = await _transport.PostForBytesAsync("export_audit_logs.fcgi", body, cancellationToken).ConfigureAwait(false);
+        return TextDecoding.Decode(content, charSet);
+    }
+
+    /// <inheritdoc/>
     public Task LinkAsync(AccessLink link, CancellationToken cancellationToken = default)
     {
         if (link is null)
@@ -279,14 +395,7 @@ public sealed class AccessClient : IAccessClient
 
     /// <inheritdoc/>
     public Task<IReadOnlyList<AccessLog>> GetAccessLogsAsync(long afterId = 0, int? limit = null, CancellationToken cancellationToken = default) =>
-        LoadObjectsAsync<AccessLog>(
-            new LoadObjectsRequest("access_logs")
-            {
-                Where = Where.Compare("access_logs", "id", ">", afterId),
-                Order = new List<string> { "ascending", "id" },
-                Limit = limit,
-            },
-            cancellationToken);
+        LoadAfterAsync<AccessLog>("access_logs", afterId, limit, cancellationToken);
 
     /// <inheritdoc/>
     public async Task<JsonElement?> ExecuteActionsAsync(IEnumerable<DeviceAction> actions, CancellationToken cancellationToken = default)
@@ -640,6 +749,17 @@ public sealed class AccessClient : IAccessClient
             // Melhor esforço: a falha original é a que importa para quem chamou.
         }
     }
+
+    // Leitura incremental de tabelas de log: id > afterId, em ordem crescente.
+    private Task<IReadOnlyList<T>> LoadAfterAsync<T>(string @object, long afterId, int? limit, CancellationToken cancellationToken) =>
+        LoadObjectsAsync<T>(
+            new LoadObjectsRequest(@object)
+            {
+                Where = Where.Compare(@object, "id", ">", afterId),
+                Order = new List<string> { "ascending", "id" },
+                Limit = limit,
+            },
+            cancellationToken);
 
     private Task<IReadOnlyList<T>> LoadAsync<T>(string @object, string filterField, long? filterValue, CancellationToken cancellationToken) =>
         LoadObjectsAsync<T>(

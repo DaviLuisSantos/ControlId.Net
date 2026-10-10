@@ -142,6 +142,51 @@ public interface IAccessClient : IControlIdClient
     /// <summary>Lista os portais (passagens entre áreas).</summary>
     Task<IReadOnlyList<AccessPortal>> GetPortalsAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Lista as áreas.</summary>
+    Task<IReadOnlyList<AccessArea>> GetAreasAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Cria uma área e devolve o ID gerado.</summary>
+    Task<long> CreateAreaAsync(AccessArea area, CancellationToken cancellationToken = default);
+
+    /// <summary>Remove uma área pelo ID.</summary>
+    Task<bool> DeleteAreaAsync(long areaId, CancellationToken cancellationToken = default);
+
+    /// <summary>Lista os feriados.</summary>
+    Task<IReadOnlyList<AccessHoliday>> GetHolidaysAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Cria um feriado e devolve o ID gerado. Veja <see cref="AccessHoliday.FullDay"/>.</summary>
+    Task<long> CreateHolidayAsync(AccessHoliday holiday, CancellationToken cancellationToken = default);
+
+    /// <summary>Remove um feriado pelo ID.</summary>
+    Task<bool> DeleteHolidayAsync(long holidayId, CancellationToken cancellationToken = default);
+
+    /// <summary>Eventos de porta, SecBox e catraca (<c>access_events</c>) com ID maior que <paramref name="afterId"/>, em ordem crescente.</summary>
+    Task<IReadOnlyList<AccessDeviceEvent>> GetAccessEventsAsync(long afterId = 0, int? limit = null, CancellationToken cancellationToken = default);
+
+    /// <summary>Logs de alarme com ID maior que <paramref name="afterId"/>, em ordem crescente.</summary>
+    Task<IReadOnlyList<AlarmLog>> GetAlarmLogsAsync(long afterId = 0, int? limit = null, CancellationToken cancellationToken = default);
+
+    /// <summary>Configuração da SecBox (iDFlex, iDAccess Pro, iDAccess Nano); <c>null</c> se o equipamento não tiver.</summary>
+    Task<SecBox?> GetSecBoxAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Grava a configuração da SecBox (leia com <see cref="GetSecBoxAsync"/>, altere e envie).</summary>
+    Task UpdateSecBoxAsync(SecBox secBox, CancellationToken cancellationToken = default);
+
+    /// <summary><c>report_generate.fcgi</c>: gera um relatório em texto (estilo CSV) a partir de qualquer objeto.</summary>
+    Task<string> GenerateReportAsync(ReportRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <c>export_afd.fcgi</c>: AFD gerado pelo equipamento de acesso (ex.: iDFlex Attendance), a partir de um NSR ou de
+    /// uma data (ou completo). Com <paramref name="portaria671"/> <c>false</c>, vem no leiaute anterior (Portaria 595/1510).
+    /// </summary>
+    Task<string> ExportAfdAsync(long? initialNsr = null, DateTime? initialDate = null, bool portaria671 = true, CancellationToken cancellationToken = default);
+
+    /// <summary><see cref="ExportAfdAsync"/> já interpretado pelo <see cref="Rep.Afd.AfdParser"/>.</summary>
+    Task<Rep.Afd.AfdFile> ExportAfdFileAsync(long? initialNsr = null, DateTime? initialDate = null, bool portaria671 = true, CancellationToken cancellationToken = default);
+
+    /// <summary><c>export_audit_logs.fcgi</c>: até os últimos 25 mil logs de auditoria das categorias escolhidas (em inglês).</summary>
+    Task<string> ExportAuditLogsAsync(AuditLogCategories categories = AuditLogCategories.All, CancellationToken cancellationToken = default);
+
     /// <summary>Cria a associação (usuário↔grupo, grupo↔regra, regra↔horário...).</summary>
     Task LinkAsync(AccessLink link, CancellationToken cancellationToken = default);
 

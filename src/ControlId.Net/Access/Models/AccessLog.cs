@@ -37,9 +37,33 @@ public sealed class AccessLog
     [JsonPropertyName("portal_id")]
     public long? PortalId { get; set; }
 
-    /// <summary>Regra de acesso aplicada.</summary>
-    [JsonPropertyName("access_rule_id")]
-    public long? AccessRuleId { get; set; }
+    /// <summary>Regra de identificação envolvida.</summary>
+    [JsonPropertyName("identification_rule_id")]
+    public long? IdentificationRuleId { get; set; }
+
+    /// <summary>QR Code usado.</summary>
+    [JsonPropertyName("qrcode_value")]
+    public string? QrCodeValue { get; set; }
+
+    /// <summary>Tag UHF lida.</summary>
+    [JsonPropertyName("uhf_tag")]
+    public string? UhfTag { get; set; }
+
+    /// <summary>PIN usado.</summary>
+    [JsonPropertyName("pin_value")]
+    public string? PinValue { get; set; }
+
+    /// <summary>Confiança do reconhecimento facial (0 a 1800).</summary>
+    [JsonPropertyName("confidence")]
+    public long? Confidence { get; set; }
+
+    /// <summary>1 se o usuário estava de máscara, 0 se não.</summary>
+    [JsonPropertyName("mask")]
+    public int? Mask { get; set; }
+
+    /// <summary>Tipo de batida (iDFlex Attendance).</summary>
+    [JsonPropertyName("log_type_id")]
+    public long? LogTypeId { get; set; }
 
     /// <summary>Valor do cartão lido, quando houver.</summary>
     [JsonPropertyName("card_value")]

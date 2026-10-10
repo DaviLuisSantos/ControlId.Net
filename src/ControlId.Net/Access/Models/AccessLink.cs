@@ -32,6 +32,10 @@ public sealed class AccessLink
     public static AccessLink UserAccessRule(long userId, long accessRuleId) =>
         new("user_access_rules", "user_id", userId, "access_rule_id", accessRuleId);
 
+    /// <summary>Regra de acesso vale para a área (<c>area_access_rules</c>).</summary>
+    public static AccessLink AreaAccessRule(long areaId, long accessRuleId) =>
+        new("area_access_rules", "area_id", areaId, "access_rule_id", accessRuleId);
+
     /// <summary>Regra de acesso vale no horário (<c>access_rule_time_zones</c>).</summary>
     public static AccessLink AccessRuleTimeZone(long accessRuleId, long timeZoneId) =>
         new("access_rule_time_zones", "access_rule_id", accessRuleId, "time_zone_id", timeZoneId);

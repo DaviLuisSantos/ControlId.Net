@@ -5,6 +5,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 ## [Unreleased]
 
 ### Fixed
+- `AccessLog` tinha `AccessRuleId` (`access_rule_id`), campo que não existe em `access_logs` e nunca vinha preenchido. Trocado pelos campos documentados: `IdentificationRuleId`, `QrCodeValue`, `UhfTag`, `PinValue`, `Confidence`, `Mask` e `LogTypeId`.
 - `RepClient.GetAfd*` decodificava o AFD como UTF-8 quando o REP não informava o charset, corrompendo nomes acentuados; agora usa ISO-8859-1 (codificação das portarias) quando os bytes não são UTF-8 válido.
 
 ### Changed
@@ -21,6 +22,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 - Pacote `ControlId.Net.DependencyInjection`: `AddControlIdAccess`/`AddControlIdRep` (padrão ou por nome, por delegate ou `IConfiguration`), `AddControlIdAccessDevices`/`AddControlIdRepDevices` para vários equipamentos no `appsettings.json` e `IControlIdClientFactory`.
 - Pacote `ControlId.Net.AspNetCore`: `AddControlIdPush`, `AddControlIdMonitor` (handler tipado ou delegate), `MapControlIdPush` e `MapControlIdMonitor`.
 - Sample `ControlId.Net.Server` (ASP.NET Core) com Push e Monitor.
+- Objetos tipados: áreas (`AccessArea`, `AccessLink.AreaAccessRule`), feriados (`AccessHoliday`), eventos de porta/SecBox/catraca (`AccessDeviceEvent`), logs de alarme (`AlarmLog`) e SecBox (`GetSecBoxAsync`/`UpdateSecBoxAsync`).
+- Exportações: `GenerateReportAsync` (`report_generate`), `ExportAfdAsync`/`ExportAfdFileAsync` (`export_afd` do equipamento de acesso) e `ExportAuditLogsAsync` (`export_audit_logs`).
 - Modo online: resultados do cadastro remoto (`card_create`, `face_create`, `fingerprint_create`, `template_create`, `pin_create`, `password_create`) via `OnlineEvents.ParseEnroll` e `IOnlineAccessHandler.OnRemoteEnrollAsync` no `MapControlIdOnline`; `RemoteEnrollResult.Face`.
 - Comandos tipados no `AccessClient`: `ShowMessageAsync`/`ClearMessageAsync`, `BuzzAsync`, `ChangeLoginAsync` (atualiza as credenciais do próprio cliente), `HashPasswordAsync`, `RebootAsync`, `RebootToUpdateModeAsync`, `ResetToFactoryDefaultAsync`, `DeleteAllAdministratorsAsync`, `SetNetworkAsync`, logotipo (`Get`/`Set`/`Delete`/`ShowLogoAsync`), `GetGpioStateAsync`, `RefreshLedAsync`, `SetUsbPortEnabledAsync` e `CreateOrModifyObjectsAsync`; `PushCommand.ShowMessage`/`Buzz`/`Reboot`.
 - Modo online (Pro/Enterprise): `ConfigureOnlineModeAsync`/`DisableOnlineModeAsync`, eventos tipados (`OnlineEvents.Parse`), `OnlineAuthorization` (Grant/Deny/NotIdentified), `AuthorizeRemotelyAsync` e, no ASP.NET Core, `AddControlIdOnline` + `MapControlIdOnline` (identificação, botoeira, foto do usuário e `device_is_alive`).

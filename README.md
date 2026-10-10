@@ -62,6 +62,39 @@ await device.SetUserImageAsync(id, File.ReadAllBytes("maria.jpg")); // JPEG < 1 
 byte[] foto = await device.GetUserImageAsync(id);
 ```
 
+### Áreas, feriados, eventos, alarmes e SecBox
+
+```csharp
+var garagem = await device.CreateAreaAsync(new AccessArea { Name = "Garagem" });
+await device.LinkAsync(AccessLink.AreaAccessRule(garagem, regra));
+
+await device.CreateHolidayAsync(AccessHoliday.FullDay("Natal", new DateTime(2026, 12, 25), TimeSpan.FromHours(-3), repeats: true));
+
+var aberturas = await device.GetAccessEventsAsync(afterId: ultimoEvento);   // portas, SecBox e catraca
+var alarmes = await device.GetAlarmLogsAsync(afterId: ultimoAlarme);
+
+var secBox = await device.GetSecBoxAsync();                                   // iDFlex, iDAccess Pro/Nano
+secBox!.RelayTimeoutMilliseconds = 5000;
+await device.UpdateSecBoxAsync(secBox);
+```
+
+### Relatórios e exportações
+
+```csharp
+string csv = await device.GenerateReportAsync(new ReportRequest("users")
+{
+    Delimiter = ";",
+    Header = "Nome;Matrícula",
+    Columns = { ReportColumn.ObjectField("users", "name"), ReportColumn.ObjectField("users", "registration") },
+});
+
+AfdFile afd = await device.ExportAfdFileAsync(initialNsr: 1);           // AFD do equipamento de acesso (iDFlex Attendance)
+string auditoria = await device.ExportAuditLogsAsync(AuditLogCategories.Config | AuditLogCategories.Api);
+```
+
+Os textos devolvidos são decodificados como o AFD do REP: usa o charset informado; sem ele, UTF-8 se for válido e,
+senão, ISO-8859-1.
+
 ### Cadastro remoto (cartão, face, digital, PIN, senha)
 
 O equipamento pede a credencial à pessoa e devolve o resultado:

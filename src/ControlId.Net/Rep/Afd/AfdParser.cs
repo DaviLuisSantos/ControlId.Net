@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using ControlId.Internal;
 
 namespace ControlId.Rep.Afd;
 
@@ -14,9 +15,6 @@ namespace ControlId.Rep.Afd;
 public static class AfdParser
 {
     private const string TrailerNsr = "999999999";
-
-    private static readonly Encoding Latin1 = Encoding.GetEncoding("iso-8859-1");
-    private static readonly Encoding StrictUtf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
     /// <summary>Interpreta o AFD inteiro já em texto (ex.: o retorno de <see cref="IRepClient.GetAfdAsync"/>).</summary>
     public static AfdFile Parse(string text)
@@ -79,30 +77,7 @@ public static class AfdParser
     }
 
     /// <summary>Decodifica bytes de AFD: charset informado, senão UTF-8 válido, senão ISO-8859-1.</summary>
-    internal static string Decode(byte[] content, string? charSet)
-    {
-        if (!string.IsNullOrWhiteSpace(charSet))
-        {
-            try
-            {
-                return Encoding.GetEncoding(charSet!.Trim('"', ' ')).GetString(content);
-            }
-            catch (ArgumentException)
-            {
-                // Charset desconhecido: cai na detecção abaixo.
-            }
-        }
-
-        try
-        {
-            var text = StrictUtf8.GetString(content);
-            return text.Length > 0 && text[0] == '﻿' ? text.Substring(1) : text;
-        }
-        catch (DecoderFallbackException)
-        {
-            return Latin1.GetString(content);
-        }
-    }
+    internal static string Decode(byte[] content, string? charSet) => TextDecoding.Decode(content, charSet);
 
     private static IEnumerable<AfdRecord> ReadRecordsIterator(TextReader reader)
     {
