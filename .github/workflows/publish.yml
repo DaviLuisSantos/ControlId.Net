@@ -1,6 +1,11 @@
 name: Publish
 
-# Cria uma tag v0.1.0 (por exemplo) e faz push: os pacotes ControlId.Net, ControlId.Net.DependencyInjection e ControlId.Net.AspNetCore vão para o NuGet.org.
+# Cria uma tag v0.1.0 (por exemplo) e faz push: os pacotes ControlId.Net, ControlId.Net.DependencyInjection e
+# ControlId.Net.AspNetCore vão para o NuGet.org.
+#
+# Usa Trusted Publishing (OIDC): não há chave do NuGet guardada no repositório. É preciso, uma vez:
+# - no nuget.org, uma política de Trusted Publishing para este repositório e o arquivo "publish.yml";
+# - no GitHub, o secret NUGET_USER com o nome de usuário (perfil) do nuget.org, não o e-mail.
 on:
   push:
     tags: ['v*.*.*']
@@ -19,6 +24,9 @@ jobs:
   publish:
     needs: netfx
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # token OIDC trocado por uma chave temporária do NuGet
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -28,4 +36,12 @@ jobs:
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
       - run: dotnet test -c Release -f net8.0
       - run: dotnet pack -c Release -o artifacts -p:Version=$VERSION
-      - run: dotnet nuget push "artifacts/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      # A chave dura 1 hora: pedida só depois de testar e empacotar.
+      - name: NuGet login (OIDC)
+        id: nuget
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - run: dotnet nuget push "artifacts/*.nupkg" --api-key ${{ steps.nuget.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
