@@ -1,0 +1,19 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <Authors>Davi Luis</Authors>
+    <Copyright>Copyright (c) 2026 Davi Luis</Copyright>
+    <RepositoryUrl>https://github.com/DaviLuisSantos/ControlId.Net</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/DaviLuisSantos/ControlId.Net</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+
+    <!-- Os pacotes saem sempre juntos e com a mesma versão (o publish.yml sobrescreve pela tag). -->
+    <Version>0.1.0-alpha.1</Version>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;netstandard2.0</TargetFrameworks>
+    <RootNamespace>ControlId</RootNamespace>
+
+    <PackageId>ControlId.Net</PackageId>
+    <Description>Cliente .NET não oficial para equipamentos Control iD: linha de acesso (iDAccess, iDFlex, iDFace) e relógios de ponto REP iDClass.</Description>
+    <PackageTags>controlid;control-id;idaccess;idflex;idface;idclass;rep;afd;access-control;controle-de-acesso;ponto</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ControlId.Net.Tests" />
+  </ItemGroup>
+
+</Project>

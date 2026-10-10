@@ -1,0 +1,697 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Net.Http;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
+using ControlId.Access.Monitoring;
+using ControlId.Access.Online;
+using ControlId.Access.Push;
+using ControlId.Internal;
+
+namespace ControlId.Access;
+
+/// <inheritdoc cref="IAccessClient"/>
+public sealed class AccessClient : IAccessClient
+{
+    private const int MaxImageBytes = 1024 * 1024;
+    private static readonly TimeSpan MaxBuzz = TimeSpan.FromSeconds(3);
+
+    private readonly ControlIdTransport _transport;
+
+    /// <summary>Cria o cliente. Se <paramref name="httpClient"/> for informado (ex.: via IHttpClientFactory), ele não é descartado por este cliente.</summary>
+    public AccessClient(ControlIdDeviceOptions options, HttpClient? httpClient = null)
+    {
+        _transport = new ControlIdTransport(options, httpClient);
+    }
+
+    /// <summary>Atalho: <c>new AccessClient("http://192.168.0.129", "admin", "admin")</c>.</summary>
+    public AccessClient(string baseAddress, string login = "admin", string password = "admin")
+        : this(new ControlIdDeviceOptions { BaseAddress = new Uri(baseAddress), Login = login, Password = password })
+    {
+    }
+
+    /// <summary>Sessão atual, ou <c>null</c> se ainda não logou.</summary>
+    public string? Session => _transport.Session;
+
+    /// <inheritdoc/>
+    public Task LoginAsync(CancellationToken cancellationToken = default) => _transport.LoginAsync(cancellationToken);
+
+    /// <inheritdoc/>
+    public Task LogoutAsync(CancellationToken cancellationToken = default) => _transport.LogoutAsync(cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<bool> IsSessionValidAsync(CancellationToken cancellationToken = default)
+    {
+        var session = _transport.Session;
+        if (session is null)
+        {
+            return false;
+        }
+
+        var text = await _transport.PostRawAsync(
+            "session_is_valid.fcgi", null, cancellationToken, "session=" + Uri.EscapeDataString(session), requiresSession: false).ConfigureAwait(false);
+        return ControlIdJson.Deserialize<SessionIsValidResponse>(text).SessionIsValid;
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<T>> LoadObjectsAsync<T>(LoadObjectsRequest request, CancellationToken cancellationToken = default)
+    {
+        if (request is null)
+        {
+            throw new ArgumentNullException(nameof(request));
+        }
+
+        var response = await _transport.PostAsync<Dictionary<string, List<T>>>("load_objects.fcgi", request, cancellationToken).ConfigureAwait(false);
+        return response.TryGetValue(request.Object, out var items) ? items : new List<T>();
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<long>> CreateObjectsAsync<T>(string @object, IEnumerable<T> values, CancellationToken cancellationToken = default)
+    {
+        var body = new Dictionary<string, object?> { ["object"] = @object, ["values"] = values.ToList() };
+        var response = await _transport.PostAsync<IdsResponse>("create_objects.fcgi", body, cancellationToken).ConfigureAwait(false);
+        return response.Ids ?? new List<long>();
+    }
+
+    /// <inheritdoc/>
+    public async Task<int> ModifyObjectsAsync(string @object, object values, object where, CancellationToken cancellationToken = default)
+    {
+        var body = new Dictionary<string, object?> { ["object"] = @object, ["values"] = values, ["where"] = where };
+        var response = await _transport.PostAsync<ChangesResponse>("modify_objects.fcgi", body, cancellationToken).ConfigureAwait(false);
+        return response.Changes;
+    }
+
+    /// <inheritdoc/>
+    public async Task<int> DestroyObjectsAsync(string @object, object where, CancellationToken cancellationToken = default)
+    {
+        var body = new Dictionary<string, object?> { ["object"] = @object, ["where"] = where };
+        var response = await _transport.PostAsync<ChangesResponse>("destroy_objects.fcgi", body, cancellationToken).ConfigureAwait(false);
+        return response.Changes;
+    }
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<AccessUser>> GetUsersAsync(CancellationToken cancellationToken = default) =>
+        LoadObjectsAsync<AccessUser>(new LoadObjectsRequest("users"), cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<long> CreateUserAsync(AccessUser user, CancellationToken cancellationToken = default) =>
+        CreateOneAsync("users", user, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<bool> DeleteUserAsync(long userId, CancellationToken cancellationToken = default) =>
+        DeleteByIdAsync("users", userId, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<AccessCard>> GetCardsAsync(long? userId = null, CancellationToken cancellationToken = default) =>
+        LoadAsync<AccessCard>("cards", "user_id", userId, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<long> CreateCardAsync(AccessCard card, CancellationToken cancellationToken = default) =>
+        CreateOneAsync("cards", card, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<bool> DeleteCardAsync(long cardId, CancellationToken cancellationToken = default) =>
+        DeleteByIdAsync("cards", cardId, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<AccessTemplate>> GetTemplatesAsync(long? userId = null, CancellationToken cancellationToken = default) =>
+        LoadAsync<AccessTemplate>("templates", "user_id", userId, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<long> CreateTemplateAsync(AccessTemplate template, CancellationToken cancellationToken = default) =>
+        CreateOneAsync("templates", template, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<bool> DeleteTemplateAsync(long templateId, CancellationToken cancellationToken = default) =>
+        DeleteByIdAsync("templates", templateId, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task SetUserImageAsync(long userId, byte[] jpeg, CancellationToken cancellationToken = default)
+    {
+        if (jpeg is null || jpeg.Length == 0)
+        {
+            throw new ArgumentException("Informe a imagem.", nameof(jpeg));
+        }
+
+        if (jpeg.Length >= MaxImageBytes)
+        {
+            throw new ArgumentException("O equipamento só aceita fotos menores que 1 MB.", nameof(jpeg));
+        }
+
+        return _transport.PostBytesAsync(
+            "user_set_image.fcgi", jpeg, "application/octet-stream", cancellationToken, "user_id=" + userId.ToString(CultureInfo.InvariantCulture));
+    }
+
+    /// <inheritdoc/>
+    public Task SetUserImagesAsync(IEnumerable<UserImage> images, CancellationToken cancellationToken = default)
+    {
+        if (images is null)
+        {
+            throw new ArgumentNullException(nameof(images));
+        }
+
+        var body = new Dictionary<string, object> { ["user_images"] = images.ToList() };
+        return _transport.PostRawAsync("user_set_image_list.fcgi", body, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<byte[]> GetUserImageAsync(long userId, CancellationToken cancellationToken = default) =>
+        _transport.GetBytesAsync("user_get_image.fcgi", cancellationToken, "user_id=" + userId.ToString(CultureInfo.InvariantCulture));
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<long>> GetUserIdsWithImageAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _transport.PostAsync<UserIdsResponse>("user_list_images.fcgi", null, cancellationToken).ConfigureAwait(false);
+        return response.UserIds ?? new List<long>();
+    }
+
+    /// <inheritdoc/>
+    public Task DeleteUserImageAsync(long userId, CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("user_destroy_image.fcgi", new Dictionary<string, object> { ["user_id"] = userId }, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task DeleteAllUserImagesAsync(CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("user_destroy_image.fcgi", new Dictionary<string, object> { ["all"] = true }, cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<RemoteEnrollResult> RemoteEnrollAsync(RemoteEnrollRequest request, CancellationToken cancellationToken = default)
+    {
+        var body = (request ?? throw new ArgumentNullException(nameof(request))).ToBody(sync: true);
+        try
+        {
+            var text = await _transport.PostRawAsync("remote_enroll.fcgi", body, cancellationToken).ConfigureAwait(false);
+            return RemoteEnrollResult.Parse(text);
+        }
+        catch (Exception ex) when (ex is OperationCanceledException || (ex is ControlIdException { InnerException: OperationCanceledException }))
+        {
+            // Sem isso o equipamento continuaria na tela de cadastro esperando a pessoa.
+            await TryCancelRemoteEnrollAsync().ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
+    public Task StartRemoteEnrollAsync(RemoteEnrollRequest request, CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("remote_enroll.fcgi", (request ?? throw new ArgumentNullException(nameof(request))).ToBody(sync: false), cancellationToken);
+
+    /// <inheritdoc/>
+    public Task CancelRemoteEnrollAsync(CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("cancel_remote_enroll.fcgi", null, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<AccessGroup>> GetGroupsAsync(CancellationToken cancellationToken = default) =>
+        LoadObjectsAsync<AccessGroup>(new LoadObjectsRequest("groups"), cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<long> CreateGroupAsync(AccessGroup group, CancellationToken cancellationToken = default) =>
+        CreateOneAsync("groups", group, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<bool> DeleteGroupAsync(long groupId, CancellationToken cancellationToken = default) =>
+        DeleteByIdAsync("groups", groupId, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<AccessRule>> GetAccessRulesAsync(CancellationToken cancellationToken = default) =>
+        LoadObjectsAsync<AccessRule>(new LoadObjectsRequest("access_rules"), cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<long> CreateAccessRuleAsync(AccessRule rule, CancellationToken cancellationToken = default) =>
+        CreateOneAsync("access_rules", rule, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<bool> DeleteAccessRuleAsync(long accessRuleId, CancellationToken cancellationToken = default) =>
+        DeleteByIdAsync("access_rules", accessRuleId, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<AccessTimeZone>> GetTimeZonesAsync(CancellationToken cancellationToken = default) =>
+        LoadObjectsAsync<AccessTimeZone>(new LoadObjectsRequest("time_zones"), cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<long> CreateTimeZoneAsync(AccessTimeZone timeZone, CancellationToken cancellationToken = default) =>
+        CreateOneAsync("time_zones", timeZone, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<bool> DeleteTimeZoneAsync(long timeZoneId, CancellationToken cancellationToken = default) =>
+        DeleteByIdAsync("time_zones", timeZoneId, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<AccessTimeSpan>> GetTimeSpansAsync(long? timeZoneId = null, CancellationToken cancellationToken = default) =>
+        LoadAsync<AccessTimeSpan>("time_spans", "time_zone_id", timeZoneId, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<long> CreateTimeSpanAsync(AccessTimeSpan timeSpan, CancellationToken cancellationToken = default) =>
+        CreateOneAsync("time_spans", timeSpan, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<bool> DeleteTimeSpanAsync(long timeSpanId, CancellationToken cancellationToken = default) =>
+        DeleteByIdAsync("time_spans", timeSpanId, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<AccessPortal>> GetPortalsAsync(CancellationToken cancellationToken = default) =>
+        LoadObjectsAsync<AccessPortal>(new LoadObjectsRequest("portals"), cancellationToken);
+
+    /// <inheritdoc/>
+    public Task LinkAsync(AccessLink link, CancellationToken cancellationToken = default)
+    {
+        if (link is null)
+        {
+            throw new ArgumentNullException(nameof(link));
+        }
+
+        // Tabelas de associação não têm coluna id, então não há ID a devolver.
+        return CreateObjectsAsync(link.Object, new[] { link.Values }, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> UnlinkAsync(AccessLink link, CancellationToken cancellationToken = default)
+    {
+        if (link is null)
+        {
+            throw new ArgumentNullException(nameof(link));
+        }
+
+        return await DestroyObjectsAsync(link.Object, link.ToWhere(), cancellationToken).ConfigureAwait(false) > 0;
+    }
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<AccessLog>> GetAccessLogsAsync(long afterId = 0, int? limit = null, CancellationToken cancellationToken = default) =>
+        LoadObjectsAsync<AccessLog>(
+            new LoadObjectsRequest("access_logs")
+            {
+                Where = Where.Compare("access_logs", "id", ">", afterId),
+                Order = new List<string> { "ascending", "id" },
+                Limit = limit,
+            },
+            cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<JsonElement?> ExecuteActionsAsync(IEnumerable<DeviceAction> actions, CancellationToken cancellationToken = default)
+    {
+        var body = new Dictionary<string, object> { ["actions"] = actions.ToList() };
+        var text = await _transport.PostRawAsync("execute_actions.fcgi", body, cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        using var doc = JsonDocument.Parse(text);
+        return doc.RootElement.Clone();
+    }
+
+    /// <inheritdoc/>
+    public Task OpenDoorAsync(int door = 1, CancellationToken cancellationToken = default) =>
+        ExecuteActionsAsync(new[] { DeviceAction.OpenDoor(door) }, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task OpenSecBoxAsync(long secBoxId = 65793, int reason = 3, CancellationToken cancellationToken = default) =>
+        ExecuteActionsAsync(new[] { DeviceAction.OpenSecBox(secBoxId, reason) }, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task ReleaseTurnstileAsync(TurnstileDirection direction, CancellationToken cancellationToken = default) =>
+        ExecuteActionsAsync(new[] { DeviceAction.ReleaseTurnstile(direction) }, cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<int> CreateOrModifyObjectsAsync<T>(string @object, IEnumerable<T> values, CancellationToken cancellationToken = default)
+    {
+        var body = new Dictionary<string, object?> { ["object"] = @object, ["values"] = (values ?? throw new ArgumentNullException(nameof(values))).ToList() };
+        var response = await _transport.PostAsync<ChangesResponse>("create_or_modify_objects.fcgi", body, cancellationToken).ConfigureAwait(false);
+        return response.Changes;
+    }
+
+    /// <inheritdoc/>
+    public Task ShowMessageAsync(string message, TimeSpan? duration = null, CancellationToken cancellationToken = default)
+    {
+        if (duration is { } d && d < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(duration), duration, "A duração não pode ser negativa.");
+        }
+
+        return _transport.PostRawAsync(
+            "message_to_screen.fcgi",
+            MessageBody(message ?? throw new ArgumentNullException(nameof(message)), duration),
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task ClearMessageAsync(CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("message_to_screen.fcgi", MessageBody(string.Empty, null), cancellationToken);
+
+    /// <inheritdoc/>
+    public Task BuzzAsync(TimeSpan duration, int frequency = 4000, int dutyCycle = 50, CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("buzzer_buzz.fcgi", BuzzBody(duration, frequency, dutyCycle), cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task ChangeLoginAsync(string login, string password, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(login))
+        {
+            throw new ArgumentException("Informe o novo usuário.", nameof(login));
+        }
+
+        if (password is null)
+        {
+            throw new ArgumentNullException(nameof(password));
+        }
+
+        await _transport.PostRawAsync(
+            "change_login.fcgi", new Dictionary<string, object> { ["login"] = login, ["password"] = password }, cancellationToken).ConfigureAwait(false);
+        _transport.UpdateCredentials(login, password);
+    }
+
+    /// <inheritdoc/>
+    public Task<PasswordHash> HashPasswordAsync(string password, CancellationToken cancellationToken = default) =>
+        _transport.PostAsync<PasswordHash>(
+            "user_hash_password.fcgi",
+            new Dictionary<string, object> { ["password"] = password ?? throw new ArgumentNullException(nameof(password)) },
+            cancellationToken);
+
+    /// <inheritdoc/>
+    public Task RebootAsync(CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("reboot.fcgi", null, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task RebootToUpdateModeAsync(CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("reboot_recovery.fcgi", null, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task ResetToFactoryDefaultAsync(bool keepNetworkSettings, CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync(
+            "reset_to_factory_default.fcgi", new Dictionary<string, object> { ["keep_network_info"] = keepNetworkSettings }, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task DeleteAllAdministratorsAsync(CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("delete_admins.fcgi", null, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task SetNetworkAsync(NetworkSettings settings, CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("set_system_network.fcgi", settings ?? throw new ArgumentNullException(nameof(settings)), cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<byte[]> GetLogoAsync(int? slot = null, CancellationToken cancellationToken = default)
+    {
+        var (content, _) = await _transport.PostForBytesAsync("logo.fcgi", null, cancellationToken, SlotQuery(slot)).ConfigureAwait(false);
+        return content;
+    }
+
+    /// <inheritdoc/>
+    public Task SetLogoAsync(byte[] png, int? slot = null, CancellationToken cancellationToken = default)
+    {
+        if (png is null || png.Length == 0)
+        {
+            throw new ArgumentException("Informe a imagem PNG.", nameof(png));
+        }
+
+        if (png.Length >= MaxImageBytes)
+        {
+            throw new ArgumentException("O equipamento só aceita logotipos menores que 1 MB.", nameof(png));
+        }
+
+        return _transport.PostBytesAsync("logo_change.fcgi", png, "application/octet-stream", cancellationToken, SlotQuery(slot));
+    }
+
+    /// <inheritdoc/>
+    public Task DeleteLogoAsync(int? slot = null, CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("logo_destroy.fcgi", null, cancellationToken, SlotQuery(slot));
+
+    /// <inheritdoc/>
+    public Task ShowLogoAsync(int slot, CancellationToken cancellationToken = default)
+    {
+        if (slot is < 0 or > 8)
+        {
+            throw new ArgumentOutOfRangeException(nameof(slot), slot, "Use 1 a 8, ou 0 para não exibir logotipo.");
+        }
+
+        return SetConfigurationAsync(GeneralSetting("show_logo", slot.ToString(CultureInfo.InvariantCulture)), cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<GpioState> GetGpioStateAsync(int gpio, CancellationToken cancellationToken = default) =>
+        _transport.PostAsync<GpioState>("gpio_state.fcgi", new Dictionary<string, object> { ["gpio"] = gpio }, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task RefreshLedAsync(CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("led_rgb_refresh.fcgi", null, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task SetUsbPortEnabledAsync(bool enabled, CancellationToken cancellationToken = default) =>
+        SetConfigurationAsync(GeneralSetting("usb_port_enabled", enabled ? "1" : "0"), cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<AccessSystemInformation> GetSystemInformationAsync(CancellationToken cancellationToken = default) =>
+        _transport.PostAsync<AccessSystemInformation>("system_information.fcgi", null, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task SetConfigurationAsync(object configuration, CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("set_configuration.fcgi", configuration ?? throw new ArgumentNullException(nameof(configuration)), cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>> GetConfigurationAsync(
+        IReadOnlyDictionary<string, IEnumerable<string>> fields, CancellationToken cancellationToken = default)
+    {
+        if (fields is null)
+        {
+            throw new ArgumentNullException(nameof(fields));
+        }
+
+        var body = fields.ToDictionary(section => section.Key, section => section.Value.ToList());
+        var response = await _transport.PostAsync<Dictionary<string, Dictionary<string, JsonElement>>>("get_configuration.fcgi", body, cancellationToken).ConfigureAwait(false);
+
+        return response.ToDictionary(
+            section => section.Key,
+            section => (IReadOnlyDictionary<string, string>)section.Value.ToDictionary(
+                field => field.Key,
+                // Os parâmetros são strings na API; números ou booleanos de algum firmware viram o texto JSON.
+                field => field.Value.ValueKind == JsonValueKind.String ? field.Value.GetString()! : field.Value.GetRawText()));
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyDictionary<string, string>> GetConfigurationAsync(
+        string section, IEnumerable<string> fields, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(section))
+        {
+            throw new ArgumentException("Informe a seção, ex.: \"general\".", nameof(section));
+        }
+
+        var all = await GetConfigurationAsync(
+            new Dictionary<string, IEnumerable<string>> { [section] = fields ?? throw new ArgumentNullException(nameof(fields)) },
+            cancellationToken).ConfigureAwait(false);
+        return all.TryGetValue(section, out var values) ? values : new Dictionary<string, string>();
+    }
+
+    /// <inheritdoc/>
+    public Task ConfigureMonitorAsync(MonitorConfiguration configuration, CancellationToken cancellationToken = default) =>
+        SetConfigurationAsync((configuration ?? throw new ArgumentNullException(nameof(configuration))).ToConfiguration(), cancellationToken);
+
+    /// <inheritdoc/>
+    public Task ConfigurePushAsync(PushConfiguration configuration, CancellationToken cancellationToken = default) =>
+        SetConfigurationAsync((configuration ?? throw new ArgumentNullException(nameof(configuration))).ToConfiguration(), cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<long> ConfigureOnlineModeAsync(OnlineModeConfiguration configuration, CancellationToken cancellationToken = default)
+    {
+        if (configuration is null)
+        {
+            throw new ArgumentNullException(nameof(configuration));
+        }
+
+        configuration.Validate();
+        var address = configuration.ServerAddress.Trim();
+
+        // Passo 1: o servidor é um registro em "devices". Só precisa existir uma vez.
+        var existing = await LoadObjectsAsync<ServerDevice>(
+            new LoadObjectsRequest("devices") { Where = Where.Equal("devices", "ip", address) }, cancellationToken).ConfigureAwait(false);
+        var serverId = existing.Count > 0 && existing[0].Id is { } id
+            ? id
+            : await CreateOneAsync("devices", new ServerDevice { Name = configuration.ServerName, Ip = address, PublicKey = string.Empty }, cancellationToken)
+                .ConfigureAwait(false);
+
+        // Passos 2 e 3: aponta para o servidor e liga o modo online. A API espera os valores como texto.
+        var onlineClient = new Dictionary<string, string> { ["server_id"] = serverId.ToString(CultureInfo.InvariantCulture) };
+        AddFlag(onlineClient, "extract_template", configuration.ExtractTemplate);
+        AddFlag(onlineClient, "contingency_enabled", configuration.ContingencyEnabled);
+        if (configuration.MaxRequestAttempts is { } attempts)
+        {
+            onlineClient["max_request_attempts"] = attempts.ToString(CultureInfo.InvariantCulture);
+        }
+
+        if (configuration.RequestTimeout is { } timeout)
+        {
+            onlineClient["request_timeout"] = ((long)timeout.TotalMilliseconds).ToString(CultureInfo.InvariantCulture);
+        }
+
+        if (configuration.AliveInterval is { } alive)
+        {
+            onlineClient["alive_interval"] = ((long)alive.TotalMilliseconds).ToString(CultureInfo.InvariantCulture);
+        }
+
+        var enterprise = configuration.Mode == OnlineMode.Enterprise;
+        await SetConfigurationAsync(
+            new Dictionary<string, object>
+            {
+                ["online_client"] = onlineClient,
+                ["general"] = new Dictionary<string, string>
+                {
+                    ["online"] = "1",
+                    ["local_identification"] = enterprise ? "0" : "1",
+                    ["ihm_enterprise_mode"] = enterprise && configuration.IsIhm ? "1" : "0",
+                },
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        return serverId;
+    }
+
+    /// <inheritdoc/>
+    public Task DisableOnlineModeAsync(CancellationToken cancellationToken = default) =>
+        SetConfigurationAsync(
+            new Dictionary<string, object> { ["general"] = new Dictionary<string, string> { ["online"] = "0" } }, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task AuthorizeRemotelyAsync(OnlineAuthorization authorization, CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync(
+            "remote_user_authorization.fcgi", authorization ?? throw new ArgumentNullException(nameof(authorization)), cancellationToken);
+
+    /// <inheritdoc/>
+    public Task SetSystemTimeAsync(DateTime localTime, CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("set_system_time.fcgi", DeviceDateTime.From(localTime), cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<T> SendAsync<T>(string endpoint, object? body = null, string? queryString = null, CancellationToken cancellationToken = default) =>
+        GenericEndpoints.SendAsync<T>(_transport, endpoint, body, queryString, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<string> SendRawAsync(string endpoint, object? body = null, string? queryString = null, CancellationToken cancellationToken = default) =>
+        GenericEndpoints.SendRawAsync(_transport, endpoint, body, queryString, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<string> SendBytesAsync(
+        string endpoint, byte[] content, string contentType = "application/octet-stream", string? queryString = null, CancellationToken cancellationToken = default) =>
+        GenericEndpoints.SendBytesAsync(_transport, endpoint, content, contentType, queryString, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<byte[]> DownloadAsync(
+        string endpoint, object? body = null, string? queryString = null, HttpMethod? method = null, CancellationToken cancellationToken = default) =>
+        GenericEndpoints.DownloadAsync(_transport, endpoint, body, queryString, method, cancellationToken);
+
+    /// <inheritdoc/>
+    public void Dispose() => _transport.Dispose();
+
+    /// <summary>Corpo de <c>message_to_screen</c>: timeout 0 = mensagem fixa.</summary>
+    internal static Dictionary<string, object> MessageBody(string message, TimeSpan? duration) => new()
+    {
+        ["message"] = message,
+        ["timeout"] = duration is { } value ? (long)value.TotalMilliseconds : 0,
+    };
+
+    /// <summary>Corpo de <c>buzzer_buzz</c>, validado contra os limites da documentação.</summary>
+    internal static Dictionary<string, object> BuzzBody(TimeSpan duration, int frequency, int dutyCycle)
+    {
+        if (duration <= TimeSpan.Zero || duration > MaxBuzz)
+        {
+            throw new ArgumentOutOfRangeException(nameof(duration), duration, "O buzzer aceita até 3 s por chamada.");
+        }
+
+        if (frequency <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(frequency), frequency, "Informe a frequência em Hz.");
+        }
+
+        if (dutyCycle is < 0 or > 100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(dutyCycle), dutyCycle, "Use de 0 a 100.");
+        }
+
+        return new Dictionary<string, object>
+        {
+            ["frequency"] = frequency,
+            ["duty_cycle"] = dutyCycle,
+            ["timeout"] = (long)duration.TotalMilliseconds,
+        };
+    }
+
+    private static Dictionary<string, object> GeneralSetting(string key, string value) =>
+        new() { ["general"] = new Dictionary<string, string> { [key] = value } };
+
+    // A documentação é ambígua sobre a base do slot (1 a 8 vs. "id=5 é a 6ª posição"), então o valor vai como recebido.
+    private static string? SlotQuery(int? slot)
+    {
+        if (slot is < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(slot), slot, "O slot não pode ser negativo.");
+        }
+
+        return slot is { } value ? "id=" + value.ToString(CultureInfo.InvariantCulture) : null;
+    }
+
+    private async Task TryCancelRemoteEnrollAsync()
+    {
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await CancelRemoteEnrollAsync(timeout.Token).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is ControlIdException or OperationCanceledException)
+        {
+            // Melhor esforço: a falha original é a que importa para quem chamou.
+        }
+    }
+
+    private Task<IReadOnlyList<T>> LoadAsync<T>(string @object, string filterField, long? filterValue, CancellationToken cancellationToken) =>
+        LoadObjectsAsync<T>(
+            new LoadObjectsRequest(@object) { Where = filterValue is { } value ? Where.Equal(@object, filterField, value) : null },
+            cancellationToken);
+
+    private async Task<long> CreateOneAsync<T>(string @object, T value, CancellationToken cancellationToken)
+    {
+        if (value is null)
+        {
+            throw new ArgumentNullException(nameof(value));
+        }
+
+        var ids = await CreateObjectsAsync(@object, new[] { value }, cancellationToken).ConfigureAwait(false);
+        return ids.Count > 0 ? ids[0] : throw new ControlIdException($"O equipamento não retornou o ID criado em '{@object}'.");
+    }
+
+    private async Task<bool> DeleteByIdAsync(string @object, long id, CancellationToken cancellationToken) =>
+        await DestroyObjectsAsync(@object, Where.Equal(@object, "id", id), cancellationToken).ConfigureAwait(false) > 0;
+
+    private sealed class SessionIsValidResponse
+    {
+        [JsonPropertyName("session_is_valid")]
+        public bool SessionIsValid { get; set; }
+    }
+
+    private static void AddFlag(Dictionary<string, string> values, string key, bool? flag)
+    {
+        if (flag is { } value)
+        {
+            values[key] = value ? "1" : "0";
+        }
+    }
+
+    private sealed class ServerDevice
+    {
+        [JsonPropertyName("id")]
+        public long? Id { get; set; }
+
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
+
+        [JsonPropertyName("ip")]
+        public string? Ip { get; set; }
+
+        [JsonPropertyName("public_key")]
+        public string? PublicKey { get; set; }
+    }
+
+    private sealed class UserIdsResponse
+    {
+        [JsonPropertyName("user_ids")]
+        public List<long>? UserIds { get; set; }
+    }
+}

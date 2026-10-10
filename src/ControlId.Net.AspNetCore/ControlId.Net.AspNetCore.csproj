@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>ControlId.AspNetCore</RootNamespace>
+
+    <PackageId>ControlId.Net.AspNetCore</PackageId>
+    <Description>Integração do ControlId.Net com ASP.NET Core: rotas prontas para o modo Push e o Monitor dos equipamentos Control iD (MapControlIdPush, MapControlIdMonitor). Inclui o ControlId.Net.DependencyInjection.</Description>
+    <PackageTags>controlid;control-id;idaccess;idflex;idface;push;monitor;aspnetcore;access-control;controle-de-acesso</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ControlId.Net.DependencyInjection\ControlId.Net.DependencyInjection.csproj" />
+  </ItemGroup>
+
+</Project>

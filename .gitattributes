@@ -1,0 +1,10 @@
+# Finais de linha LF no repositório e no checkout, como pede o .editorconfig,
+# independente do core.autocrlf de cada máquina.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.snk binary
