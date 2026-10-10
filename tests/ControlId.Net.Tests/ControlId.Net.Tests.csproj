@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <!-- net48 consome o build netstandard2.0 das bibliotecas: é o caminho de quem usa .NET Framework. -->
+    <TargetFrameworks>net8.0;net48</TargetFrameworks>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -12,17 +13,31 @@
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
     <PackageReference Include="coverlet.collector" Version="6.0.2" />
-    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="8.0.11" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="System.Net.Http" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ControlId.Net\ControlId.Net.csproj" />
-    <ProjectReference Include="..\..\src\ControlId.Net.AspNetCore\ControlId.Net.AspNetCore.csproj" />
     <ProjectReference Include="..\..\src\ControlId.Net.DependencyInjection\ControlId.Net.DependencyInjection.csproj" />
+  </ItemGroup>
+
+  <!-- O pacote ASP.NET Core só existe em net8.0. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="8.0.11" />
+    <ProjectReference Include="..\..\src\ControlId.Net.AspNetCore\ControlId.Net.AspNetCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <Compile Remove="AspNetCore*.cs" />
+    <Reference Include="System.Net.Http" />
+    <!-- Assemblies de referência do .NET Framework sem depender do targeting pack instalado. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <!-- AddInMemoryCollection; no net8.0 vem pelo framework do ASP.NET Core. -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
   </ItemGroup>
 
 </Project>

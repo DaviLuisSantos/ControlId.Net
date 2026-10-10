@@ -46,7 +46,11 @@ internal sealed class FakeDeviceHandler : HttpMessageHandler
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
+#if NET5_0_OR_GREATER
         var body = request.Content is null ? string.Empty : await request.Content.ReadAsStringAsync(cancellationToken);
+#else
+        var body = request.Content is null ? string.Empty : await request.Content.ReadAsStringAsync();
+#endif
         Requests.Add((request.Method, request.RequestUri!, request.Content?.Headers.ContentType?.MediaType, body));
 
         var endpoint = request.RequestUri!.AbsolutePath.TrimStart('/');

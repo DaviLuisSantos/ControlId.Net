@@ -15,9 +15,20 @@ jobs:
           dotnet-version: 8.0.x
       - run: dotnet restore
       - run: dotnet build --no-restore -c Release
-      - run: dotnet test --no-build -c Release --verbosity normal
+      # net48 não executa no Linux; ele roda no job netfx.
+      - run: dotnet test --no-build -c Release -f net8.0 --verbosity normal
       - run: dotnet pack -c Release --no-build -o artifacts
       - uses: actions/upload-artifact@v4
         with:
           name: nupkg
           path: artifacts/*
+
+  # Testa o build netstandard2.0 das bibliotecas no .NET Framework 4.8.
+  netfx:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet test tests/ControlId.Net.Tests -c Release -f net48 --verbosity normal

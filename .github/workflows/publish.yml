@@ -6,7 +6,18 @@ on:
     tags: ['v*.*.*']
 
 jobs:
+  # Só publica se os testes passarem também no .NET Framework 4.8.
+  netfx:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet test tests/ControlId.Net.Tests -c Release -f net48
+
   publish:
+    needs: netfx
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,6 +26,6 @@ jobs:
           dotnet-version: 8.0.x
       - name: Version from tag
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
-      - run: dotnet test -c Release
+      - run: dotnet test -c Release -f net8.0
       - run: dotnet pack -c Release -o artifacts -p:Version=$VERSION
       - run: dotnet nuget push "artifacts/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate

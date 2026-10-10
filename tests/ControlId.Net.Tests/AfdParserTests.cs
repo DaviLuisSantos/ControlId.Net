@@ -261,7 +261,7 @@ public class AfdParserTests
         // REP sem charset no Content-Type: os bytes ISO-8859-1 não podem virar '�'.
         var device = new FakeDeviceHandler()
             .OnJson("login.fcgi", """{"session":"rep"}""")
-            .OnBytes("get_afd.fcgi", Encoding.Latin1.GetBytes(Afd671()), "text/plain");
+            .OnBytes("get_afd.fcgi", Encoding.GetEncoding("iso-8859-1").GetBytes(Afd671()), "text/plain");
 
         using var client = new RepClient(
             new ControlIdDeviceOptions { BaseAddress = new Uri("https://10.0.0.9"), AcceptAnyServerCertificate = true },
