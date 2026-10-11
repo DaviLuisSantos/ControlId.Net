@@ -9,8 +9,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 8.0.x
       - run: dotnet restore
@@ -18,7 +18,7 @@ jobs:
       # net48 não executa no Linux; ele roda no job netfx.
       - run: dotnet test --no-build -c Release -f net8.0 --verbosity normal
       - run: dotnet pack -c Release --no-build -o artifacts
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: nupkg
           path: artifacts/*
@@ -27,8 +27,8 @@ jobs:
   netfx:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 8.0.x
       - run: dotnet test tests/ControlId.Net.Tests -c Release -f net48 --verbosity normal

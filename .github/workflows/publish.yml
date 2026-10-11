@@ -15,8 +15,8 @@ jobs:
   netfx:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 8.0.x
       - run: dotnet test tests/ControlId.Net.Tests -c Release -f net48
@@ -28,8 +28,8 @@ jobs:
       contents: read
       id-token: write # token OIDC trocado por uma chave temporária do NuGet
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 8.0.x
       - name: Version from tag
