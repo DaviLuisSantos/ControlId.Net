@@ -1,5 +1,10 @@
 # ControlId.Net
 
+[![CI](https://github.com/DaviLuisSantos/ControlId.Net/actions/workflows/ci.yml/badge.svg)](https://github.com/DaviLuisSantos/ControlId.Net/actions/workflows/ci.yml)
+[![ControlId.Net](https://img.shields.io/nuget/vpre/ControlId.Net?label=ControlId.Net)](https://www.nuget.org/packages/ControlId.Net)
+[![ControlId.Net.DependencyInjection](https://img.shields.io/nuget/vpre/ControlId.Net.DependencyInjection?label=ControlId.Net.DependencyInjection)](https://www.nuget.org/packages/ControlId.Net.DependencyInjection)
+[![ControlId.Net.AspNetCore](https://img.shields.io/nuget/vpre/ControlId.Net.AspNetCore?label=ControlId.Net.AspNetCore)](https://www.nuget.org/packages/ControlId.Net.AspNetCore)
+
 Cliente .NET **não oficial** para equipamentos [Control iD](https://www.controlid.com.br):
 
 - **Linha de acesso**: iDAccess, iDFlex, iDFace, iDBox, iDUHF (API `*.fcgi` sobre HTTP).
