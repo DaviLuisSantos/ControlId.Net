@@ -10,7 +10,7 @@ Cliente .NET **não oficial** para equipamentos [Control iD](https://www.control
 - **Linha de acesso**: iDAccess, iDFlex, iDFace, iDBox, iDUHF (API `*.fcgi` sobre HTTP).
 - **Relógios de ponto REP iDClass**: API HTTPS, incluindo AFD no layout da Portaria 671.
 
-Alvos: `net8.0` e `netstandard2.0`, então também roda em projetos .NET Framework 4.6.1+.
+Alvos: `net8.0` e `netstandard2.0`, então também roda em projetos .NET Framework 4.6.1+. A suíte de testes roda no .NET 8, no .NET 10 e no .NET Framework 4.8.
 
 > Projeto independente, sem vínculo com a Control iD. "Control iD", "iDAccess", "iDFlex", "iDFace" e "iDClass" são marcas da Control iD.
 
@@ -514,7 +514,7 @@ dotnet run --project samples/ControlId.Net.Sample -- access http://192.168.0.129
 dotnet run --project samples/ControlId.Net.Server -- --urls http://0.0.0.0:5000
 ```
 
-Os testes rodam em `net8.0` e em `net48`. O `net48` exercita o build `netstandard2.0` das bibliotecas, que é o que roda no .NET Framework, e só executa no Windows. Em Linux ou macOS, use `dotnet test -f net8.0`. No CI, o `net48` roda num job Windows separado, e o `publish.yml` só publica se ele passar.
+Os testes rodam em `net8.0`, `net10.0` e `net48`. Os dois primeiros exercitam o build `net8.0` das bibliotecas (o `net10.0` garante a compatibilidade com o .NET 10, inclusive o pacote ASP.NET Core sobre o ASP.NET Core 10); o `net48` exercita o build `netstandard2.0`, usado no .NET Framework, e só executa no Windows. Para compilar o alvo `net10.0` é preciso o SDK do .NET 10. Em Linux ou macOS, use `dotnet test -f net8.0` ou `-f net10.0`. No CI, os dois rodam no job Linux e o `net48` num job Windows separado; o `publish.yml` só publica se todos passarem.
 
 Para publicar, crie uma tag `vX.Y.Z` e faça push. O workflow `publish.yml` empacota `ControlId.Net`, `ControlId.Net.DependencyInjection` e `ControlId.Net.AspNetCore` com a versão da tag e envia ao NuGet.org por Trusted Publishing (OIDC), sem chave guardada no repositório. Configuração única: uma política de Trusted Publishing no nuget.org para este repositório e o arquivo `publish.yml`, e o secret `NUGET_USER` com o nome de usuário do nuget.org.
 

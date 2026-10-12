@@ -16,9 +16,12 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+      # SDK 10 para compilar o alvo net10.0 dos testes; runtime 8 para executar o alvo net8.0.
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: |
+            8.0.x
+            10.0.x
       - run: dotnet test tests/ControlId.Net.Tests -c Release -f net48
 
   publish:
@@ -29,12 +32,16 @@ jobs:
       id-token: write # token OIDC trocado por uma chave temporária do NuGet
     steps:
       - uses: actions/checkout@v7
+      # SDK 10 para compilar o alvo net10.0 dos testes; runtime 8 para executar o alvo net8.0.
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: |
+            8.0.x
+            10.0.x
       - name: Version from tag
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
-      - run: dotnet test -c Release -f net8.0
+      - run: dotnet test tests/ControlId.Net.Tests -c Release -f net8.0
+      - run: dotnet test tests/ControlId.Net.Tests -c Release -f net10.0
       - run: dotnet pack -c Release -o artifacts -p:Version=$VERSION
 
       # A chave dura 1 hora: pedida só depois de testar e empacotar.

@@ -10,13 +10,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # SDK 10 para compilar o alvo net10.0 dos testes; runtime 8 para executar o alvo net8.0.
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: |
+            8.0.x
+            10.0.x
       - run: dotnet restore
       - run: dotnet build --no-restore -c Release
       # net48 não executa no Linux; ele roda no job netfx.
-      - run: dotnet test --no-build -c Release -f net8.0 --verbosity normal
+      - run: dotnet test tests/ControlId.Net.Tests --no-build -c Release -f net8.0 --verbosity normal
+      - run: dotnet test tests/ControlId.Net.Tests --no-build -c Release -f net10.0 --verbosity normal
       - run: dotnet pack -c Release --no-build -o artifacts
       - uses: actions/upload-artifact@v7
         with:
@@ -28,7 +32,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+      # SDK 10 para compilar o alvo net10.0 dos testes; runtime 8 para executar o alvo net8.0.
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: |
+            8.0.x
+            10.0.x
       - run: dotnet test tests/ControlId.Net.Tests -c Release -f net48 --verbosity normal
