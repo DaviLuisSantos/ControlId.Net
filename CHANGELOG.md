@@ -18,6 +18,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 - Modo online: `ComponentId`/`ComponentName` (iDBlock Next).
 - Reconhecimento facial: `TestUserImageAsync`, `GetUserImageWithTimestampAsync`, `GetUserImagesAsync` (`user_get_image_list`), `GetUserImageInfoAsync`, `DeleteUserImagesAsync`, `DeleteDanglingUserImagesAsync`, templates faciais (`ExtractFaceTemplate(s)Async`, `EnrollFaceTemplatesAsync`, `DeleteFaceTemplatesAsync`, `DeleteAllFaceTemplatesAsync`), `CaptureCameraAsync` (`save_screenshot`), `FaceImageResult` com notas e `FaceImageErrorCode`.
 - `StartTemplateSyncAsync`/`EndTemplateSyncAsync` (carga de bases grandes) e `ExportObjectsAsync` (`export_objects`).
+- Mídia do iDFace: modo propaganda (`UploadAdvertisingVideoAsync`, `SetAdvertisingModeAsync`, `RemoveAdvertisingVideoAsync`), mensagens sonoras (`UploadAccessAudioAsync`, `GetAccessAudioAsync`, `GetAccessAudioStatusAsync`), interfonia SIP (`MakeSipCallAsync`, `FinalizeSipCallAsync`, `GetSipStatusAsync`, som de chamada) e `GetRtspStreamUri`. Vídeo e áudio são enviados em partes de até 2 MB automaticamente.
 
 ## [0.1.0-alpha.2] - 2026-10-10
 

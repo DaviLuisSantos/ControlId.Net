@@ -416,6 +416,54 @@ public interface IAccessClient : IControlIdClient
     /// </summary>
     Task SetTurnstileLedAsync(TurnstileLedEvent ledEvent, uint? argbColor = null, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// <c>send_video.fcgi</c>: envia o vídeo do modo propaganda (MP4 vertical, de preferência 800x1280, até 20 MB),
+    /// dividido em partes de até 2 MB como a API exige. Depois, ligue com <see cref="SetAdvertisingModeAsync"/>.
+    /// </summary>
+    Task UploadAdvertisingVideoAsync(byte[] mp4, CancellationToken cancellationToken = default);
+
+    /// <summary><c>set_custom_video.fcgi</c>: liga ou desliga o modo propaganda (exige vídeo carregado).</summary>
+    Task SetAdvertisingModeAsync(bool enabled, CancellationToken cancellationToken = default);
+
+    /// <summary><c>remove_custom_video.fcgi</c>: remove o vídeo do modo propaganda.</summary>
+    Task RemoveAdvertisingVideoAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <c>set_audio_access_message.fcgi</c> (iDFace): envia o áudio personalizado de um evento (até 5 MB), em partes de até 2 MB.
+    /// Para usá-lo, configure <c>buzzer.audio_message_*</c> como <c>custom</c>.
+    /// </summary>
+    Task UploadAccessAudioAsync(AccessAudioEvent audioEvent, byte[] audio, CancellationToken cancellationToken = default);
+
+    /// <summary><c>get_audio_access_message.fcgi</c>: baixa o áudio personalizado do evento.</summary>
+    Task<byte[]> GetAccessAudioAsync(AccessAudioEvent audioEvent, CancellationToken cancellationToken = default);
+
+    /// <summary><c>has_audio_access_messages.fcgi</c>: quais eventos já têm áudio personalizado.</summary>
+    Task<AccessAudioMessages> GetAccessAudioStatusAsync(CancellationToken cancellationToken = default);
+
+    /// <summary><c>make_sip_call.fcgi</c> (iDFace): liga para o ramal; só funciona na tela inicial ou em streaming de identificação.</summary>
+    Task MakeSipCallAsync(string target, CancellationToken cancellationToken = default);
+
+    /// <summary><c>finalize_sip_call.fcgi</c>: encerra a chamada em andamento.</summary>
+    Task FinalizeSipCallAsync(CancellationToken cancellationToken = default);
+
+    /// <summary><c>get_sip_status.fcgi</c>: registro no servidor SIP e se há chamada em andamento.</summary>
+    Task<SipStatus> GetSipStatusAsync(CancellationToken cancellationToken = default);
+
+    /// <summary><c>set_pjsip_audio_message.fcgi</c>: envia o som de chamada personalizado (WAV, até 5 MB), em partes de até 2 MB.</summary>
+    Task UploadSipCallAudioAsync(byte[] wav, CancellationToken cancellationToken = default);
+
+    /// <summary><c>get_pjsip_audio_message.fcgi</c>: baixa o som de chamada personalizado (WAV).</summary>
+    Task<byte[]> GetSipCallAudioAsync(CancellationToken cancellationToken = default);
+
+    /// <summary><c>has_pjsip_audio_message.fcgi</c>: há som de chamada personalizado.</summary>
+    Task<bool> HasSipCallAudioAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// URL do vídeo RTSP da câmera do iDFace (<c>rtsp://[usuário:senha@]ip:porta/main_stream</c>), para abrir num cliente
+    /// RTSP. Exige <c>onvif.rtsp_enabled = 1</c> (vale após reiniciar).
+    /// </summary>
+    Uri GetRtspStreamUri(int port = 554, string? username = null, string? password = null);
+
     /// <summary><c>system_information.fcgi</c>.</summary>
     Task<AccessSystemInformation> GetSystemInformationAsync(CancellationToken cancellationToken = default);
 

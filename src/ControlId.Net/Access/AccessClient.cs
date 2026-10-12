@@ -21,11 +21,13 @@ public sealed class AccessClient : IAccessClient
     private static readonly TimeSpan MaxBuzz = TimeSpan.FromSeconds(3);
 
     private readonly ControlIdTransport _transport;
+    private readonly Uri _baseAddress;
 
     /// <summary>Cria o cliente. Se <paramref name="httpClient"/> for informado (ex.: via IHttpClientFactory), ele não é descartado por este cliente.</summary>
     public AccessClient(ControlIdDeviceOptions options, HttpClient? httpClient = null)
     {
         _transport = new ControlIdTransport(options, httpClient);
+        _baseAddress = options.BaseAddress;
     }
 
     /// <summary>Atalho: <c>new AccessClient("http://192.168.0.129", "admin", "admin")</c>.</summary>
@@ -806,6 +808,78 @@ public sealed class AccessClient : IAccessClient
     }
 
     /// <inheritdoc/>
+    public Task UploadAdvertisingVideoAsync(byte[] mp4, CancellationToken cancellationToken = default) =>
+        UploadInPartsAsync("send_video.fcgi", mp4, 20 * MaxImageBytes, null, nameof(mp4), cancellationToken);
+
+    /// <inheritdoc/>
+    public Task SetAdvertisingModeAsync(bool enabled, CancellationToken cancellationToken = default) =>
+        // A tabela da documentação diz "custom_video_enable" (bool); o exemplo usa "custom_video_enabled" com "1"/"0".
+        _transport.PostRawAsync(
+            "set_custom_video.fcgi", new Dictionary<string, object> { ["custom_video_enabled"] = enabled ? "1" : "0" }, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task RemoveAdvertisingVideoAsync(CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("remove_custom_video.fcgi", null, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task UploadAccessAudioAsync(AccessAudioEvent audioEvent, byte[] audio, CancellationToken cancellationToken = default) =>
+        UploadInPartsAsync("set_audio_access_message.fcgi", audio, 5 * MaxImageBytes, "event=" + AudioEventName(audioEvent), nameof(audio), cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<byte[]> GetAccessAudioAsync(AccessAudioEvent audioEvent, CancellationToken cancellationToken = default)
+    {
+        var (content, _) = await _transport.PostForBytesAsync(
+            "get_audio_access_message.fcgi", new Dictionary<string, object> { ["event"] = AudioEventName(audioEvent) }, cancellationToken).ConfigureAwait(false);
+        return content;
+    }
+
+    /// <inheritdoc/>
+    public Task<AccessAudioMessages> GetAccessAudioStatusAsync(CancellationToken cancellationToken = default) =>
+        _transport.PostAsync<AccessAudioMessages>("has_audio_access_messages.fcgi", null, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task MakeSipCallAsync(string target, CancellationToken cancellationToken = default) =>
+        string.IsNullOrWhiteSpace(target)
+            ? throw new ArgumentException("Informe o ramal.", nameof(target))
+            : _transport.PostRawAsync("make_sip_call.fcgi", new Dictionary<string, object> { ["target"] = target }, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task FinalizeSipCallAsync(CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("finalize_sip_call.fcgi", null, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<SipStatus> GetSipStatusAsync(CancellationToken cancellationToken = default) =>
+        _transport.PostAsync<SipStatus>("get_sip_status.fcgi", null, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task UploadSipCallAudioAsync(byte[] wav, CancellationToken cancellationToken = default) =>
+        UploadInPartsAsync("set_pjsip_audio_message.fcgi", wav, 5 * MaxImageBytes, null, nameof(wav), cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<byte[]> GetSipCallAudioAsync(CancellationToken cancellationToken = default)
+    {
+        var (content, _) = await _transport.PostForBytesAsync("get_pjsip_audio_message.fcgi", null, cancellationToken).ConfigureAwait(false);
+        return content;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> HasSipCallAudioAsync(CancellationToken cancellationToken = default) =>
+        (await _transport.PostAsync<FileExistsResponse>("has_pjsip_audio_message.fcgi", null, cancellationToken).ConfigureAwait(false)).FileExists;
+
+    /// <inheritdoc/>
+    public Uri GetRtspStreamUri(int port = 554, string? username = null, string? password = null)
+    {
+        var builder = new UriBuilder("rtsp", _baseAddress.Host, port, "main_stream");
+        if (!string.IsNullOrEmpty(username))
+        {
+            builder.UserName = Uri.EscapeDataString(username!);
+            builder.Password = Uri.EscapeDataString(password ?? string.Empty);
+        }
+
+        return builder.Uri;
+    }
+
+    /// <inheritdoc/>
     public Task<AccessSystemInformation> GetSystemInformationAsync(CancellationToken cancellationToken = default) =>
         _transport.PostAsync<AccessSystemInformation>("system_information.fcgi", null, cancellationToken);
 
@@ -1063,6 +1137,49 @@ public sealed class AccessClient : IAccessClient
 
         [JsonPropertyName("public_key")]
         public string? PublicKey { get; set; }
+    }
+
+    // Vídeo e áudio vão em partes de até 2 MB (current/total na query), como a documentação exige.
+    private async Task UploadInPartsAsync(
+        string endpoint, byte[] content, int maxBytes, string? extraQuery, string paramName, CancellationToken cancellationToken)
+    {
+        if (content is null || content.Length == 0)
+        {
+            throw new ArgumentException("Informe o arquivo.", paramName);
+        }
+
+        if (content.Length > maxBytes)
+        {
+            throw new ArgumentException($"O equipamento aceita arquivos de até {maxBytes / MaxImageBytes} MB.", paramName);
+        }
+
+        const int partSize = 2 * MaxImageBytes;
+        var total = (content.Length + partSize - 1) / partSize;
+        for (var current = 1; current <= total; current++)
+        {
+            var offset = (current - 1) * partSize;
+            var part = new byte[Math.Min(partSize, content.Length - offset)];
+            Buffer.BlockCopy(content, offset, part, 0, part.Length);
+
+            var query = (extraQuery is null ? string.Empty : extraQuery + "&")
+                + "current=" + current.ToString(CultureInfo.InvariantCulture) + "&total=" + total.ToString(CultureInfo.InvariantCulture);
+            await _transport.PostBytesAsync(endpoint, part, "application/octet-stream", cancellationToken, query).ConfigureAwait(false);
+        }
+    }
+
+    private static string AudioEventName(AccessAudioEvent audioEvent) => audioEvent switch
+    {
+        AccessAudioEvent.NotIdentified => "not_identified",
+        AccessAudioEvent.Authorized => "authorized",
+        AccessAudioEvent.NotAuthorized => "not_authorized",
+        AccessAudioEvent.UseMask => "use_mask",
+        _ => throw new ArgumentOutOfRangeException(nameof(audioEvent)),
+    };
+
+    private sealed class FileExistsResponse
+    {
+        [JsonPropertyName("file_exists")]
+        public bool FileExists { get; set; }
     }
 
     private static void ValidateImage(byte[] image, string paramName)
