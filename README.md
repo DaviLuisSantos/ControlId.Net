@@ -29,6 +29,10 @@ Pacotes complementares:
 
 ## Linha de acesso
 
+O pacote cobre **toda a documentação pública da API de acesso**: os 85 endpoints, os 37 objetos, os eventos do Monitor,
+do Push e do modo online e as 34 seções de configuração têm métodos, modelos ou rotas tipados. A matriz completa, com
+as divergências da documentação e como foram tratadas, está em [docs/COBERTURA.md](docs/COBERTURA.md).
+
 ```csharp
 using ControlId.Access;
 
@@ -177,11 +181,38 @@ Via Push: `PushCommand.ShowMessage`, `PushCommand.Buzz` e `PushCommand.Reboot`.
 
 ### Configurações
 
+Cada seção documentada tem uma classe tipada em `ControlId.Access.Configuration`:
+
+```csharp
+using ControlId.Access.Configuration;
+
+var geral = await device.GetConfigurationSectionAsync<GeneralSettings>();
+Console.WriteLine(geral.Language);
+
+// Envia só o que foi preenchido; várias seções numa chamada.
+await device.SetConfigurationSectionsAsync(new ConfigurationSection[]
+{
+    new GeneralSettings { BeepEnabled = true, CatraTimeout = 3000 },
+    new PjsipSettings { Enabled = true, ServerIp = "pbx.local", ServerPort = 5060 },
+});
+```
+
+O acesso genérico, por nome de seção e campo, continua disponível:
+
 ```csharp
 var monitor = await device.GetConfigurationAsync("monitor", new[] { "hostname", "port" });
-Console.WriteLine(monitor["hostname"]);
+await device.SetConfigurationAsync(new { general = new { beep_enabled = "1" } }); // valores sempre em texto
+```
 
-await device.SetConfigurationAsync(new { general = new { beep_enabled = "1", relay1_timeout = "3000" } }); // valores sempre em texto
+### Qualquer objeto, tipado
+
+Todos os objetos da documentação têm modelo e funcionam com o CRUD genérico:
+
+```csharp
+var alarmes = await device.GetObjectsAsync<TimedAlarm>();
+await device.CreateObjectAsync(TimedAlarm.Weekdays("Almoço", TimeSpan.FromHours(12)));
+await device.UpdateObjectAsync(new AlarmZone { Zone = 1, Enabled = true });
+await device.DeleteObjectAsync<ScheduledUnlock>(3);
 ```
 
 ### Endpoints sem método próprio
@@ -469,6 +500,8 @@ var device = new AccessClient(new ControlIdDeviceOptions
 - [x] Acesso: cadastro remoto (`remote_enroll`) síncrono, assíncrono via Monitor e via Push
 - [x] Acesso: modo online (Pro/Enterprise): configuração, eventos tipados, `MapControlIdOnline` e autorização remota
 - [x] Acesso: comandos tipados (mensagem, buzzer, login, hash de senha, reinício, reset, rede, logotipo, GPIO, LED, USB, upsert de objetos)
+- [x] Acesso: cobertura completa da documentação pública (endpoints, objetos, eventos e configurações), com teste que garante cada endpoint ([docs/COBERTURA.md](docs/COBERTURA.md))
+- [ ] REP: levantamento de cobertura (depende do acesso à documentação do iDClass)
 - [ ] Testes de integração contra equipamentos reais
 - [ ] Outras marcas de controle de acesso, em pacotes separados
 
