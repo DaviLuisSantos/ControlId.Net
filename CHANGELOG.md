@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+## [0.2.0-alpha.1] - 2026-10-12
+
+Cobertura completa da documentação pública da API de acesso (veja [docs/COBERTURA.md](docs/COBERTURA.md)).
+
 ### Changed
 - `SetUserImageAsync` e `SetUserImagesAsync` passam a enviar `timestamp` (obrigatório na API) e `match`, e devolvem o resultado do cadastro facial (`FaceImageResult`). `UserImage` ganha `Timestamp` e `PushCommand.SetUserImage`, os mesmos parâmetros.
 
@@ -63,6 +67,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 - `RepClient.GetAfdFileFromNsrAsync`/`GetAfdFileFromDateAsync`/`GetAfdFileAsync` devolvem o AFD interpretado.
 - `RepClient` (REP iDClass): about, informações do sistema, data/hora, usuários (PIS/CPF) e download de AFD (incluindo modo Portaria 671).
 
-[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.1.0-alpha.2...HEAD
+[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.2.0-alpha.1...HEAD
+[0.2.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.1.0-alpha.2...v0.2.0-alpha.1
 [0.1.0-alpha.2]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.1.0-alpha.1...v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/releases/tag/v0.1.0-alpha.1

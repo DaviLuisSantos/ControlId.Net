@@ -14,6 +14,6 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
 
     <!-- Os pacotes saem sempre juntos e com a mesma versão (o publish.yml sobrescreve pela tag). -->
-    <Version>0.1.0-alpha.2</Version>
+    <Version>0.2.0-alpha.1</Version>
   </PropertyGroup>
 </Project>
