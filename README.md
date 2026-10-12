@@ -530,6 +530,37 @@ await foreach (var linha in device.EnumerateObjectsAsync<JsonElement>(request, p
 - Os outros objetos usam `limit`/`offset`, ordenados pela chave do modelo. Com `LoadObjectsRequest`, informe `Order` para as páginas ficarem estáveis.
 - Sair do `await foreach` (ou cancelar o token) para a leitura sem buscar as páginas restantes.
 
+### Vários equipamentos de uma vez
+
+`ControlIdDevices.RunAsync` executa a mesma operação em vários equipamentos em paralelo (8 por vez, por padrão) e devolve
+um resultado por equipamento, na ordem de entrada. Um equipamento fora do ar não interrompe os demais:
+
+```csharp
+var equipamentos = new Dictionary<string, IAccessClient> { ["portaria"] = portaria, ["garagem"] = garagem };
+
+var resultados = await ControlIdDevices.RunAsync(equipamentos, (d, ct) => d.CreateUserAsync(usuario, ct), maxParallelism: 4);
+
+foreach (var r in resultados)
+{
+    if (r.Succeeded) Console.WriteLine($"{r.Device}: criado com ID {r.Value} em {r.Elapsed.TotalMilliseconds} ms");
+    else Console.WriteLine($"{r.Device}: {r.Error!.Message}");
+}
+```
+
+Com o pacote de DI, direto nos equipamentos registrados:
+
+```csharp
+// Todos os equipamentos de acesso (ou só alguns: RunOnAccessDevicesAsync(new[] { "portaria", "garagem" }, ...)).
+var logs = await equipamentos.RunOnAccessDevicesAsync((d, ct) => d.GetAccessLogsAsync(ultimoId, cancellationToken: ct));
+var porta = await equipamentos.RunOnAccessDevicesAsync((d, ct) => d.OpenDoorAsync(1, ct)); // sem valor: DeviceResult
+var afds = await equipamentos.RunOnRepDevicesAsync((r, ct) => r.GetAfdFileAsync(cancellationToken: ct));
+```
+
+- `r.Value` de um equipamento que falhou lança `InvalidOperationException` com o erro original em `InnerException`; confira `Succeeded` antes.
+- Erros ao obter o cliente (ex.: equipamento registrado sem `BaseAddress`) também ficam só no resultado daquele equipamento.
+- Cancelar o token lança `OperationCanceledException` em vez de devolver resultados parciais.
+- `maxParallelism` limita quantos equipamentos são atendidos ao mesmo tempo; dentro de cada um continua valendo o `MaxConcurrentRequests`.
+
 ## Erros
 
 | Exceção | Quando |
