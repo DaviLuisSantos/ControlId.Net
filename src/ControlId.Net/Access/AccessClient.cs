@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -17,6 +18,9 @@ namespace ControlId.Access;
 /// <inheritdoc cref="IAccessClient"/>
 public sealed class AccessClient : IAccessClient
 {
+    /// <summary>Tamanho padrão de página das leituras paginadas (<c>Enumerate*Async</c>).</summary>
+    public const int DefaultPageSize = 500;
+
     private const int MaxImageBytes = 1024 * 1024;
     private static readonly TimeSpan MaxBuzz = TimeSpan.FromSeconds(3);
 
@@ -72,6 +76,18 @@ public sealed class AccessClient : IAccessClient
     }
 
     /// <inheritdoc/>
+    public IAsyncEnumerable<T> EnumerateObjectsAsync<T>(LoadObjectsRequest request, int pageSize = DefaultPageSize, CancellationToken cancellationToken = default)
+    {
+        if (request is null)
+        {
+            throw new ArgumentNullException(nameof(request));
+        }
+
+        ValidatePageSize(pageSize);
+        return EnumerateByOffsetAsync<T>(request, pageSize, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<long>> CreateObjectsAsync<T>(string @object, IEnumerable<T> values, CancellationToken cancellationToken = default)
     {
         var body = new Dictionary<string, object?> { ["object"] = @object, ["values"] = values.ToList() };
@@ -98,6 +114,13 @@ public sealed class AccessClient : IAccessClient
     /// <inheritdoc/>
     public Task<IReadOnlyList<AccessUser>> GetUsersAsync(CancellationToken cancellationToken = default) =>
         LoadObjectsAsync<AccessUser>(new LoadObjectsRequest("users"), cancellationToken);
+
+    /// <inheritdoc/>
+    public IAsyncEnumerable<AccessUser> EnumerateUsersAsync(int pageSize = DefaultPageSize, CancellationToken cancellationToken = default)
+    {
+        ValidatePageSize(pageSize);
+        return EnumerateAfterAsync<AccessUser>("users", 0, pageSize, static u => u.Id ?? 0, cancellationToken);
+    }
 
     /// <inheritdoc/>
     public Task<long> CreateUserAsync(AccessUser user, CancellationToken cancellationToken = default) =>
@@ -325,6 +348,16 @@ public sealed class AccessClient : IAccessClient
     /// <inheritdoc/>
     public Task<IReadOnlyList<T>> GetObjectsAsync<T>(object? where = null, int? limit = null, CancellationToken cancellationToken = default) =>
         LoadObjectsAsync<T>(new LoadObjectsRequest(ControlIdObjects.NameOf<T>()) { Where = where, Limit = limit }, cancellationToken);
+
+    /// <inheritdoc/>
+    public IAsyncEnumerable<T> EnumerateObjectsAsync<T>(object? where = null, int pageSize = DefaultPageSize, CancellationToken cancellationToken = default)
+    {
+        var info = ControlIdObjects.Get(typeof(T));
+        ValidatePageSize(pageSize);
+        // Tabelas de associação não têm chave: ficam na ordem do equipamento.
+        var request = new LoadObjectsRequest(info.Name) { Where = where, Order = info.Key is null ? null : new List<string> { "ascending", info.Key } };
+        return EnumerateByOffsetAsync<T>(request, pageSize, cancellationToken);
+    }
 
     /// <inheritdoc/>
     public async Task<long> CreateObjectAsync<T>(T value, CancellationToken cancellationToken = default)
@@ -602,6 +635,13 @@ public sealed class AccessClient : IAccessClient
     /// <inheritdoc/>
     public Task<IReadOnlyList<AccessLog>> GetAccessLogsAsync(long afterId = 0, int? limit = null, CancellationToken cancellationToken = default) =>
         LoadAfterAsync<AccessLog>("access_logs", afterId, limit, cancellationToken);
+
+    /// <inheritdoc/>
+    public IAsyncEnumerable<AccessLog> EnumerateAccessLogsAsync(long afterId = 0, int pageSize = DefaultPageSize, CancellationToken cancellationToken = default)
+    {
+        ValidatePageSize(pageSize);
+        return EnumerateAfterAsync<AccessLog>("access_logs", afterId, pageSize, static l => l.Id, cancellationToken);
+    }
 
     /// <inheritdoc/>
     public async Task<JsonElement?> ExecuteActionsAsync(IEnumerable<DeviceAction> actions, CancellationToken cancellationToken = default)
@@ -1252,6 +1292,67 @@ public sealed class AccessClient : IAccessClient
                 Limit = limit,
             },
             cancellationToken);
+
+    // Páginas por ID (id > último lido): estável mesmo com inserções e remoções durante a leitura.
+    private async IAsyncEnumerable<T> EnumerateAfterAsync<T>(
+        string @object, long afterId, int pageSize, Func<T, long> getId, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            var page = await LoadAfterAsync<T>(@object, afterId, pageSize, cancellationToken).ConfigureAwait(false);
+            foreach (var item in page)
+            {
+                yield return item;
+            }
+
+            if (page.Count < pageSize)
+            {
+                yield break;
+            }
+
+            var lastId = getId(page[page.Count - 1]);
+            if (lastId <= afterId)
+            {
+                // O equipamento não respeitou o filtro/ordem; parar evita um laço infinito.
+                throw new ControlIdException($"'{@object}' devolveu uma página fora de ordem (ID {lastId} depois de {afterId}).");
+            }
+
+            afterId = lastId;
+        }
+    }
+
+    // Páginas por limit/offset, para objetos sem ID numérico ou com filtro livre.
+    private async IAsyncEnumerable<T> EnumerateByOffsetAsync<T>(
+        LoadObjectsRequest request, int pageSize, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var offset = request.Offset ?? 0;
+        var remaining = request.Limit ?? int.MaxValue;
+        while (remaining > 0)
+        {
+            var limit = Math.Min(pageSize, remaining);
+            var page = await LoadObjectsAsync<T>(request.WithPage(limit, offset), cancellationToken).ConfigureAwait(false);
+            foreach (var item in page)
+            {
+                yield return item;
+            }
+
+            if (page.Count < limit)
+            {
+                yield break;
+            }
+
+            offset += page.Count;
+            remaining -= page.Count;
+        }
+    }
+
+    private static void ValidatePageSize(int pageSize)
+    {
+        if (pageSize < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(pageSize), pageSize, "O tamanho da página precisa ser pelo menos 1.");
+        }
+    }
 
     private Task<IReadOnlyList<T>> LoadAsync<T>(string @object, string filterField, long? filterValue, CancellationToken cancellationToken) =>
         LoadObjectsAsync<T>(

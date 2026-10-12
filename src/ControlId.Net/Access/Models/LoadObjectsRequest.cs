@@ -43,4 +43,15 @@ public sealed class LoadObjectsRequest
     /// <summary>Tipo de join: <c>"LEFT"</c> ou <c>"INNER"</c>.</summary>
     [JsonPropertyName("join")]
     public string? Join { get; set; }
+
+    // Cópia com outra página, para a leitura paginada não alterar a requisição do chamador.
+    internal LoadObjectsRequest WithPage(int limit, int offset) => new(Object)
+    {
+        Fields = Fields,
+        Where = Where,
+        Order = Order,
+        Join = Join,
+        Limit = limit,
+        Offset = offset,
+    };
 }

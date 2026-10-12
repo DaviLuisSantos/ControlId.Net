@@ -27,6 +27,14 @@ public interface IAccessClient : IControlIdClient
     /// <summary><c>load_objects.fcgi</c> — lê registros de qualquer objeto.</summary>
     Task<IReadOnlyList<T>> LoadObjectsAsync<T>(LoadObjectsRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Lê qualquer objeto em páginas de <paramref name="pageSize"/> registros (<c>limit</c>/<c>offset</c>), buscando a
+    /// próxima página só quando a anterior foi consumida. <see cref="LoadObjectsRequest.Offset"/> vira o ponto de partida e
+    /// <see cref="LoadObjectsRequest.Limit"/>, o total máximo. Informe <see cref="LoadObjectsRequest.Order"/> para as
+    /// páginas não mudarem de ordem entre uma chamada e outra.
+    /// </summary>
+    IAsyncEnumerable<T> EnumerateObjectsAsync<T>(LoadObjectsRequest request, int pageSize = AccessClient.DefaultPageSize, CancellationToken cancellationToken = default);
+
     /// <summary><c>create_objects.fcgi</c> — devolve os IDs criados.</summary>
     Task<IReadOnlyList<long>> CreateObjectsAsync<T>(string @object, IEnumerable<T> values, CancellationToken cancellationToken = default);
 
@@ -38,6 +46,13 @@ public interface IAccessClient : IControlIdClient
 
     /// <summary>Lista todos os usuários.</summary>
     Task<IReadOnlyList<AccessUser>> GetUsersAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Todos os usuários, em ordem de ID, lidos em páginas de <paramref name="pageSize"/>. Para bases grandes, no lugar de
+    /// <see cref="GetUsersAsync"/>: nenhuma requisição traz a base inteira de uma vez. As páginas seguem pelo ID
+    /// (<c>id &gt; último</c>), então usuários criados ou removidos durante a leitura não fazem pular nem repetir os demais.
+    /// </summary>
+    IAsyncEnumerable<AccessUser> EnumerateUsersAsync(int pageSize = AccessClient.DefaultPageSize, CancellationToken cancellationToken = default);
 
     /// <summary>Cria um usuário e devolve o ID gerado.</summary>
     Task<long> CreateUserAsync(AccessUser user, CancellationToken cancellationToken = default);
@@ -176,6 +191,11 @@ public interface IAccessClient : IControlIdClient
     /// </summary>
     Task<IReadOnlyList<T>> GetObjectsAsync<T>(object? where = null, int? limit = null, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Como <see cref="GetObjectsAsync{T}"/>, mas em páginas de <paramref name="pageSize"/>, ordenadas pela chave do modelo.
+    /// </summary>
+    IAsyncEnumerable<T> EnumerateObjectsAsync<T>(object? where = null, int pageSize = AccessClient.DefaultPageSize, CancellationToken cancellationToken = default);
+
     /// <summary>Cria um registro de qualquer modelo com <see cref="ControlIdObjectAttribute"/> e devolve o ID gerado (0 se a tabela não tiver ID).</summary>
     Task<long> CreateObjectAsync<T>(T value, CancellationToken cancellationToken = default);
 
@@ -304,6 +324,12 @@ public interface IAccessClient : IControlIdClient
 
     /// <summary>Logs de acesso com ID maior que <paramref name="afterId"/>, em ordem crescente.</summary>
     Task<IReadOnlyList<AccessLog>> GetAccessLogsAsync(long afterId = 0, int? limit = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Todos os logs de acesso com ID maior que <paramref name="afterId"/>, em ordem crescente, lidos em páginas de
+    /// <paramref name="pageSize"/>. Guarde o ID do último log processado e passe-o na próxima coleta.
+    /// </summary>
+    IAsyncEnumerable<AccessLog> EnumerateAccessLogsAsync(long afterId = 0, int pageSize = AccessClient.DefaultPageSize, CancellationToken cancellationToken = default);
 
     /// <summary><c>execute_actions.fcgi</c> com ações arbitrárias. Devolve o JSON bruto (vazio sem intertravamento).</summary>
     Task<JsonElement?> ExecuteActionsAsync(IEnumerable<DeviceAction> actions, CancellationToken cancellationToken = default);

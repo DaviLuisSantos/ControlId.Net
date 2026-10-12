@@ -479,7 +479,7 @@ var device = new AccessClient(new ControlIdDeviceOptions
 }, http);
 ```
 
-## Paralelismo
+## Bases grandes e vários equipamentos
 
 ### Limite por equipamento
 
@@ -501,6 +501,34 @@ var fotos = await Task.WhenAll(ids.Select(id => device.GetUserImageAsync(id))); 
   não limitaria nada. Quando o pacote cria o `HttpClient` (ou pelo pacote de DI), o limite de conexões do handler acompanha o valor.
 - Com um `HttpClient` externo, o limite do cliente continua valendo, mas o limite de conexões do handler fica por sua conta.
 - No `appsettings.json`: `"portaria": { "BaseAddress": "...", "MaxConcurrentRequests": 2 }`.
+
+### Leitura paginada
+
+`GetUsersAsync` e `GetObjectsAsync` trazem tudo numa requisição só. Em bases grandes, use os `Enumerate*Async`, que leem
+em páginas (500 registros por padrão) e só buscam a próxima quando a anterior foi consumida:
+
+```csharp
+await foreach (var usuario in device.EnumerateUsersAsync())
+{
+    await SincronizarAsync(usuario);
+}
+
+// Coleta incremental: guarde o último ID e continue dele na próxima vez.
+await foreach (var log in device.EnumerateAccessLogsAsync(afterId: ultimoId, pageSize: 1000))
+{
+    ultimoId = log.Id;
+}
+
+await foreach (var cartao in device.EnumerateObjectsAsync<AccessCard>(Where.Equal("cards", "user_id", 42L))) { }
+
+// Qualquer objeto: Offset é o ponto de partida e Limit, o total máximo.
+var request = new LoadObjectsRequest("user_groups") { Order = new List<string> { "user_id" } };
+await foreach (var linha in device.EnumerateObjectsAsync<JsonElement>(request, pageSize: 200)) { }
+```
+
+- Usuários e logs seguem pelo ID (`id > último`): criar ou remover registros durante a leitura não faz pular nem repetir os demais.
+- Os outros objetos usam `limit`/`offset`, ordenados pela chave do modelo. Com `LoadObjectsRequest`, informe `Order` para as páginas ficarem estáveis.
+- Sair do `await foreach` (ou cancelar o token) para a leitura sem buscar as páginas restantes.
 
 ## Erros
 

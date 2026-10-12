@@ -6,6 +6,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ### Added
 - `ControlIdDeviceOptions.MaxConcurrentRequests` (e em `ControlIdRepOptions`): limite de requisições simultâneas por equipamento, padrão 4, login incluído. As chamadas além do limite esperam a vez. O limite de conexões do `HttpClientHandler` criado pelo pacote (e pelo pacote de DI) acompanha o valor, então o comportamento é o mesmo no .NET Framework e no .NET Core.
+- Leitura paginada com `IAsyncEnumerable`: `EnumerateUsersAsync` e `EnumerateAccessLogsAsync` (páginas por ID, estáveis com inserções e remoções durante a leitura), `EnumerateObjectsAsync<T>` (modelos tipados, ordenados pela chave) e `EnumerateObjectsAsync<T>(LoadObjectsRequest)` (qualquer objeto, por `limit`/`offset`). Página padrão de 500 registros (`AccessClient.DefaultPageSize`); a próxima página só é buscada quando a anterior é consumida.
+- Dependência de `Microsoft.Bcl.AsyncInterfaces` no alvo netstandard2.0 (para `IAsyncEnumerable`).
 
 ### Changed
 - Até aqui as requisições a um equipamento não tinham limite no .NET Core (e ficavam em 2 conexões no .NET Framework). Agora o padrão é 4 simultâneas por equipamento; use `MaxConcurrentRequests` para ajustar.
