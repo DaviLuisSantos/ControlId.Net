@@ -4,6 +4,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+### Changed
+- `SetUserImageAsync` e `SetUserImagesAsync` passam a enviar `timestamp` (obrigatório na API) e `match`, e devolvem o resultado do cadastro facial (`FaceImageResult`). `UserImage` ganha `Timestamp` e `PushCommand.SetUserImage`, os mesmos parâmetros.
+
 ### Added
 - Modelos para todos os objetos documentados que faltavam: `qrcodes`, `uhf_tags`, `pins`, `contingency_cards`, `alarm_zones`, `timed_alarms`, `user_roles`, `scheduled_unlocks`, `actions` (`ActionScript`), `devices`, `catra_infos`, `log_types`, `contacts`, `custom_thresholds`, `network_interlocking_rules`, `change_logs` e `access_log_access_rules`.
 - CRUD tipado genérico: `[ControlIdObject]` nos modelos e `GetObjectsAsync<T>`/`CreateObjectAsync<T>`/`UpdateObjectAsync<T>`/`DeleteObjectAsync<T>`.
@@ -13,6 +16,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 - Estado e comandos do equipamento: `GetDoorStatesAsync` (`door_state`), `GetAlarmStatusAsync`/`StopAlarmAsync` (`alarm_status`, com `AlarmCause` também em `AlarmLog.CauseType`), `RebootWithoutSessionAsync` (`GET /reboot`), `SetTurnstileLedAsync` (`remote_led_control`, iDBlock Next) e `ExecuteActionsWithStatusAsync` (resultado do intertravamento).
 - `DeviceAction.OpenTurnstileCollector` (`open_collector`) e `DeviceAction.ActivateTurnstileRelay` (`relay=1|2`).
 - Modo online: `ComponentId`/`ComponentName` (iDBlock Next).
+- Reconhecimento facial: `TestUserImageAsync`, `GetUserImageWithTimestampAsync`, `GetUserImagesAsync` (`user_get_image_list`), `GetUserImageInfoAsync`, `DeleteUserImagesAsync`, `DeleteDanglingUserImagesAsync`, templates faciais (`ExtractFaceTemplate(s)Async`, `EnrollFaceTemplatesAsync`, `DeleteFaceTemplatesAsync`, `DeleteAllFaceTemplatesAsync`), `CaptureCameraAsync` (`save_screenshot`), `FaceImageResult` com notas e `FaceImageErrorCode`.
+- `StartTemplateSyncAsync`/`EndTemplateSyncAsync` (carga de bases grandes) e `ExportObjectsAsync` (`export_objects`).
 
 ## [0.1.0-alpha.2] - 2026-10-10
 

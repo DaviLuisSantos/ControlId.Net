@@ -130,37 +130,66 @@ public sealed class AccessClient : IAccessClient
         DeleteByIdAsync("templates", templateId, cancellationToken);
 
     /// <inheritdoc/>
-    public Task SetUserImageAsync(long userId, byte[] jpeg, CancellationToken cancellationToken = default)
+    public async Task<FaceImageResult> SetUserImageAsync(
+        long userId, byte[] image, bool rejectExistingFace = false, DateTimeOffset? timestamp = null, CancellationToken cancellationToken = default)
     {
-        if (jpeg is null || jpeg.Length == 0)
-        {
-            throw new ArgumentException("Informe a imagem.", nameof(jpeg));
-        }
-
-        if (jpeg.Length >= MaxImageBytes)
-        {
-            throw new ArgumentException("O equipamento só aceita fotos menores que 1 MB.", nameof(jpeg));
-        }
-
-        return _transport.PostBytesAsync(
-            "user_set_image.fcgi", jpeg, "application/octet-stream", cancellationToken, "user_id=" + userId.ToString(CultureInfo.InvariantCulture));
+        ValidateImage(image, nameof(image));
+        var query = string.Join(
+            "&",
+            "user_id=" + userId.ToString(CultureInfo.InvariantCulture),
+            "timestamp=" + (timestamp ?? DateTimeOffset.UtcNow).ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
+            "match=" + (rejectExistingFace ? "1" : "0"));
+        var text = await _transport.PostBytesAsync("user_set_image.fcgi", image, "application/octet-stream", cancellationToken, query).ConfigureAwait(false);
+        return ParseFaceResult(text);
     }
 
     /// <inheritdoc/>
-    public Task SetUserImagesAsync(IEnumerable<UserImage> images, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<FaceImageResult>> SetUserImagesAsync(
+        IEnumerable<UserImage> images, bool rejectExistingFaces = false, CancellationToken cancellationToken = default)
     {
         if (images is null)
         {
             throw new ArgumentNullException(nameof(images));
         }
 
-        var body = new Dictionary<string, object> { ["user_images"] = images.ToList() };
-        return _transport.PostRawAsync("user_set_image_list.fcgi", body, cancellationToken);
+        var body = new Dictionary<string, object> { ["match"] = rejectExistingFaces, ["user_images"] = images.ToList() };
+        var text = await _transport.PostRawAsync("user_set_image_list.fcgi", body, cancellationToken).ConfigureAwait(false);
+        return ParseResults(text);
+    }
+
+    /// <inheritdoc/>
+    public async Task<FaceImageResult> TestUserImageAsync(byte[] image, CancellationToken cancellationToken = default)
+    {
+        ValidateImage(image, nameof(image));
+        var text = await _transport.PostBytesAsync("user_test_image.fcgi", image, "application/octet-stream", cancellationToken).ConfigureAwait(false);
+        return ParseFaceResult(text);
     }
 
     /// <inheritdoc/>
     public Task<byte[]> GetUserImageAsync(long userId, CancellationToken cancellationToken = default) =>
         _transport.GetBytesAsync("user_get_image.fcgi", cancellationToken, "user_id=" + userId.ToString(CultureInfo.InvariantCulture));
+
+    /// <inheritdoc/>
+    public async Task<UserImageData> GetUserImageWithTimestampAsync(long userId, CancellationToken cancellationToken = default)
+    {
+        var bytes = await _transport.GetBytesAsync(
+            "user_get_image.fcgi", cancellationToken, "user_id=" + userId.ToString(CultureInfo.InvariantCulture) + "&get_timestamp=1").ConfigureAwait(false);
+        return ControlIdJson.Deserialize<UserImageData>(System.Text.Encoding.UTF8.GetString(bytes));
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<UserImageEntry>> GetUserImagesAsync(IEnumerable<long> userIds, CancellationToken cancellationToken = default)
+    {
+        var ids = (userIds ?? throw new ArgumentNullException(nameof(userIds))).ToList();
+        if (ids.Count is 0 or > 100)
+        {
+            throw new ArgumentException("Informe de 1 a 100 usuários por chamada.", nameof(userIds));
+        }
+
+        var response = await _transport.PostAsync<UserImagesResponse>(
+            "user_get_image_list.fcgi", new Dictionary<string, object> { ["user_ids"] = ids }, cancellationToken).ConfigureAwait(false);
+        return response.UserImages ?? new List<UserImageEntry>();
+    }
 
     /// <inheritdoc/>
     public async Task<IReadOnlyList<long>> GetUserIdsWithImageAsync(CancellationToken cancellationToken = default)
@@ -170,12 +199,101 @@ public sealed class AccessClient : IAccessClient
     }
 
     /// <inheritdoc/>
+    public async Task<IReadOnlyList<UserImageInfo>> GetUserImageInfoAsync(CancellationToken cancellationToken = default)
+    {
+        // O exemplo da documentação usa GET com get_timestamp na query.
+        var bytes = await _transport.GetBytesAsync("user_list_images.fcgi", cancellationToken, "get_timestamp=1").ConfigureAwait(false);
+        return ControlIdJson.Deserialize<ImageInfoResponse>(System.Text.Encoding.UTF8.GetString(bytes)).ImageInfo ?? new List<UserImageInfo>();
+    }
+
+    /// <inheritdoc/>
     public Task DeleteUserImageAsync(long userId, CancellationToken cancellationToken = default) =>
         _transport.PostRawAsync("user_destroy_image.fcgi", new Dictionary<string, object> { ["user_id"] = userId }, cancellationToken);
 
     /// <inheritdoc/>
+    public Task DeleteUserImagesAsync(IEnumerable<long> userIds, CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync(
+            "user_destroy_image.fcgi",
+            new Dictionary<string, object> { ["user_ids"] = (userIds ?? throw new ArgumentNullException(nameof(userIds))).ToList() },
+            cancellationToken);
+
+    /// <inheritdoc/>
+    public Task DeleteDanglingUserImagesAsync(CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("user_destroy_image.fcgi", new Dictionary<string, object> { ["dangling"] = true }, cancellationToken);
+
+    /// <inheritdoc/>
     public Task DeleteAllUserImagesAsync(CancellationToken cancellationToken = default) =>
         _transport.PostRawAsync("user_destroy_image.fcgi", new Dictionary<string, object> { ["all"] = true }, cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<FaceImageResult> ExtractFaceTemplateAsync(byte[] image, CancellationToken cancellationToken = default)
+    {
+        ValidateImage(image, nameof(image));
+        var text = await _transport.PostBytesAsync("face_template_extract.fcgi", image, "application/octet-stream", cancellationToken).ConfigureAwait(false);
+        return ParseFaceResult(text);
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<FaceImageResult>> ExtractFaceTemplatesAsync(
+        IEnumerable<FaceTemplateImage> images, CancellationToken cancellationToken = default)
+    {
+        var body = new Dictionary<string, object> { ["face_images"] = (images ?? throw new ArgumentNullException(nameof(images))).ToList() };
+        return ParseResults(await _transport.PostRawAsync("face_template_extract_list.fcgi", body, cancellationToken).ConfigureAwait(false));
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<FaceImageResult>> EnrollFaceTemplatesAsync(
+        IEnumerable<FaceTemplateEnrollment> templates, bool rejectExistingFaces = false, CancellationToken cancellationToken = default)
+    {
+        // A tabela da documentação escreve "face_tempaltes"; o exemplo usa "face_templates".
+        var body = new Dictionary<string, object>
+        {
+            ["match"] = rejectExistingFaces,
+            ["face_templates"] = (templates ?? throw new ArgumentNullException(nameof(templates))).ToList(),
+        };
+        return ParseResults(await _transport.PostRawAsync("face_template_enroll.fcgi", body, cancellationToken).ConfigureAwait(false));
+    }
+
+    /// <inheritdoc/>
+    public Task DeleteFaceTemplatesAsync(IEnumerable<long> userIds, CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync(
+            "face_template_destroy.fcgi",
+            new Dictionary<string, object> { ["user_ids"] = (userIds ?? throw new ArgumentNullException(nameof(userIds))).ToList() },
+            cancellationToken);
+
+    /// <inheritdoc/>
+    public Task DeleteAllFaceTemplatesAsync(CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("face_template_destroy.fcgi", new Dictionary<string, object> { ["all"] = true }, cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<byte[]> CaptureCameraAsync(CameraType camera = CameraType.Rgb, CancellationToken cancellationToken = default)
+    {
+        var body = new Dictionary<string, object> { ["frame_type"] = "camera", ["camera"] = camera == CameraType.Infrared ? "ir" : "rgb" };
+        var (content, _) = await _transport.PostForBytesAsync("save_screenshot.fcgi", body, cancellationToken).ConfigureAwait(false);
+        return content;
+    }
+
+    /// <inheritdoc/>
+    public Task StartTemplateSyncAsync(CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("template_sync_init.fcgi", null, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task EndTemplateSyncAsync(CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("template_sync_end.fcgi", null, cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<byte[]> ExportObjectsAsync(IEnumerable<ExportObjectRequest> objects, CancellationToken cancellationToken = default)
+    {
+        var list = (objects ?? throw new ArgumentNullException(nameof(objects))).ToList();
+        if (list.Count == 0)
+        {
+            throw new ArgumentException("Informe ao menos um objeto.", nameof(objects));
+        }
+
+        var (content, _) = await _transport.PostForBytesAsync(
+            "export_objects.fcgi", new Dictionary<string, object> { ["objects"] = list }, cancellationToken).ConfigureAwait(false);
+        return content;
+    }
 
     /// <inheritdoc/>
     public async Task<RemoteEnrollResult> RemoteEnrollAsync(RemoteEnrollRequest request, CancellationToken cancellationToken = default)
@@ -945,6 +1063,44 @@ public sealed class AccessClient : IAccessClient
 
         [JsonPropertyName("public_key")]
         public string? PublicKey { get; set; }
+    }
+
+    private static void ValidateImage(byte[] image, string paramName)
+    {
+        if (image is null || image.Length == 0)
+        {
+            throw new ArgumentException("Informe a imagem.", paramName);
+        }
+
+        if (image.Length >= MaxImageBytes)
+        {
+            throw new ArgumentException("O equipamento só aceita imagens menores que 1 MB.", paramName);
+        }
+    }
+
+    // Equipamentos sem reconhecimento facial não devolvem nada ao gravar foto: isso conta como sucesso.
+    private static FaceImageResult ParseFaceResult(string text) =>
+        string.IsNullOrWhiteSpace(text) ? new FaceImageResult { Success = true } : ControlIdJson.Deserialize<FaceImageResult>(text);
+
+    private static IReadOnlyList<FaceImageResult> ParseResults(string text) =>
+        string.IsNullOrWhiteSpace(text) ? new List<FaceImageResult>() : ControlIdJson.Deserialize<ResultsResponse>(text).Results ?? new List<FaceImageResult>();
+
+    private sealed class ResultsResponse
+    {
+        [JsonPropertyName("results")]
+        public List<FaceImageResult>? Results { get; set; }
+    }
+
+    private sealed class UserImagesResponse
+    {
+        [JsonPropertyName("user_images")]
+        public List<UserImageEntry>? UserImages { get; set; }
+    }
+
+    private sealed class ImageInfoResponse
+    {
+        [JsonPropertyName("image_info")]
+        public List<UserImageInfo>? ImageInfo { get; set; }
     }
 
     private sealed class UserIdsResponse

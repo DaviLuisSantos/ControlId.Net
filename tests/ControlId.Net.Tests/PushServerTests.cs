@@ -152,14 +152,14 @@ public class PushServerTests
     public void SetUserImage_command_uses_base64_octet_stream()
     {
         var server = new PushServer();
-        _ = server.SendAsync(1, PushCommand.SetUserImage(7, new byte[] { 1, 2, 3 }));
+        _ = server.SendAsync(1, PushCommand.SetUserImage(7, new byte[] { 1, 2, 3 }, timestamp: DateTimeOffset.FromUnixTimeSeconds(1624997578)));
 
         using var json = JsonDocument.Parse(server.HandlePush(1, "u"));
         var root = json.RootElement;
         Assert.Equal("user_set_image", root.GetProperty("endpoint").GetString());
         Assert.Equal("AQID", root.GetProperty("body").GetString());
         Assert.Equal("application/octet-stream", root.GetProperty("contentType").GetString());
-        Assert.Equal("user_id=7", root.GetProperty("queryString").GetString());
+        Assert.Equal("user_id=7&timestamp=1624997578&match=0", root.GetProperty("queryString").GetString());
     }
 
     [Fact]

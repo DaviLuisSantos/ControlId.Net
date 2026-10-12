@@ -122,11 +122,14 @@ public class AccessObjectsTests
         var device = LoggedDevice().OnJson("user_set_image.fcgi", "");
         using var client = new AccessClient(Options, device.CreateClient());
 
-        await client.SetUserImageAsync(7, Encoding.ASCII.GetBytes("JPEG"));
+        // Exemplo da documentação: user_id, timestamp (obrigatório) e match na query.
+        var result = await client.SetUserImageAsync(7, Encoding.ASCII.GetBytes("JPEG"), timestamp: DateTimeOffset.FromUnixTimeSeconds(1624997578));
+
+        Assert.True(result.Success); // equipamento não facial: resposta vazia conta como sucesso
 
         var request = device.RequestsTo("user_set_image.fcgi").Single();
         Assert.Equal(HttpMethod.Post, request.Method);
-        Assert.Equal("?session=s&user_id=7", request.Uri.Query);
+        Assert.Equal("?session=s&user_id=7&timestamp=1624997578&match=0", request.Uri.Query);
         Assert.Equal("application/octet-stream", request.ContentType);
         Assert.Equal("JPEG", request.Body);
     }
@@ -145,10 +148,10 @@ public class AccessObjectsTests
         var device = LoggedDevice().OnJson("user_set_image_list.fcgi", "");
         using var client = new AccessClient(Options, device.CreateClient());
 
-        await client.SetUserImagesAsync(new[] { new UserImage(7, new byte[] { 1, 2, 3 }) });
+        await client.SetUserImagesAsync(new[] { new UserImage(7, new byte[] { 1, 2, 3 }, DateTimeOffset.FromUnixTimeSeconds(1628727478)) });
 
         Assert.Equal(
-            """{"user_images":[{"user_id":7,"image":"AQID"}]}""",
+            """{"match":false,"user_images":[{"timestamp":1628727478,"user_id":7,"image":"AQID"}]}""",
             device.RequestsTo("user_set_image_list.fcgi").Single().Body);
     }
 

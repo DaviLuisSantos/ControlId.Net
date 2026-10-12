@@ -63,23 +63,89 @@ public interface IAccessClient : IControlIdClient
     /// <summary>Remove uma digital pelo ID.</summary>
     Task<bool> DeleteTemplateAsync(long templateId, CancellationToken cancellationToken = default);
 
-    /// <summary>Envia a foto (JPEG, menor que 1 MB) do usuário (<c>user_set_image.fcgi</c>).</summary>
-    Task SetUserImageAsync(long userId, byte[] jpeg, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// <c>user_set_image.fcgi</c>: grava a foto (JPEG ou PNG, menor que 1 MB). Nos equipamentos faciais a foto vira o
+    /// cadastro facial e o resultado traz notas de qualidade e erros (rosto não detectado, já cadastrado...); nos
+    /// demais o equipamento não responde nada e o resultado vem como sucesso.
+    /// </summary>
+    /// <param name="userId">Usuário.</param>
+    /// <param name="image">Imagem.</param>
+    /// <param name="rejectExistingFace">Recusa se o rosto já pertence a outro usuário (<c>match=1</c>).</param>
+    /// <param name="timestamp">Data do cadastro (obrigatória na API); sem ela, o momento atual.</param>
+    /// <param name="cancellationToken">Cancelamento.</param>
+    Task<FaceImageResult> SetUserImageAsync(
+        long userId, byte[] image, bool rejectExistingFace = false, DateTimeOffset? timestamp = null, CancellationToken cancellationToken = default);
 
-    /// <summary>Envia fotos de vários usuários (<c>user_set_image_list.fcgi</c>). O lote inteiro deve ter menos de 1 MB.</summary>
-    Task SetUserImagesAsync(IEnumerable<UserImage> images, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// <c>user_set_image_list.fcgi</c>: grava fotos em lote (a documentação limita a requisição a 1 MB na página de
+    /// fotos e a 2 MB na de reconhecimento facial). Um resultado por foto, quando o equipamento é facial.
+    /// </summary>
+    Task<IReadOnlyList<FaceImageResult>> SetUserImagesAsync(
+        IEnumerable<UserImage> images, bool rejectExistingFaces = false, CancellationToken cancellationToken = default);
+
+    /// <summary><c>user_test_image.fcgi</c>: testa se a foto seria aceita no cadastro facial, sem gravar.</summary>
+    Task<FaceImageResult> TestUserImageAsync(byte[] image, CancellationToken cancellationToken = default);
 
     /// <summary>Baixa a foto (JPEG) do usuário (<c>user_get_image.fcgi</c>).</summary>
     Task<byte[]> GetUserImageAsync(long userId, CancellationToken cancellationToken = default);
 
+    /// <summary><c>user_get_image.fcgi</c> com <c>get_timestamp</c>: a foto e a data de cadastro.</summary>
+    Task<UserImageData> GetUserImageWithTimestampAsync(long userId, CancellationToken cancellationToken = default);
+
+    /// <summary><c>user_get_image_list.fcgi</c>: fotos de até 100 usuários por chamada, com o erro de cada um que falhar.</summary>
+    Task<IReadOnlyList<UserImageEntry>> GetUserImagesAsync(IEnumerable<long> userIds, CancellationToken cancellationToken = default);
+
     /// <summary>IDs dos usuários que têm foto (<c>user_list_images.fcgi</c>, firmware 3.10.0+).</summary>
     Task<IReadOnlyList<long>> GetUserIdsWithImageAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Remove a foto do usuário (<c>user_destroy_image.fcgi</c>).</summary>
+    /// <summary><c>user_list_images.fcgi</c> com <c>get_timestamp</c>: usuários com foto e a data de cada uma (para sincronização).</summary>
+    Task<IReadOnlyList<UserImageInfo>> GetUserImageInfoAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Remove a foto do usuário (<c>user_destroy_image.fcgi</c>); no facial, remove também o cadastro facial.</summary>
     Task DeleteUserImageAsync(long userId, CancellationToken cancellationToken = default);
+
+    /// <summary>Remove as fotos dos usuários informados.</summary>
+    Task DeleteUserImagesAsync(IEnumerable<long> userIds, CancellationToken cancellationToken = default);
+
+    /// <summary>Remove as fotos que não pertencem a nenhum usuário (<c>dangling</c>).</summary>
+    Task DeleteDanglingUserImagesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Remove as fotos de todos os usuários.</summary>
     Task DeleteAllUserImagesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary><c>face_template_extract.fcgi</c>: extrai o template facial de uma imagem (em <see cref="FaceImageResult.FaceTemplate"/>).</summary>
+    Task<FaceImageResult> ExtractFaceTemplateAsync(byte[] image, CancellationToken cancellationToken = default);
+
+    /// <summary><c>face_template_extract_list.fcgi</c>: extração em lote; cada resultado traz o <see cref="FaceImageResult.Id"/> do item.</summary>
+    Task<IReadOnlyList<FaceImageResult>> ExtractFaceTemplatesAsync(IEnumerable<FaceTemplateImage> images, CancellationToken cancellationToken = default);
+
+    /// <summary><c>face_template_enroll.fcgi</c>: cadastra templates faciais nos usuários; um resultado por usuário.</summary>
+    Task<IReadOnlyList<FaceImageResult>> EnrollFaceTemplatesAsync(
+        IEnumerable<FaceTemplateEnrollment> templates, bool rejectExistingFaces = false, CancellationToken cancellationToken = default);
+
+    /// <summary><c>face_template_destroy.fcgi</c>: remove os templates faciais dos usuários informados.</summary>
+    Task DeleteFaceTemplatesAsync(IEnumerable<long> userIds, CancellationToken cancellationToken = default);
+
+    /// <summary><c>face_template_destroy.fcgi</c> com <c>all</c>: remove todos os templates faciais.</summary>
+    Task DeleteAllFaceTemplatesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary><c>save_screenshot.fcgi</c>: captura da câmera (ângulo maior que o do display), em PNG.</summary>
+    Task<byte[]> CaptureCameraAsync(CameraType camera = CameraType.Rgb, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <c>template_sync_init.fcgi</c>: suspende a sincronização de templates antes de carregar uma base grande de
+    /// usuários com biometria. Termine com <see cref="EndTemplateSyncAsync"/>.
+    /// </summary>
+    Task StartTemplateSyncAsync(CancellationToken cancellationToken = default);
+
+    /// <summary><c>template_sync_end.fcgi</c>: conclui a carga iniciada por <see cref="StartTemplateSyncAsync"/>.</summary>
+    Task EndTemplateSyncAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <c>export_objects.fcgi</c>: exporta os objetos informados para sincronização entre equipamentos. A documentação não
+    /// descreve o formato da resposta (o texto fala em zip com CSV), então ela volta em bytes.
+    /// </summary>
+    Task<byte[]> ExportObjectsAsync(IEnumerable<ExportObjectRequest> objects, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Cadastro remoto síncrono (<c>remote_enroll.fcgi</c> com <c>sync</c>): o equipamento pede o cartão, a face, a digital,

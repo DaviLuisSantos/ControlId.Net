@@ -90,10 +90,12 @@ public sealed class PushCommand
     public static PushCommand CancelRemoteEnroll() => new("cancel_remote_enroll");
 
     /// <summary><c>user_set_image</c>: foto (JPEG, menor que 1 MB) enviada como octet-stream em Base64.</summary>
-    public static PushCommand SetUserImage(long userId, byte[] jpeg) =>
+    public static PushCommand SetUserImage(long userId, byte[] jpeg, bool rejectExistingFace = false, DateTimeOffset? timestamp = null) =>
         new("user_set_image", Convert.ToBase64String(jpeg ?? throw new ArgumentNullException(nameof(jpeg))))
         {
             ContentType = "application/octet-stream",
-            QueryString = "user_id=" + userId.ToString(CultureInfo.InvariantCulture),
+            QueryString = "user_id=" + userId.ToString(CultureInfo.InvariantCulture)
+                + "&timestamp=" + (timestamp ?? DateTimeOffset.UtcNow).ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture)
+                + "&match=" + (rejectExistingFace ? "1" : "0"),
         };
 }
