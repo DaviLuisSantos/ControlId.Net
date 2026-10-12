@@ -130,6 +130,10 @@ public sealed class AlarmLog
     [JsonPropertyName("cause")]
     public int Cause { get; set; }
 
+    /// <summary><see cref="Cause"/> como enum (mesma numeração de <c>alarm_status</c>).</summary>
+    [JsonIgnore]
+    public AlarmCause CauseType => (AlarmCause)Cause;
+
     /// <summary>Usuário envolvido.</summary>
     [JsonPropertyName("user_id")]
     public long? UserId { get; set; }

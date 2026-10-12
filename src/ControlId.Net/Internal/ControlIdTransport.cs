@@ -128,9 +128,9 @@ internal sealed class ControlIdTransport : IDisposable
     }
 
     /// <summary>GET sem corpo; devolve a resposta em bytes (ex.: foto do usuário).</summary>
-    public async Task<byte[]> GetBytesAsync(string endpoint, CancellationToken cancellationToken, string? extraQuery = null)
+    public async Task<byte[]> GetBytesAsync(string endpoint, CancellationToken cancellationToken, string? extraQuery = null, bool requiresSession = true)
     {
-        using var response = await SendCommandAsync(HttpMethod.Get, endpoint, static () => null, extraQuery, requiresSession: true, cancellationToken).ConfigureAwait(false);
+        using var response = await SendCommandAsync(HttpMethod.Get, endpoint, static () => null, extraQuery, requiresSession, cancellationToken).ConfigureAwait(false);
         return await ReadAsByteArrayAsync(response, cancellationToken).ConfigureAwait(false);
     }
 

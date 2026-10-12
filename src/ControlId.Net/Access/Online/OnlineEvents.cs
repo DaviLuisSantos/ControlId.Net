@@ -46,6 +46,7 @@ public abstract class OnlineIdentificationEvent
         Time = values.Long("time");
         PortalId = values.Long("portal_id");
         Uuid = values.Text("uuid");
+        ComponentId = values.Long("component_id");
     }
 
     /// <summary>Tipo de credencial.</summary>
@@ -62,6 +63,15 @@ public abstract class OnlineIdentificationEvent
     /// ex.: <c>2003398144</c> → <c>"win0"</c> (Wiegand 0).
     /// </summary>
     public string? IdentifierName => IdentifierId is { } id ? DecodeIdentifier(id) : null;
+
+    /// <summary>
+    /// Componente da iDBlock Next em que a identificação ocorreu (só quando o equipamento é o primário do conjunto):
+    /// iDFace primário ou secundário, Wiegand da urna ou tampa com display. Veja <see cref="ComponentName"/>.
+    /// </summary>
+    public long? ComponentId { get; }
+
+    /// <summary><see cref="ComponentId"/> decodificado como o <see cref="IdentifierName"/>.</summary>
+    public string? ComponentName => ComponentId is { } id ? DecodeIdentifier(id) : null;
 
     /// <summary>Momento da tentativa (Unix timestamp).</summary>
     public long? Time { get; }

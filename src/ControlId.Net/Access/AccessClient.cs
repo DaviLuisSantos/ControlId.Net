@@ -636,6 +636,58 @@ public sealed class AccessClient : IAccessClient
         SetConfigurationAsync(GeneralSetting("usb_port_enabled", enabled ? "1" : "0"), cancellationToken);
 
     /// <inheritdoc/>
+    public async Task<IReadOnlyList<DeviceActionStatus>> ExecuteActionsWithStatusAsync(
+        IEnumerable<DeviceAction> actions, CancellationToken cancellationToken = default)
+    {
+        var response = await ExecuteActionsAsync(actions, cancellationToken).ConfigureAwait(false);
+        if (response is not { ValueKind: JsonValueKind.Object } root
+            || !root.TryGetProperty("actions", out var list)
+            || list.ValueKind != JsonValueKind.Array)
+        {
+            return new List<DeviceActionStatus>();
+        }
+
+        return ControlIdJson.Deserialize<List<DeviceActionStatus>>(list.GetRawText());
+    }
+
+    /// <inheritdoc/>
+    public Task<DoorsState> GetDoorStatesAsync(CancellationToken cancellationToken = default) =>
+        // O título da documentação diz door_state; o exemplo da mesma página usa doors_state.
+        _transport.PostAsync<DoorsState>("door_state.fcgi", null, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<AlarmStatus> GetAlarmStatusAsync(CancellationToken cancellationToken = default) =>
+        // "stop" tem padrão true na documentação: enviado false para a consulta não desligar o alarme.
+        _transport.PostAsync<AlarmStatus>("alarm_status.fcgi", new Dictionary<string, object> { ["stop"] = false }, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task StopAlarmAsync(CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("alarm_status.fcgi", new Dictionary<string, object> { ["stop"] = true }, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task RebootWithoutSessionAsync(CancellationToken cancellationToken = default) =>
+        _transport.GetBytesAsync("reboot", cancellationToken, requiresSession: false);
+
+    /// <inheritdoc/>
+    public Task SetTurnstileLedAsync(TurnstileLedEvent ledEvent, uint? argbColor = null, CancellationToken cancellationToken = default)
+    {
+        if (ledEvent == TurnstileLedEvent.SetIdleColor && argbColor is null)
+        {
+            throw new ArgumentException("Informe a cor para trocar a cor de repouso.", nameof(argbColor));
+        }
+
+        var body = new Dictionary<string, object>
+        {
+            ["sec_box"] = new Dictionary<string, object>
+            {
+                ["color"] = (argbColor ?? 0).ToString(CultureInfo.InvariantCulture),
+                ["event"] = (int)ledEvent,
+            },
+        };
+        return _transport.PostRawAsync("remote_led_control.fcgi", body, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task<AccessSystemInformation> GetSystemInformationAsync(CancellationToken cancellationToken = default) =>
         _transport.PostAsync<AccessSystemInformation>("system_information.fcgi", null, cancellationToken);
 

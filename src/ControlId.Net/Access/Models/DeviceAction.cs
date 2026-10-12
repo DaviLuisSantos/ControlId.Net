@@ -32,6 +32,14 @@ public sealed class DeviceAction
     public static DeviceAction OpenSecBox(long secBoxId = 65793, int reason = 1) =>
         new("sec_box", $"id={secBoxId.ToString(CultureInfo.InvariantCulture)}, reason={reason.ToString(CultureInfo.InvariantCulture)}");
 
+    /// <summary>Abre o coletor (urna) da catraca iDBlock.</summary>
+    public static DeviceAction OpenTurnstileCollector() => new("open_collector", string.Empty);
+
+    /// <summary>Aciona o relé 1 ou 2 da catraca.</summary>
+    public static DeviceAction ActivateTurnstileRelay(int relay) => relay is 1 or 2
+        ? new("catra", "relay=" + relay.ToString(CultureInfo.InvariantCulture))
+        : throw new ArgumentOutOfRangeException(nameof(relay), relay, "A catraca tem os relés 1 e 2.");
+
     /// <summary>Libera a catraca no sentido informado (iDBlock).</summary>
     public static DeviceAction ReleaseTurnstile(TurnstileDirection direction) => new("catra", direction switch
     {

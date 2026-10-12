@@ -10,6 +10,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 - QR Codes, tags UHF e PINs (`Get/Create...Async`), `SetAdministratorAsync`, `GetChangeLogsAsync` e `GetAccessLogRuleIdsAsync`.
 - Vínculos `AccessLink.PortalAction`, `ScheduledUnlockAccessRule`, `AlarmZoneTimeZone` e `ContingencyCardAccessRule`.
 - `AccessUser.ImageTimestamp` e `AccessUser.LastAccess`.
+- Estado e comandos do equipamento: `GetDoorStatesAsync` (`door_state`), `GetAlarmStatusAsync`/`StopAlarmAsync` (`alarm_status`, com `AlarmCause` também em `AlarmLog.CauseType`), `RebootWithoutSessionAsync` (`GET /reboot`), `SetTurnstileLedAsync` (`remote_led_control`, iDBlock Next) e `ExecuteActionsWithStatusAsync` (resultado do intertravamento).
+- `DeviceAction.OpenTurnstileCollector` (`open_collector`) e `DeviceAction.ActivateTurnstileRelay` (`relay=1|2`).
+- Modo online: `ComponentId`/`ComponentName` (iDBlock Next).
 
 ## [0.1.0-alpha.2] - 2026-10-10
 

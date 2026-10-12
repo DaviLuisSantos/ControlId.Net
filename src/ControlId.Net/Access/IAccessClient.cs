@@ -323,6 +323,33 @@ public interface IAccessClient : IControlIdClient
     /// <summary>Habilita ou desabilita a porta USB (<c>general.usb_port_enabled</c>).</summary>
     Task SetUsbPortEnabledAsync(bool enabled, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// <c>execute_actions.fcgi</c> com o resultado de cada ação. Só vem preenchido com o intertravamento via rede ativo
+    /// (<c>allowed</c>/<c>denied</c>); sem ele, a lista é vazia.
+    /// </summary>
+    Task<IReadOnlyList<DeviceActionStatus>> ExecuteActionsWithStatusAsync(IEnumerable<DeviceAction> actions, CancellationToken cancellationToken = default);
+
+    /// <summary><c>door_state.fcgi</c>: estado (aberta/fechada) das portas por relé ou das SecBoxes.</summary>
+    Task<DoorsState> GetDoorStatesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary><c>alarm_status.fcgi</c>: alarme ativo e a causa. Não desliga o alarme.</summary>
+    Task<AlarmStatus> GetAlarmStatusAsync(CancellationToken cancellationToken = default);
+
+    /// <summary><c>alarm_status.fcgi</c> com <c>stop</c>: desliga o alarme sonoro.</summary>
+    Task StopAlarmAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <c>GET /reboot</c>: reinicia sem sessão, para quando a aplicação do equipamento não responde. Exige
+    /// <c>general.url_reboot_enabled = 1</c>.
+    /// </summary>
+    Task RebootWithoutSessionAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <c>remote_led_control.fcgi</c> (iDBlock Next): muda o estado dos LEDs. <paramref name="argbColor"/> é usada com
+    /// <see cref="TurnstileLedEvent.SetIdleColor"/>, ex.: <c>0xFF00FF00</c> (verde).
+    /// </summary>
+    Task SetTurnstileLedAsync(TurnstileLedEvent ledEvent, uint? argbColor = null, CancellationToken cancellationToken = default);
+
     /// <summary><c>system_information.fcgi</c>.</summary>
     Task<AccessSystemInformation> GetSystemInformationAsync(CancellationToken cancellationToken = default);
 
