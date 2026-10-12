@@ -19,6 +19,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 - Reconhecimento facial: `TestUserImageAsync`, `GetUserImageWithTimestampAsync`, `GetUserImagesAsync` (`user_get_image_list`), `GetUserImageInfoAsync`, `DeleteUserImagesAsync`, `DeleteDanglingUserImagesAsync`, templates faciais (`ExtractFaceTemplate(s)Async`, `EnrollFaceTemplatesAsync`, `DeleteFaceTemplatesAsync`, `DeleteAllFaceTemplatesAsync`), `CaptureCameraAsync` (`save_screenshot`), `FaceImageResult` com notas e `FaceImageErrorCode`.
 - `StartTemplateSyncAsync`/`EndTemplateSyncAsync` (carga de bases grandes) e `ExportObjectsAsync` (`export_objects`).
 - Mídia do iDFace: modo propaganda (`UploadAdvertisingVideoAsync`, `SetAdvertisingModeAsync`, `RemoveAdvertisingVideoAsync`), mensagens sonoras (`UploadAccessAudioAsync`, `GetAccessAudioAsync`, `GetAccessAudioStatusAsync`), interfonia SIP (`MakeSipCallAsync`, `FinalizeSipCallAsync`, `GetSipStatusAsync`, som de chamada) e `GetRtspStreamUri`. Vídeo e áudio são enviados em partes de até 2 MB automaticamente.
+- Rede e sistema: diagnóstico (`TestInternetConnectionAsync`, `PingAsync`, `NsLookupAsync`), `SetNetworkInterlockAsync`, `IsValidBiometryAsync`, OpenVPN (`SetVpnAsync`, `GetVpnInformationAsync`, `GetVpnStatusAsync`, `UploadVpnFileAsync`, `HasVpnFileAsync`, `GetVpnExampleFilesAsync`), `UploadSslCertificateAsync`, `Configure8021XAsync`, `SetOsdpInstallationModeAsync`, `ChangeIdCloudCodeAsync` e `PushConfiguration.IdCloud()`.
+- Licenças: `ApplyFaceLicenseAsync` (iDFace Pro 10k/15k/30k, iDFace Max 50k/100k) e `UpgradeToEnterpriseAsync` (iDFlex/iDAccess Nano).
 
 ## [0.1.0-alpha.2] - 2026-10-10
 

@@ -20,6 +20,17 @@ public sealed class PushConfiguration
     /// <summary>Timeout de cada requisição do equipamento ao servidor.</summary>
     public TimeSpan? RequestTimeout { get; set; }
 
+    /// <summary>
+    /// Conexão com o iDCloud (iDSecure SaaS, RHiD), como na documentação: Push para <c>https://push.idsecure.com.br/api</c>,
+    /// timeout de 30 s e consulta a cada 5 s. Exige assinatura do iDCloud.
+    /// </summary>
+    public static PushConfiguration IdCloud() => new()
+    {
+        RemoteAddress = "https://push.idsecure.com.br/api",
+        RequestTimeout = TimeSpan.FromSeconds(30),
+        RequestPeriod = TimeSpan.FromSeconds(5),
+    };
+
     internal Dictionary<string, object> ToConfiguration()
     {
         var values = new Dictionary<string, string>();

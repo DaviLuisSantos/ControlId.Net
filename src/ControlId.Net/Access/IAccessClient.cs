@@ -464,6 +464,71 @@ public interface IAccessClient : IControlIdClient
     /// </summary>
     Uri GetRtspStreamUri(int port = 554, string? username = null, string? password = null);
 
+    /// <summary><c>connection_test.fcgi</c>: o equipamento tem acesso à internet.</summary>
+    Task<bool> TestInternetConnectionAsync(CancellationToken cancellationToken = default);
+
+    /// <summary><c>ping_test.fcgi</c>: executa um ping no equipamento e devolve a saída do comando.</summary>
+    Task<string> PingAsync(string destination, CancellationToken cancellationToken = default);
+
+    /// <summary><c>nslookup_test.fcgi</c>: consulta DNS a partir do equipamento e devolve a saída do comando.</summary>
+    Task<string> NsLookupAsync(string destination, string dnsServer, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <c>set_network_interlock.fcgi</c>: liga o intertravamento via rede e as exceções para abertura pela API e pela
+    /// botoeira (a API exige as três opções juntas). Os equipamentos remotos são <see cref="NetworkInterlockingRule"/>.
+    /// </summary>
+    Task SetNetworkInterlockAsync(bool enabled, bool bypassForApi, bool bypassForExitButton, CancellationToken cancellationToken = default);
+
+    /// <summary><c>is_valid_biometry.fcgi</c>: o template de digital é válido.</summary>
+    Task<bool> IsValidBiometryAsync(string template, CancellationToken cancellationToken = default);
+
+    /// <summary><c>set_vpn_information.fcgi</c>: liga o OpenVPN e define login manual.</summary>
+    Task SetVpnAsync(VpnSettings settings, CancellationToken cancellationToken = default);
+
+    /// <summary><c>get_vpn_information.fcgi</c>: configuração atual do OpenVPN.</summary>
+    Task<VpnInformation> GetVpnInformationAsync(CancellationToken cancellationToken = default);
+
+    /// <summary><c>get_vpn_status.fcgi</c>: estado da conexão OpenVPN.</summary>
+    Task<VpnStatus> GetVpnStatusAsync(CancellationToken cancellationToken = default);
+
+    /// <summary><c>set_vpn_file.fcgi</c>: envia o arquivo de configuração (<c>.conf</c>) ou o <c>.zip</c> com certificados e chaves.</summary>
+    Task UploadVpnFileAsync(byte[] file, VpnFileType fileType, CancellationToken cancellationToken = default);
+
+    /// <summary><c>has_vpn_file.fcgi</c>: já existe arquivo de configuração OpenVPN.</summary>
+    Task<bool> HasVpnFileAsync(CancellationToken cancellationToken = default);
+
+    /// <summary><c>get_vpn_file.fcgi</c>: baixa os arquivos de exemplo de configuração (zip).</summary>
+    Task<byte[]> GetVpnExampleFilesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <c>ssl_certificate_change.fcgi</c>: instala o certificado do servidor web (PEM com chave e certificado). Habilite o SSL
+    /// antes, em <see cref="SetNetworkAsync"/>.
+    /// </summary>
+    Task UploadSslCertificateAsync(byte[] pem, CancellationToken cancellationToken = default);
+
+    /// <summary><c>configure_802_1X.fcgi</c>: autenticação 802.1X (PEAP) da porta de rede.</summary>
+    Task Configure8021XAsync(
+        bool enabled, string? login = null, string? password = null,
+        Ieee8021XInnerAuthentication innerAuthentication = Ieee8021XInnerAuthentication.MsChapV2, CancellationToken cancellationToken = default);
+
+    /// <summary><c>set_osdp_installation_mode.fcgi</c>: modo de instalação do OSDP (permite trocar as chaves de criptografia).</summary>
+    Task SetOsdpInstallationModeAsync(bool enabled, CancellationToken cancellationToken = default);
+
+    /// <summary><c>change_idcloud_code.fcgi</c>: gera um novo código de verificação do iDCloud.</summary>
+    Task ChangeIdCloudCodeAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Aplica uma licença de capacidade do iDFace / iDFace Max (<c>upgrade_*_face_templates.fcgi</c>). A senha é fornecida
+    /// pela Control iD na compra; <see cref="FaceLicense.Pro10k"/> é pré-requisito das demais.
+    /// </summary>
+    Task ApplyFaceLicenseAsync(FaceLicense license, string password, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <c>idflex_upgrade_enterprise.fcgi</c>: habilita a versão Enterprise no iDFlex/iDAccess Nano (necessária para o modo
+    /// online Enterprise), com a senha fornecida pela Control iD.
+    /// </summary>
+    Task UpgradeToEnterpriseAsync(string password, CancellationToken cancellationToken = default);
+
     /// <summary><c>system_information.fcgi</c>.</summary>
     Task<AccessSystemInformation> GetSystemInformationAsync(CancellationToken cancellationToken = default);
 

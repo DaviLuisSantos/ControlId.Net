@@ -880,6 +880,123 @@ public sealed class AccessClient : IAccessClient
     }
 
     /// <inheritdoc/>
+    public async Task<bool> TestInternetConnectionAsync(CancellationToken cancellationToken = default) =>
+        // A documentação usa GET neste teste e POST nos demais.
+        (await GetJsonAsync<ConnectionTestResponse>("connection_test.fcgi", cancellationToken).ConfigureAwait(false)).ConnectionResult;
+
+    /// <inheritdoc/>
+    public async Task<string> PingAsync(string destination, CancellationToken cancellationToken = default) =>
+        (await _transport.PostAsync<PingResponse>(
+            "ping_test.fcgi", new Dictionary<string, object> { ["dst"] = Required(destination, nameof(destination)) }, cancellationToken)
+            .ConfigureAwait(false)).Output ?? string.Empty;
+
+    /// <inheritdoc/>
+    public async Task<string> NsLookupAsync(string destination, string dnsServer, CancellationToken cancellationToken = default) =>
+        (await _transport.PostAsync<NsLookupResponse>(
+            "nslookup_test.fcgi",
+            new Dictionary<string, object> { ["dst"] = Required(destination, nameof(destination)), ["dns"] = Required(dnsServer, nameof(dnsServer)) },
+            cancellationToken).ConfigureAwait(false)).Output ?? string.Empty;
+
+    /// <inheritdoc/>
+    public Task SetNetworkInterlockAsync(bool enabled, bool bypassForApi, bool bypassForExitButton, CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync(
+            "set_network_interlock.fcgi",
+            new Dictionary<string, object>
+            {
+                ["interlock_enabled"] = enabled ? 1 : 0,
+                ["api_bypass_enabled"] = bypassForApi ? 1 : 0,
+                ["rex_bypass_enabled"] = bypassForExitButton ? 1 : 0,
+            },
+            cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<bool> IsValidBiometryAsync(string template, CancellationToken cancellationToken = default) =>
+        (await _transport.PostAsync<BiometryResponse>(
+            "is_valid_biometry.fcgi", new Dictionary<string, object> { ["biometry"] = Required(template, nameof(template)) }, cancellationToken)
+            .ConfigureAwait(false)).IsValid;
+
+    /// <inheritdoc/>
+    public Task SetVpnAsync(VpnSettings settings, CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("set_vpn_information.fcgi", settings ?? throw new ArgumentNullException(nameof(settings)), cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<VpnInformation> GetVpnInformationAsync(CancellationToken cancellationToken = default) =>
+        GetJsonAsync<VpnInformation>("get_vpn_information.fcgi", cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<VpnStatus> GetVpnStatusAsync(CancellationToken cancellationToken = default) =>
+        (VpnStatus)(await GetJsonAsync<VpnStatusResponse>("get_vpn_status.fcgi", cancellationToken).ConfigureAwait(false)).Status;
+
+    /// <inheritdoc/>
+    public Task UploadVpnFileAsync(byte[] file, VpnFileType fileType, CancellationToken cancellationToken = default) =>
+        file is null || file.Length == 0
+            ? throw new ArgumentException("Informe o arquivo.", nameof(file))
+            : _transport.PostBytesAsync(
+                "set_vpn_file.fcgi", file, "application/octet-stream", cancellationToken, "file_type=" + (fileType == VpnFileType.Zip ? "zip" : "config"));
+
+    /// <inheritdoc/>
+    public async Task<bool> HasVpnFileAsync(CancellationToken cancellationToken = default) =>
+        (await GetJsonAsync<HasFileResponse>("has_vpn_file.fcgi", cancellationToken).ConfigureAwait(false)).HasFile;
+
+    /// <inheritdoc/>
+    public Task<byte[]> GetVpnExampleFilesAsync(CancellationToken cancellationToken = default) =>
+        _transport.GetBytesAsync("get_vpn_file.fcgi", cancellationToken);
+
+    /// <inheritdoc/>
+    public Task UploadSslCertificateAsync(byte[] pem, CancellationToken cancellationToken = default) =>
+        pem is null || pem.Length == 0
+            ? throw new ArgumentException("Informe o certificado.", nameof(pem))
+            : _transport.PostBytesAsync("ssl_certificate_change.fcgi", pem, "application/octet-stream", cancellationToken);
+
+    /// <inheritdoc/>
+    public Task Configure8021XAsync(
+        bool enabled, string? login = null, string? password = null,
+        Ieee8021XInnerAuthentication innerAuthentication = Ieee8021XInnerAuthentication.MsChapV2, CancellationToken cancellationToken = default)
+    {
+        var body = new Dictionary<string, object> { ["enabled"] = enabled, ["inner_auth"] = (int)innerAuthentication };
+        if (login is not null)
+        {
+            body["login"] = login;
+        }
+
+        if (password is not null)
+        {
+            body["password"] = password;
+        }
+
+        return _transport.PostRawAsync("configure_802_1X.fcgi", body, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task SetOsdpInstallationModeAsync(bool enabled, CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync("set_osdp_installation_mode.fcgi", new Dictionary<string, object> { ["enabled"] = enabled }, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task ChangeIdCloudCodeAsync(CancellationToken cancellationToken = default) =>
+        _transport.GetBytesAsync("change_idcloud_code.fcgi", cancellationToken);
+
+    /// <inheritdoc/>
+    public Task ApplyFaceLicenseAsync(FaceLicense license, string password, CancellationToken cancellationToken = default)
+    {
+        var endpoint = license switch
+        {
+            FaceLicense.Pro10k => "upgrade_ten_thousand_face_templates.fcgi",
+            FaceLicense.Pro15k => "upgrade_fifteen_thousand_face_templates.fcgi",
+            FaceLicense.Pro30k => "upgrade_thirty_thousand_face_templates.fcgi",
+            FaceLicense.Pro50k => "upgrade_fifty_thousand_face_templates.fcgi",
+            FaceLicense.Pro100k => "upgrade_hundred_thousand_face_templates.fcgi",
+            _ => throw new ArgumentOutOfRangeException(nameof(license)),
+        };
+
+        return _transport.PostRawAsync(endpoint, new Dictionary<string, object> { ["password"] = Required(password, nameof(password)) }, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task UpgradeToEnterpriseAsync(string password, CancellationToken cancellationToken = default) =>
+        _transport.PostRawAsync(
+            "idflex_upgrade_enterprise.fcgi", new Dictionary<string, object> { ["password"] = Required(password, nameof(password)) }, cancellationToken);
+
+    /// <inheritdoc/>
     public Task<AccessSystemInformation> GetSystemInformationAsync(CancellationToken cancellationToken = default) =>
         _transport.PostAsync<AccessSystemInformation>("system_information.fcgi", null, cancellationToken);
 
@@ -1175,6 +1292,51 @@ public sealed class AccessClient : IAccessClient
         AccessAudioEvent.UseMask => "use_mask",
         _ => throw new ArgumentOutOfRangeException(nameof(audioEvent)),
     };
+
+    private async Task<T> GetJsonAsync<T>(string endpoint, CancellationToken cancellationToken)
+    {
+        var bytes = await _transport.GetBytesAsync(endpoint, cancellationToken).ConfigureAwait(false);
+        return ControlIdJson.Deserialize<T>(TextDecoding.Decode(bytes, null));
+    }
+
+    private static string Required(string value, string paramName) =>
+        string.IsNullOrWhiteSpace(value) ? throw new ArgumentException("Valor obrigatório.", paramName) : value;
+
+    private sealed class ConnectionTestResponse
+    {
+        [JsonPropertyName("connection_result")]
+        public bool ConnectionResult { get; set; }
+    }
+
+    private sealed class PingResponse
+    {
+        [JsonPropertyName("output")]
+        public string? Output { get; set; }
+    }
+
+    private sealed class NsLookupResponse
+    {
+        [JsonPropertyName("output_ns")]
+        public string? Output { get; set; }
+    }
+
+    private sealed class BiometryResponse
+    {
+        [JsonPropertyName("isValid")]
+        public bool IsValid { get; set; }
+    }
+
+    private sealed class VpnStatusResponse
+    {
+        [JsonPropertyName("status")]
+        public int Status { get; set; }
+    }
+
+    private sealed class HasFileResponse
+    {
+        [JsonPropertyName("has_file")]
+        public bool HasFile { get; set; }
+    }
 
     private sealed class FileExistsResponse
     {
