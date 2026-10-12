@@ -548,6 +548,25 @@ public interface IAccessClient : IControlIdClient
     /// </summary>
     Task<IReadOnlyDictionary<string, string>> GetConfigurationAsync(string section, IEnumerable<string> fields, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Lê uma seção de configuração tipada inteira, ex.: <c>GetConfigurationSectionAsync&lt;GeneralSettings&gt;()</c>.
+    /// Parâmetros que o equipamento não devolver ficam <c>null</c>.
+    /// </summary>
+    Task<T> GetConfigurationSectionAsync<T>(CancellationToken cancellationToken = default)
+        where T : Configuration.ConfigurationSection, new();
+
+    /// <summary>
+    /// Lê a seção informada (útil para seções com índice, como <c>new CardReaderSettings(1)</c>) e devolve a mesma instância preenchida.
+    /// </summary>
+    Task<T> GetConfigurationSectionAsync<T>(T section, CancellationToken cancellationToken = default)
+        where T : Configuration.ConfigurationSection;
+
+    /// <summary>Grava os parâmetros preenchidos (não nulos) da seção.</summary>
+    Task SetConfigurationSectionAsync(Configuration.ConfigurationSection section, CancellationToken cancellationToken = default);
+
+    /// <summary>Grava várias seções numa única chamada a <c>set_configuration.fcgi</c>.</summary>
+    Task SetConfigurationSectionsAsync(IEnumerable<Configuration.ConfigurationSection> sections, CancellationToken cancellationToken = default);
+
     /// <summary>Aponta o Monitor (notificações assíncronas) para o seu servidor.</summary>
     Task ConfigureMonitorAsync(MonitorConfiguration configuration, CancellationToken cancellationToken = default);
 

@@ -1040,6 +1040,51 @@ public sealed class AccessClient : IAccessClient
     }
 
     /// <inheritdoc/>
+    public Task<T> GetConfigurationSectionAsync<T>(CancellationToken cancellationToken = default)
+        where T : Configuration.ConfigurationSection, new() =>
+        GetConfigurationSectionAsync(new T(), cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<T> GetConfigurationSectionAsync<T>(T section, CancellationToken cancellationToken = default)
+        where T : Configuration.ConfigurationSection
+    {
+        if (section is null)
+        {
+            throw new ArgumentNullException(nameof(section));
+        }
+
+        var values = await GetConfigurationAsync(
+            section.SectionName, Configuration.ConfigurationSectionMapper.FieldNames(section), cancellationToken).ConfigureAwait(false);
+        Configuration.ConfigurationSectionMapper.Populate(section, values);
+        return section;
+    }
+
+    /// <inheritdoc/>
+    public Task SetConfigurationSectionAsync(Configuration.ConfigurationSection section, CancellationToken cancellationToken = default) =>
+        SetConfigurationSectionsAsync(new[] { section ?? throw new ArgumentNullException(nameof(section)) }, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task SetConfigurationSectionsAsync(IEnumerable<Configuration.ConfigurationSection> sections, CancellationToken cancellationToken = default)
+    {
+        var body = new Dictionary<string, object>();
+        foreach (var section in sections ?? throw new ArgumentNullException(nameof(sections)))
+        {
+            var values = Configuration.ConfigurationSectionMapper.ToValues(section);
+            if (values.Count > 0)
+            {
+                body[section.SectionName] = values;
+            }
+        }
+
+        if (body.Count == 0)
+        {
+            throw new ArgumentException("Nenhum parâmetro preenchido: preencha ao menos uma propriedade da seção.", nameof(sections));
+        }
+
+        return SetConfigurationAsync(body, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task ConfigureMonitorAsync(MonitorConfiguration configuration, CancellationToken cancellationToken = default) =>
         SetConfigurationAsync((configuration ?? throw new ArgumentNullException(nameof(configuration))).ToConfiguration(), cancellationToken);
 
