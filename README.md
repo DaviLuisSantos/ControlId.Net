@@ -479,6 +479,29 @@ var device = new AccessClient(new ControlIdDeviceOptions
 }, http);
 ```
 
+## Paralelismo
+
+### Limite por equipamento
+
+Cada cliente limita as requisições simultâneas ao seu equipamento (`MaxConcurrentRequests`, padrão 4, login incluído).
+Dá para disparar quantas chamadas quiser em paralelo: as que passarem do limite esperam a vez, sem sobrecarregar o
+equipamento. Cada equipamento tem o próprio limite, então vários equipamentos rodam em paralelo entre si.
+
+```csharp
+var device = new AccessClient(new ControlIdDeviceOptions
+{
+    BaseAddress = new Uri("http://192.168.0.129"),
+    MaxConcurrentRequests = 2, // equipamento mais modesto ou rede lenta
+});
+
+var fotos = await Task.WhenAll(ids.Select(id => device.GetUserImageAsync(id))); // no máximo 2 por vez no equipamento
+```
+
+- O limite é o mesmo em qualquer runtime. Sem ele, o .NET Framework seguraria em 2 conexões por servidor e o .NET Core
+  não limitaria nada. Quando o pacote cria o `HttpClient` (ou pelo pacote de DI), o limite de conexões do handler acompanha o valor.
+- Com um `HttpClient` externo, o limite do cliente continua valendo, mas o limite de conexões do handler fica por sua conta.
+- No `appsettings.json`: `"portaria": { "BaseAddress": "...", "MaxConcurrentRequests": 2 }`.
+
 ## Erros
 
 | Exceção | Quando |

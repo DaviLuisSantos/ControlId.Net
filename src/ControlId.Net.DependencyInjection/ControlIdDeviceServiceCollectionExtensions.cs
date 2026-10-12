@@ -45,7 +45,8 @@ public static class ControlIdDeviceServiceCollectionExtensions
 
     /// <summary>
     /// Registra um equipamento de acesso com nome a partir de uma seção de configuração
-    /// (<c>BaseAddress</c>, <c>Login</c>, <c>Password</c>, <c>Timeout</c>, <c>AcceptAnyServerCertificate</c>).
+    /// (<c>BaseAddress</c>, <c>Login</c>, <c>Password</c>, <c>Timeout</c>, <c>AcceptAnyServerCertificate</c>,
+    /// <c>MaxConcurrentRequests</c>).
     /// </summary>
     public static IHttpClientBuilder AddControlIdAccess(this IServiceCollection services, string name, IConfiguration configuration)
     {
@@ -132,24 +133,32 @@ public static class ControlIdDeviceServiceCollectionExtensions
     {
         AddCore(services).AccessDevices.Add(name);
         return AddHttpClient(services, ControlIdRegistry.AccessHttpClientName(name), sp =>
-            sp.GetRequiredService<IOptionsMonitor<ControlIdDeviceOptions>>().Get(name).AcceptAnyServerCertificate);
+        {
+            var options = sp.GetRequiredService<IOptionsMonitor<ControlIdDeviceOptions>>().Get(name);
+            return (options.AcceptAnyServerCertificate, options.MaxConcurrentRequests);
+        });
     }
 
     private static IHttpClientBuilder RegisterRep(IServiceCollection services, string name)
     {
         AddCore(services).RepDevices.Add(name);
         return AddHttpClient(services, ControlIdRegistry.RepHttpClientName(name), sp =>
-            sp.GetRequiredService<IOptionsMonitor<ControlIdRepOptions>>().Get(name).AcceptAnyServerCertificate);
+        {
+            var options = sp.GetRequiredService<IOptionsMonitor<ControlIdRepOptions>>().Get(name);
+            return (options.AcceptAnyServerCertificate, options.MaxConcurrentRequests);
+        });
     }
 
-    private static IHttpClientBuilder AddHttpClient(IServiceCollection services, string httpClientName, Func<IServiceProvider, bool> acceptAnyCertificate)
+    private static IHttpClientBuilder AddHttpClient(IServiceCollection services, string httpClientName, Func<IServiceProvider, (bool AcceptAnyCertificate, int MaxConnections)> handlerSettings)
     {
         return services
             .AddHttpClient(httpClientName)
             .ConfigurePrimaryHttpMessageHandler(sp =>
             {
+                var settings = handlerSettings(sp);
                 var handler = new HttpClientHandler();
-                if (acceptAnyCertificate(sp))
+                LimitConnections(handler, settings.MaxConnections);
+                if (settings.AcceptAnyCertificate)
                 {
                     handler.ServerCertificateCustomValidationCallback = static (_, _, _, _) => true;
                 }
@@ -158,6 +167,19 @@ public static class ControlIdDeviceServiceCollectionExtensions
             })
             // O cliente do equipamento guarda o HttpClient (e a sessão) pela vida da aplicação, então o handler não é reciclado.
             .SetHandlerLifetime(Timeout.InfiniteTimeSpan);
+    }
+
+    // Alinha as conexões ao MaxConcurrentRequests (no .NET Framework o padrão seria 2 por servidor).
+    private static void LimitConnections(HttpClientHandler handler, int maxConnections)
+    {
+        try
+        {
+            handler.MaxConnectionsPerServer = maxConnections;
+        }
+        catch (PlatformNotSupportedException)
+        {
+            // Fica o padrão do runtime; o limite do transporte continua valendo.
+        }
     }
 
     private static ControlIdRegistry AddCore(IServiceCollection services)

@@ -29,8 +29,23 @@ public sealed class ControlIdDeviceOptions
     /// </summary>
     public bool AcceptAnyServerCertificate { get; set; }
 
+    /// <summary>Valor padrão de <see cref="MaxConcurrentRequests"/>.</summary>
+    public const int DefaultMaxConcurrentRequests = 4;
+
+    /// <summary>
+    /// Máximo de requisições simultâneas a este equipamento (login incluído). Padrão: 4. As chamadas além do limite
+    /// esperam a vez, então dá para disparar muitas em paralelo sem sobrecarregar o equipamento. O limite é o mesmo em
+    /// qualquer runtime (sozinho, o .NET Framework limitaria a 2 conexões e o .NET Core não limitaria).
+    /// </summary>
+    public int MaxConcurrentRequests { get; set; } = DefaultMaxConcurrentRequests;
+
     internal void Validate()
     {
+        if (MaxConcurrentRequests < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaxConcurrentRequests), MaxConcurrentRequests, $"{nameof(MaxConcurrentRequests)} precisa ser pelo menos 1.");
+        }
+
         if (BaseAddress is null)
         {
             throw new ArgumentException($"{nameof(BaseAddress)} é obrigatório.", nameof(BaseAddress));

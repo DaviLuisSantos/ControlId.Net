@@ -20,6 +20,10 @@ internal sealed class ControlIdTransport : IDisposable
     private readonly bool _ownsHttpClient;
     private readonly ControlIdDeviceOptions _options;
     private readonly SemaphoreSlim _loginLock = new(1, 1);
+
+    // Limita as requisições em voo a este equipamento. Só envolve o envio HTTP e nunca é segurado enquanto se espera
+    // o _loginLock, então não há espera circular entre os dois.
+    private readonly SemaphoreSlim _throttle;
     private string? _session;
 
     // Cópia própria: change_login atualiza estas credenciais sem alterar o objeto de opções do chamador.
@@ -30,10 +34,12 @@ internal sealed class ControlIdTransport : IDisposable
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _options.Validate();
         _credentials = new Credentials(options.Login, options.Password);
+        _throttle = new SemaphoreSlim(options.MaxConcurrentRequests, options.MaxConcurrentRequests);
 
         if (httpClient is null)
         {
             var handler = new HttpClientHandler();
+            HttpHandlers.LimitConnections(handler, options.MaxConcurrentRequests);
             if (options.AcceptAnyServerCertificate)
             {
                 handler.ServerCertificateCustomValidationCallback = static (_, _, _, _) => true;
@@ -73,7 +79,16 @@ internal sealed class ControlIdTransport : IDisposable
         }
 
         using var request = BuildRequest(HttpMethod.Post, "logout.fcgi", JsonContent(null), session, null);
-        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        await _throttle.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _throttle.Release();
+        }
+
         // Logout é best-effort: o equipamento não retorna corpo e uma sessão já expirada não é erro.
     }
 
@@ -257,8 +272,10 @@ internal sealed class ControlIdTransport : IDisposable
 
     private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, string endpoint, CancellationToken cancellationToken)
     {
+        await _throttle.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            // Com ResponseContentRead (padrão) o corpo já chega lido, então a vaga cobre a requisição inteira.
             return await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
@@ -268,6 +285,10 @@ internal sealed class ControlIdTransport : IDisposable
         catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
             throw new ControlIdException($"Timeout ao chamar '{endpoint}' em {_options.BaseAddress}.", innerException: ex);
+        }
+        finally
+        {
+            _throttle.Release();
         }
     }
 
@@ -329,6 +350,7 @@ internal sealed class ControlIdTransport : IDisposable
         }
 
         _loginLock.Dispose();
+        _throttle.Dispose();
     }
 
     private sealed class Credentials

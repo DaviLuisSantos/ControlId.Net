@@ -24,6 +24,9 @@ public sealed class ControlIdRepOptions
     /// <summary>Aceita o certificado autoassinado do REP. Padrão: <c>true</c> (o iDClass sai de fábrica assim).</summary>
     public bool AcceptAnyServerCertificate { get; set; } = true;
 
+    /// <summary>Máximo de requisições simultâneas ao REP. Padrão: 4. Veja <see cref="ControlIdDeviceOptions.MaxConcurrentRequests"/>.</summary>
+    public int MaxConcurrentRequests { get; set; } = ControlIdDeviceOptions.DefaultMaxConcurrentRequests;
+
     /// <summary>Portaria usada nas chamadas que suportam modo. Padrão: <see cref="RepMode.Portaria671"/>.</summary>
     public RepMode Mode { get; set; } = RepMode.Portaria671;
 
@@ -34,5 +37,6 @@ public sealed class ControlIdRepOptions
         Password = Password,
         Timeout = Timeout,
         AcceptAnyServerCertificate = AcceptAnyServerCertificate,
+        MaxConcurrentRequests = MaxConcurrentRequests,
     };
 }
