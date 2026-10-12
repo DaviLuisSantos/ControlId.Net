@@ -203,6 +203,92 @@ public sealed class AccessClient : IAccessClient
         _transport.PostRawAsync("cancel_remote_enroll.fcgi", null, cancellationToken);
 
     /// <inheritdoc/>
+    public Task<IReadOnlyList<T>> GetObjectsAsync<T>(object? where = null, int? limit = null, CancellationToken cancellationToken = default) =>
+        LoadObjectsAsync<T>(new LoadObjectsRequest(ControlIdObjects.NameOf<T>()) { Where = where, Limit = limit }, cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<long> CreateObjectAsync<T>(T value, CancellationToken cancellationToken = default)
+    {
+        if (value is null)
+        {
+            throw new ArgumentNullException(nameof(value));
+        }
+
+        var ids = await CreateObjectsAsync(ControlIdObjects.NameOf<T>(), new[] { value }, cancellationToken).ConfigureAwait(false);
+        return ids.Count > 0 ? ids[0] : 0;
+    }
+
+    /// <inheritdoc/>
+    public Task<int> UpdateObjectAsync<T>(T value, CancellationToken cancellationToken = default)
+    {
+        if (value is null)
+        {
+            throw new ArgumentNullException(nameof(value));
+        }
+
+        var info = ControlIdObjects.Get(typeof(T));
+        return ModifyObjectsAsync(info.Name, value, Where.Equal(info.Name, info.Key!, info.GetKey(value)), cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> DeleteObjectAsync<T>(long key, CancellationToken cancellationToken = default)
+    {
+        var info = ControlIdObjects.Get(typeof(T));
+        if (info.Key is null)
+        {
+            throw new InvalidOperationException($"'{info.Name}' é uma tabela de associação, sem chave: use UnlinkAsync.");
+        }
+
+        return await DestroyObjectsAsync(info.Name, Where.Equal(info.Name, info.Key, key), cancellationToken).ConfigureAwait(false) > 0;
+    }
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<AccessQrCode>> GetQrCodesAsync(long? userId = null, CancellationToken cancellationToken = default) =>
+        LoadAsync<AccessQrCode>("qrcodes", "user_id", userId, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<long> CreateQrCodeAsync(AccessQrCode qrCode, CancellationToken cancellationToken = default) =>
+        CreateOneAsync("qrcodes", qrCode, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<AccessUhfTag>> GetUhfTagsAsync(long? userId = null, CancellationToken cancellationToken = default) =>
+        LoadAsync<AccessUhfTag>("uhf_tags", "user_id", userId, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<long> CreateUhfTagAsync(AccessUhfTag tag, CancellationToken cancellationToken = default) =>
+        CreateOneAsync("uhf_tags", tag, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<AccessPin>> GetPinsAsync(long? userId = null, CancellationToken cancellationToken = default) =>
+        LoadAsync<AccessPin>("pins", "user_id", userId, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<long> CreatePinAsync(AccessPin pin, CancellationToken cancellationToken = default) =>
+        CreateOneAsync("pins", pin, cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task SetAdministratorAsync(long userId, bool isAdministrator, CancellationToken cancellationToken = default)
+    {
+        // user_roles só guarda quem tem privilégio diferente do padrão: remover = voltar a usuário comum.
+        await DestroyObjectsAsync("user_roles", Where.Equal("user_roles", "user_id", userId), cancellationToken).ConfigureAwait(false);
+        if (isAdministrator)
+        {
+            await CreateObjectsAsync("user_roles", new[] { new UserRole { UserId = userId, Role = 1 } }, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<ChangeLog>> GetChangeLogsAsync(long afterId = 0, int? limit = null, CancellationToken cancellationToken = default) =>
+        LoadAfterAsync<ChangeLog>("change_logs", afterId, limit, cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<long>> GetAccessLogRuleIdsAsync(long accessLogId, CancellationToken cancellationToken = default)
+    {
+        var rows = await LoadAsync<AccessLogAccessRule>("access_log_access_rules", "access_log_id", accessLogId, cancellationToken).ConfigureAwait(false);
+        return rows.Select(r => r.AccessRuleId).ToList();
+    }
+
+    /// <inheritdoc/>
     public Task<IReadOnlyList<AccessGroup>> GetGroupsAsync(CancellationToken cancellationToken = default) =>
         LoadObjectsAsync<AccessGroup>(new LoadObjectsRequest("groups"), cancellationToken);
 

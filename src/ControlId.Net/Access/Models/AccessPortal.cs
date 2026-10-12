@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 namespace ControlId.Access;
 
 /// <summary>Objeto <c>portals</c>: passagem entre duas áreas (porta, sentido da catraca...).</summary>
+[ControlIdObject("portals")]
 public sealed class AccessPortal
 {
     /// <summary>ID no equipamento.</summary>

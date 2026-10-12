@@ -4,6 +4,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+### Added
+- Modelos para todos os objetos documentados que faltavam: `qrcodes`, `uhf_tags`, `pins`, `contingency_cards`, `alarm_zones`, `timed_alarms`, `user_roles`, `scheduled_unlocks`, `actions` (`ActionScript`), `devices`, `catra_infos`, `log_types`, `contacts`, `custom_thresholds`, `network_interlocking_rules`, `change_logs` e `access_log_access_rules`.
+- CRUD tipado genérico: `[ControlIdObject]` nos modelos e `GetObjectsAsync<T>`/`CreateObjectAsync<T>`/`UpdateObjectAsync<T>`/`DeleteObjectAsync<T>`.
+- QR Codes, tags UHF e PINs (`Get/Create...Async`), `SetAdministratorAsync`, `GetChangeLogsAsync` e `GetAccessLogRuleIdsAsync`.
+- Vínculos `AccessLink.PortalAction`, `ScheduledUnlockAccessRule`, `AlarmZoneTimeZone` e `ContingencyCardAccessRule`.
+- `AccessUser.ImageTimestamp` e `AccessUser.LastAccess`.
+
 ## [0.1.0-alpha.2] - 2026-10-10
 
 ### Changed

@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 namespace ControlId.Access;
 
 /// <summary>Objeto <c>cards</c> (cartões de proximidade) da linha de acesso.</summary>
+[ControlIdObject("cards")]
 public sealed class AccessCard
 {
     /// <summary>ID no equipamento.</summary>

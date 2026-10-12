@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 namespace ControlId.Access;
 
 /// <summary>Objeto <c>time_zones</c>: um horário nomeado, composto por intervalos (<see cref="AccessTimeSpan"/>).</summary>
+[ControlIdObject("time_zones")]
 public sealed class AccessTimeZone
 {
     /// <summary>ID no equipamento.</summary>

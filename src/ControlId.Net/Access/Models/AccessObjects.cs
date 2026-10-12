@@ -5,6 +5,7 @@ using ControlId.Internal;
 namespace ControlId.Access;
 
 /// <summary>Objeto <c>areas</c>: área cujo acesso se controla; portais ligam duas áreas.</summary>
+[ControlIdObject("areas")]
 public sealed class AccessArea
 {
     /// <summary>ID no equipamento.</summary>
@@ -20,6 +21,7 @@ public sealed class AccessArea
 /// Objeto <c>holidays</c>: feriado e os grupos de feriado a que pertence. Os intervalos de horário
 /// (<see cref="AccessTimeSpan.Holiday1"/>...) valem nos feriados do grupo correspondente.
 /// </summary>
+[ControlIdObject("holidays")]
 public sealed class AccessHoliday
 {
     /// <summary>ID no equipamento.</summary>
@@ -75,6 +77,7 @@ public sealed class AccessHoliday
 /// <summary>
 /// Objeto <c>access_events</c>: aberturas de porta/SecBox e giros de catraca (até 10 mil, com rotação).
 /// </summary>
+[ControlIdObject("access_events")]
 public sealed class AccessDeviceEvent
 {
     /// <summary>ID sequencial.</summary>
@@ -107,6 +110,7 @@ public sealed class AccessDeviceEvent
 }
 
 /// <summary>Objeto <c>alarm_logs</c>: alarmes disparados e desligados.</summary>
+[ControlIdObject("alarm_logs")]
 public sealed class AlarmLog
 {
     /// <summary>ID sequencial.</summary>
@@ -148,6 +152,7 @@ public sealed class AlarmLog
 }
 
 /// <summary>Objeto <c>sec_boxs</c>: o módulo de acionamento externo (MAE/SecBox) do iDFlex, iDAccess Pro e iDAccess Nano.</summary>
+[ControlIdObject("sec_boxs")]
 public sealed class SecBox
 {
     /// <summary>ID (sempre 65793, segundo a documentação).</summary>

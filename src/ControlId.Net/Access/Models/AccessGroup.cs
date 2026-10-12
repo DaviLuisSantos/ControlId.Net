@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 namespace ControlId.Access;
 
 /// <summary>Objeto <c>groups</c> (departamentos) da linha de acesso.</summary>
+[ControlIdObject("groups")]
 public sealed class AccessGroup
 {
     /// <summary>ID no equipamento.</summary>

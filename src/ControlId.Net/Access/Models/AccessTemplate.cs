@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 namespace ControlId.Access;
 
 /// <summary>Objeto <c>templates</c> (biometria de digital) da linha de acesso.</summary>
+[ControlIdObject("templates")]
 public sealed class AccessTemplate
 {
     /// <summary>ID no equipamento.</summary>

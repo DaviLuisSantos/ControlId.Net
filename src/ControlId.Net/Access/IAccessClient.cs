@@ -103,6 +103,49 @@ public interface IAccessClient : IControlIdClient
     /// <summary><c>cancel_remote_enroll.fcgi</c>: interrompe o cadastro remoto em andamento.</summary>
     Task CancelRemoteEnrollAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Lê registros de qualquer modelo marcado com <see cref="ControlIdObjectAttribute"/>, ex.:
+    /// <c>GetObjectsAsync&lt;TimedAlarm&gt;()</c>. <paramref name="where"/> segue o formato de <see cref="Where"/>, com o nome
+    /// de <see cref="ControlIdObjects.NameOf{T}"/>.
+    /// </summary>
+    Task<IReadOnlyList<T>> GetObjectsAsync<T>(object? where = null, int? limit = null, CancellationToken cancellationToken = default);
+
+    /// <summary>Cria um registro de qualquer modelo com <see cref="ControlIdObjectAttribute"/> e devolve o ID gerado (0 se a tabela não tiver ID).</summary>
+    Task<long> CreateObjectAsync<T>(T value, CancellationToken cancellationToken = default);
+
+    /// <summary>Grava o registro inteiro, localizado pela chave do modelo (normalmente <c>id</c>). Devolve a quantidade alterada.</summary>
+    Task<int> UpdateObjectAsync<T>(T value, CancellationToken cancellationToken = default);
+
+    /// <summary>Remove o registro pela chave do modelo (normalmente <c>id</c>).</summary>
+    Task<bool> DeleteObjectAsync<T>(long key, CancellationToken cancellationToken = default);
+
+    /// <summary>QR Codes; com <paramref name="userId"/>, só os do usuário.</summary>
+    Task<IReadOnlyList<AccessQrCode>> GetQrCodesAsync(long? userId = null, CancellationToken cancellationToken = default);
+
+    /// <summary>Cadastra um QR Code e devolve o ID gerado.</summary>
+    Task<long> CreateQrCodeAsync(AccessQrCode qrCode, CancellationToken cancellationToken = default);
+
+    /// <summary>Tags UHF; com <paramref name="userId"/>, só as do usuário.</summary>
+    Task<IReadOnlyList<AccessUhfTag>> GetUhfTagsAsync(long? userId = null, CancellationToken cancellationToken = default);
+
+    /// <summary>Cadastra uma tag UHF e devolve o ID gerado.</summary>
+    Task<long> CreateUhfTagAsync(AccessUhfTag tag, CancellationToken cancellationToken = default);
+
+    /// <summary>PINs; com <paramref name="userId"/>, só os do usuário.</summary>
+    Task<IReadOnlyList<AccessPin>> GetPinsAsync(long? userId = null, CancellationToken cancellationToken = default);
+
+    /// <summary>Cadastra um PIN e devolve o ID gerado.</summary>
+    Task<long> CreatePinAsync(AccessPin pin, CancellationToken cancellationToken = default);
+
+    /// <summary>Torna o usuário administrador do equipamento, ou tira o privilégio (<c>user_roles</c>).</summary>
+    Task SetAdministratorAsync(long userId, bool isAdministrator, CancellationToken cancellationToken = default);
+
+    /// <summary><c>change_logs</c> (iDFace) com ID maior que <paramref name="afterId"/>, em ordem crescente.</summary>
+    Task<IReadOnlyList<ChangeLog>> GetChangeLogsAsync(long afterId = 0, int? limit = null, CancellationToken cancellationToken = default);
+
+    /// <summary>Regras de acesso avaliadas em um log de acesso (<c>access_log_access_rules</c>).</summary>
+    Task<IReadOnlyList<long>> GetAccessLogRuleIdsAsync(long accessLogId, CancellationToken cancellationToken = default);
+
     /// <summary>Lista os grupos (departamentos).</summary>
     Task<IReadOnlyList<AccessGroup>> GetGroupsAsync(CancellationToken cancellationToken = default);
 

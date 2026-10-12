@@ -8,6 +8,7 @@ namespace ControlId.Access;
 /// Objeto <c>time_spans</c>: um intervalo dentro de um <see cref="AccessTimeZone"/>,
 /// válido nos dias marcados. <see cref="Start"/> e <see cref="End"/> são segundos desde a meia-noite.
 /// </summary>
+[ControlIdObject("time_spans")]
 public sealed class AccessTimeSpan
 {
     /// <summary>ID no equipamento.</summary>

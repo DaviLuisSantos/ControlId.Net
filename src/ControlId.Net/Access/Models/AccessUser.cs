@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 namespace ControlId.Access;
 
 /// <summary>Objeto <c>users</c> da linha de acesso.</summary>
+[ControlIdObject("users")]
 public sealed class AccessUser
 {
     /// <summary>ID no equipamento. Deixe <c>null</c> ao criar para o equipamento gerar.</summary>
@@ -36,4 +37,12 @@ public sealed class AccessUser
     /// <summary>Fim da validade (Unix timestamp; 0 = sem limite).</summary>
     [JsonPropertyName("end_time")]
     public long? EndTime { get; set; }
+
+    /// <summary>Quando a foto do usuário foi gravada (Unix timestamp).</summary>
+    [JsonPropertyName("image_timestamp")]
+    public long? ImageTimestamp { get; set; }
+
+    /// <summary>Último acesso do usuário (Unix timestamp; 0 = ainda não acessou).</summary>
+    [JsonPropertyName("last_access")]
+    public long? LastAccess { get; set; }
 }

@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 namespace ControlId.Access;
 
 /// <summary>Objeto <c>access_logs</c> da linha de acesso.</summary>
+[ControlIdObject("access_logs")]
 public sealed class AccessLog
 {
     /// <summary>ID sequencial do log.</summary>

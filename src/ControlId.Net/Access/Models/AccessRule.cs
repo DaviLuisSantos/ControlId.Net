@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 namespace ControlId.Access;
 
 /// <summary>Objeto <c>access_rules</c>: liga quem (usuários/grupos) a quando (horários) e onde (portais).</summary>
+[ControlIdObject("access_rules")]
 public sealed class AccessRule
 {
     /// <summary>ID no equipamento.</summary>
