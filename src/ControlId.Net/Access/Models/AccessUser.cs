@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using ControlId.Internal;
 
 namespace ControlId.Access;
 
@@ -26,8 +27,12 @@ public sealed class AccessUser
     [JsonPropertyName("salt")]
     public string? Salt { get; set; }
 
-    /// <summary>0 = usuário comum, 1 = visitante.</summary>
-    [JsonPropertyName("user_type_id")]
+    /// <summary>
+    /// Tipo do usuário, uma chave da tabela <c>user_types</c> (no iDFace, 1 = visitante); <c>null</c> = usuário comum.
+    /// O equipamento devolve 0 quando o campo está vazio, mas recusa gravar 0 (chave estrangeira); por isso 0 é lido como
+    /// <c>null</c>, e um usuário lido pode ser regravado sem erro.
+    /// </summary>
+    [JsonPropertyName("user_type_id"), JsonConverter(typeof(ZeroAsNullConverter))]
     public int? UserTypeId { get; set; }
 
     /// <summary>Início da validade (Unix timestamp; 0 = sem limite).</summary>

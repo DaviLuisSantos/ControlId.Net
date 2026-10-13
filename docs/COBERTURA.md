@@ -243,6 +243,38 @@ em exemplos, sem descrição, ficam como `string`.
 | Configuração | Módulos de Energia, RS485, RFID, HID e OSDP sem nome | Nome inferido do título e marcado nas classes |
 | `session_is_valid` (servidor) | Resposta não documentada | `{"session_is_valid": true}` |
 
+## Observado num iDFace real (firmware 6.9.12)
+
+Testado em 2026-10-13 com o pacote chamando o equipamento e com o `ControlId.Net.AspNetCore` recebendo Monitor, Push e
+modo online. As correções que isso gerou estão no CHANGELOG.
+
+| Assunto | Comportamento |
+| --- | --- |
+| `get_configuration` | Um parâmetro inexistente no modelo faz a leitura inteira falhar; o cliente o retira e repete |
+| `set_configuration` | Não é atômico: aplica os parâmetros anteriores ao inexistente e depois recusa |
+| `remote_user_authorization` | Exige `user_id`, `portal_id`, `user_name`, `user_image` e `actions` |
+| `face_template_extract` | A resposta não traz `success` |
+| `sec_boxs` | `enabled` e `door_sensor_*` só aceitam 0/1 |
+| `users.user_type_id` | Vem 0 quando nulo, mas gravar 0 viola a chave estrangeira |
+| `holidays` | `start`/`end` em 32 bits: datas até 19/01/2038 |
+| `set_audio_access_message` | Só WAV |
+| Push em lote (`transactions`) | Não aceito: "Invalid member 'endpoint'" |
+| `export_audit_logs` | Exportações seguidas (~4,6 MB) precederam reinícios do equipamento com pouca memória livre |
+| Logotipo | Os slots de 1 a 8 são independentes |
+
+Não existem neste modelo e firmware (respondem "Invalid command" ou "Invalid table"):
+
+- Endpoints: `door_state`, `remote_led_control`, `create_or_modify_objects`, `face_template_extract_list`,
+  `face_template_enroll`, `face_template_destroy`, `template_sync_init`, `template_sync_end`, `is_valid_biometry`,
+  `connection_test`, `ping_test`, `nslookup_test`, `set_network_interlock`, `send_video`, `set_custom_video`,
+  `remove_custom_video`, `set_osdp_installation_mode`, `upgrade_*_face_templates` acima de 10 mil e `idflex_upgrade_enterprise`.
+- Objetos: `uhf_tags`, `access_events`, `timed_alarms`, `scheduled_unlocks`, `network_interlocking_rules`.
+- Seções de configuração inteiras: `barras`, `bio_id`, `card_reader1`, `catra`, `energy`, `enroller`, `gpio`, `hid`, `ntp`,
+  `opening_times`, `osdp`, `sec_box`, `sec_boxs`, `snmp_agent`, `video_player`, `video_stream`, `w_out0`.
+
+Não testados no equipamento: reset de fábrica, `delete_admins`, rede, SSL, VPN, 802.1X e `reboot_recovery` (destrutivos),
+e os eventos de identificação e o cadastro remoto concluído (precisam de alguém no equipamento).
+
 ## A validar em equipamento real
 
 - Os nomes de módulo inferidos (Energia, RS485, RFID, HID, OSDP) e os tipos dos parâmetros sem descrição.

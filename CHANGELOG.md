@@ -14,8 +14,13 @@ Correções encontradas testando num iDFace real (firmware 6.9.12).
 - `ConfigureOnlineModeAsync` falhava fora das IHMs (o iDFace não tem `general.ihm_enterprise_mode`, e o `set_configuration` era recusado depois de aplicar parte dos valores). `ihm_enterprise_mode` só é enviado com `OnlineModeConfiguration.IsIhm`.
 - `CreateHolidayAsync` lança `ArgumentOutOfRangeException` para datas depois de 19/01/2038, que o equipamento recusa (guarda os segundos em 32 bits).
 
+- `AccessUser.UserTypeId` lê 0 como `null`: o equipamento devolve 0 quando o campo está vazio, mas recusa gravar 0 (chave estrangeira para `user_types`), então regravar um usuário lido falhava.
+
 ### Changed
 - `PushServerSettings.PushRemoteAddress` passa de `int?` para `string?` (o valor é `ip:porta`; antes a leitura sempre dava `null`).
+
+### Documentation
+- Comportamentos observados no iDFace 6.9.12 em [docs/COBERTURA.md](docs/COBERTURA.md): `set_configuration` não atômico, áudio de acesso só em WAV, Push em lote não aceito, reinícios depois de exportar o log de auditoria e a lista do que o modelo não tem.
 
 ## [0.3.0-alpha.1] - 2026-10-12
 

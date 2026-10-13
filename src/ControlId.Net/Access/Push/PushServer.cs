@@ -43,6 +43,10 @@ public sealed class PushServer
     /// <summary>
     /// Envia vários comandos numa única consulta do equipamento (objeto <c>transactions</c>) e devolve um resultado
     /// por comando, na mesma ordem. Falhas de um comando não impedem os demais: confira <see cref="PushResult.Success"/>.
+    /// <para>
+    /// Nem todo firmware aceita lotes: o iDFace 6.9.12 trata o corpo como um comando só e responde
+    /// "Invalid member 'endpoint'", que chega como erro em todos os resultados. Nesse caso, envie um a um com <see cref="SendAsync"/>.
+    /// </para>
     /// </summary>
     public Task<IReadOnlyList<PushResult>> SendBatchAsync(long deviceId, IEnumerable<PushCommand> commands, CancellationToken cancellationToken = default)
     {
