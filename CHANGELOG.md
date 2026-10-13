@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+## [0.4.2-alpha.1] - 2026-10-13
+
+Documentação do cadastro remoto assíncrono testado num iDFace real. Sem mudanças de código.
+
 ### Documentation
 - `StartRemoteEnrollAsync` no iDFace 6.9.12: com `Save = false` a tela de cadastro não abre; com `Save = true` a face é gravada, mas o resultado não chega pelo Monitor (`RemoteEnrollNotification`). Anotado no método, no README e em [docs/COBERTURA.md](docs/COBERTURA.md).
 
@@ -113,7 +117,8 @@ Cobertura completa da documentação pública da API de acesso (veja [docs/COBER
 - `RepClient.GetAfdFileFromNsrAsync`/`GetAfdFileFromDateAsync`/`GetAfdFileAsync` devolvem o AFD interpretado.
 - `RepClient` (REP iDClass): about, informações do sistema, data/hora, usuários (PIS/CPF) e download de AFD (incluindo modo Portaria 671).
 
-[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.1-alpha.1...HEAD
+[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.2-alpha.1...HEAD
+[0.4.2-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.1-alpha.1...v0.4.2-alpha.1
 [0.4.1-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.0-alpha.1...v0.4.1-alpha.1
 [0.4.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.3.0-alpha.1...v0.4.0-alpha.1
 [0.3.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.2.0-alpha.1...v0.3.0-alpha.1
