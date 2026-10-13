@@ -261,6 +261,9 @@ modo online. As correções que isso gerou estão no CHANGELOG.
 | Push em lote (`transactions`) | Não aceito: "Invalid member 'endpoint'" |
 | `export_audit_logs` | Exportações seguidas (~4,6 MB) precederam reinícios do equipamento com pouca memória livre |
 | Logotipo | Os slots de 1 a 8 são independentes |
+| Monitor (`dao`) | Números vêm como texto, e vazios como `""` (`user_id` de rosto não identificado, `confidence` de cartão) |
+| `remote_enroll` | Face e cartão síncronos funcionam; PIN responde `UNKNOWN` em segundos; a face assíncrona com `save: false` não abriu a tela de cadastro (a confirmar) |
+| Modo online | `new_user_identified` e `device_is_alive` chegam ao servidor e a resposta libera o acesso |
 
 Não existem neste modelo e firmware (respondem "Invalid command" ou "Invalid table"):
 
@@ -272,8 +275,7 @@ Não existem neste modelo e firmware (respondem "Invalid command" ou "Invalid ta
 - Seções de configuração inteiras: `barras`, `bio_id`, `card_reader1`, `catra`, `energy`, `enroller`, `gpio`, `hid`, `ntp`,
   `opening_times`, `osdp`, `sec_box`, `sec_boxs`, `snmp_agent`, `video_player`, `video_stream`, `w_out0`.
 
-Não testados no equipamento: reset de fábrica, `delete_admins`, rede, SSL, VPN, 802.1X e `reboot_recovery` (destrutivos),
-e os eventos de identificação e o cadastro remoto concluído (precisam de alguém no equipamento).
+Não testados no equipamento: reset de fábrica, `delete_admins`, rede, SSL, VPN, 802.1X e `reboot_recovery` (destrutivos).
 
 ## A validar em equipamento real
 
