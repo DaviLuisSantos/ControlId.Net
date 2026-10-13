@@ -120,9 +120,18 @@ public sealed class FaceImageResult
     [JsonPropertyName("id")]
     public long? Id { get; set; }
 
-    /// <summary>A operação deu certo.</summary>
+    private bool? _success;
+
+    /// <summary>
+    /// A operação deu certo. Quando o equipamento não manda <c>success</c> (o iDFace não manda em
+    /// <c>face_template_extract</c>), vale a ausência de erros.
+    /// </summary>
     [JsonPropertyName("success")]
-    public bool Success { get; set; }
+    public bool Success
+    {
+        get => _success ?? (Errors is null || Errors.Count == 0);
+        set => _success = value;
+    }
 
     /// <summary>Notas de enquadramento e qualidade.</summary>
     [JsonPropertyName("scores")]

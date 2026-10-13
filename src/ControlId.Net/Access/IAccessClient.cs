@@ -283,7 +283,10 @@ public interface IAccessClient : IControlIdClient
     /// <summary>Lista os feriados.</summary>
     Task<IReadOnlyList<AccessHoliday>> GetHolidaysAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Cria um feriado e devolve o ID gerado. Veja <see cref="AccessHoliday.FullDay"/>.</summary>
+    /// <summary>
+    /// Cria um feriado e devolve o ID gerado. Veja <see cref="AccessHoliday.FullDay"/>. O equipamento guarda as datas
+    /// em 32 bits: depois de 19/01/2038 a chamada lança <see cref="ArgumentOutOfRangeException"/>.
+    /// </summary>
     Task<long> CreateHolidayAsync(AccessHoliday holiday, CancellationToken cancellationToken = default);
 
     /// <summary>Remove um feriado pelo ID.</summary>
@@ -564,6 +567,10 @@ public interface IAccessClient : IControlIdClient
     /// <summary>
     /// <c>get_configuration.fcgi</c>: lê vários parâmetros de várias seções, ex.:
     /// <c>{ ["general"] = new[] { "beep_enabled", "relay1_timeout" } }</c>. Devolve seção → campo → valor.
+    /// <para>
+    /// O firmware recusa a leitura inteira quando um parâmetro não existe no modelo; este método tira o parâmetro e
+    /// repete, então os campos inexistentes só ficam fora do resultado. O cliente lembra deles e não os pede de novo.
+    /// </para>
     /// </summary>
     Task<IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>> GetConfigurationAsync(
         IReadOnlyDictionary<string, IEnumerable<string>> fields, CancellationToken cancellationToken = default);
@@ -576,7 +583,7 @@ public interface IAccessClient : IControlIdClient
 
     /// <summary>
     /// Lê uma seção de configuração tipada inteira, ex.: <c>GetConfigurationSectionAsync&lt;GeneralSettings&gt;()</c>.
-    /// Parâmetros que o equipamento não devolver ficam <c>null</c>.
+    /// Parâmetros que o equipamento não devolver (ou que não existem no modelo) ficam <c>null</c>.
     /// </summary>
     Task<T> GetConfigurationSectionAsync<T>(CancellationToken cancellationToken = default)
         where T : Configuration.ConfigurationSection, new();
@@ -611,6 +618,9 @@ public interface IAccessClient : IControlIdClient
 
     /// <summary>
     /// <c>remote_user_authorization.fcgi</c>: autoriza (ou nega) um acesso em tempo real, mostrando nome e foto no display.
+    /// O firmware exige <c>user_id</c>, <c>portal_id</c>, <c>user_name</c>, <c>user_image</c> e <c>actions</c>; os que não
+    /// forem informados (ex.: em <see cref="OnlineAuthorization.NotIdentified"/>) vão como 0, portal 1, vazio, <c>false</c>
+    /// e lista vazia.
     /// </summary>
     Task AuthorizeRemotelyAsync(OnlineAuthorization authorization, CancellationToken cancellationToken = default);
 

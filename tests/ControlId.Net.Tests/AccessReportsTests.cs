@@ -93,7 +93,7 @@ public class AccessReportsTests
     }
 
     [Fact]
-    public async Task SecBox_reads_0_1_and_writes_documented_types()
+    public async Task SecBox_reads_and_writes_flags_as_0_1()
     {
         var device = LoggedDevice()
             .OnJson("load_objects.fcgi", """{"sec_boxs":[{"id":65793,"version":2,"name":"MAE","enabled":1,"relay_timeout":3000,"door_sensor_enabled":0,"door_sensor_idle":1,"auto_close_enabled":0}]}""")
@@ -108,9 +108,9 @@ public class AccessReportsTests
         box.AutoCloseEnabled = true;
         await client.UpdateSecBoxAsync(box);
 
-        // bool documentado como bool; auto_close_enabled documentado como int (0/1).
+        // A documentação declara enabled e door_sensor_* como bool, mas o iDFace recusa: "integer expected".
         Assert.Equal(
-            """{"object":"sec_boxs","values":{"id":65793,"version":2,"name":"MAE","enabled":true,"relay_timeout":5000,"door_sensor_enabled":false,"door_sensor_idle":true,"auto_close_enabled":1},"where":{"sec_boxs":{"id":65793}}}""",
+            """{"object":"sec_boxs","values":{"id":65793,"version":2,"name":"MAE","enabled":1,"relay_timeout":5000,"door_sensor_enabled":0,"door_sensor_idle":1,"auto_close_enabled":1},"where":{"sec_boxs":{"id":65793}}}""",
             device.RequestsTo("modify_objects.fcgi").Single().Body);
     }
 

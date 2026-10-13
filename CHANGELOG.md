@@ -4,6 +4,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+Correções encontradas testando num iDFace real (firmware 6.9.12).
+
+### Fixed
+- `GetConfigurationSectionAsync<T>` e `GetConfigurationAsync` falhavam na seção inteira quando o modelo não tinha um dos parâmetros (o firmware recusa a leitura toda: no iDFace, 25 das 34 seções, entre elas `general` e `monitor`). Agora o parâmetro apontado no erro sai da lista, a leitura é repetida e ele fica `null`/fora do resultado; o cliente lembra dos parâmetros inexistentes e não os pede de novo.
+- `UpdateSecBoxAsync` era recusado ("integer expected"): `enabled`, `door_sensor_enabled` e `door_sensor_idle` passam a ser enviados como 0/1.
+- `ExtractFaceTemplateAsync` devolvia `Success = false` mesmo extraindo o template, porque o iDFace não manda `success` nessa resposta. Sem o campo, `FaceImageResult.Success` agora vale a ausência de erros.
+- `AuthorizeRemotelyAsync` era recusado sem usuário (ex.: `OnlineAuthorization.NotIdentified()`): o firmware exige `user_id`, `portal_id`, `user_name`, `user_image` e `actions`. Os que faltarem vão como 0, portal 1, vazio, `false` e lista vazia, sem alterar o objeto recebido.
+- `ConfigureOnlineModeAsync` falhava fora das IHMs (o iDFace não tem `general.ihm_enterprise_mode`, e o `set_configuration` era recusado depois de aplicar parte dos valores). `ihm_enterprise_mode` só é enviado com `OnlineModeConfiguration.IsIhm`.
+- `CreateHolidayAsync` lança `ArgumentOutOfRangeException` para datas depois de 19/01/2038, que o equipamento recusa (guarda os segundos em 32 bits).
+
+### Changed
+- `PushServerSettings.PushRemoteAddress` passa de `int?` para `string?` (o valor é `ip:porta`; antes a leitura sempre dava `null`).
+
 ## [0.3.0-alpha.1] - 2026-10-12
 
 Bases grandes e vários equipamentos: limite de requisições por equipamento, leitura paginada e operações em lote.
