@@ -265,6 +265,7 @@ modo online. As correções que isso gerou estão no CHANGELOG.
 | `remote_enroll` | Face e cartão síncronos funcionam, e o próprio equipamento desiste em ~60 s (`TIMEOUT`); PIN responde `UNKNOWN` em segundos |
 | `remote_enroll` assíncrono | Com `save: false` a tela de cadastro não abre; com `save: true` a face é gravada, mas nenhuma notificação chega pelo Monitor |
 | Modo online | `new_user_identified` e `device_is_alive` chegam ao servidor e a resposta libera o acesso |
+| Requisições simultâneas | Atendidas uma por vez (~100 ms cada): o tempo de 32 chamadas é o mesmo com 1, 4 ou 8 simultâneas. `MaxConcurrentRequests` é respeitado, chamadas simultâneas num cliente novo fazem um único login, e a sessão expirada é refeita uma vez só |
 
 Não existem neste modelo e firmware (respondem "Invalid command" ou "Invalid table"):
 
