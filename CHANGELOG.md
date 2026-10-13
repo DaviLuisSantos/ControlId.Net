@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+## [0.3.0-alpha.1] - 2026-10-12
+
+Bases grandes e vários equipamentos: limite de requisições por equipamento, leitura paginada e operações em lote.
+
 ### Added
 - `ControlIdDeviceOptions.MaxConcurrentRequests` (e em `ControlIdRepOptions`): limite de requisições simultâneas por equipamento, padrão 4, login incluído. As chamadas além do limite esperam a vez. O limite de conexões do `HttpClientHandler` criado pelo pacote (e pelo pacote de DI) acompanha o valor, então o comportamento é o mesmo no .NET Framework e no .NET Core.
 - Leitura paginada com `IAsyncEnumerable`: `EnumerateUsersAsync` e `EnumerateAccessLogsAsync` (páginas por ID, estáveis com inserções e remoções durante a leitura), `EnumerateObjectsAsync<T>` (modelos tipados, ordenados pela chave) e `EnumerateObjectsAsync<T>(LoadObjectsRequest)` (qualquer objeto, por `limit`/`offset`). Página padrão de 500 registros (`AccessClient.DefaultPageSize`); a próxima página só é buscada quando a anterior é consumida.
@@ -77,7 +81,8 @@ Cobertura completa da documentação pública da API de acesso (veja [docs/COBER
 - `RepClient.GetAfdFileFromNsrAsync`/`GetAfdFileFromDateAsync`/`GetAfdFileAsync` devolvem o AFD interpretado.
 - `RepClient` (REP iDClass): about, informações do sistema, data/hora, usuários (PIS/CPF) e download de AFD (incluindo modo Portaria 671).
 
-[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.2.0-alpha.1...HEAD
+[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.3.0-alpha.1...HEAD
+[0.3.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.2.0-alpha.1...v0.3.0-alpha.1
 [0.2.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.1.0-alpha.2...v0.2.0-alpha.1
 [0.1.0-alpha.2]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.1.0-alpha.1...v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/releases/tag/v0.1.0-alpha.1
