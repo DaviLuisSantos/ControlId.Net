@@ -125,7 +125,7 @@ if (!resultado.Success)
 ```
 
 - A espera síncrona é limitada pelo `Timeout` do cliente (30 s por padrão). Se ele estourar ou o `CancellationToken` for cancelado, o cadastro é cancelado no equipamento (`cancel_remote_enroll`), para ele não ficar preso na tela de cadastro.
-- Para esperas longas, use `StartRemoteEnrollAsync(...)`: a chamada volta na hora e o resultado chega pelo Monitor como `RemoteEnrollNotification` (com `EnrollType` e o mesmo `RemoteEnrollResult`).
+- Para esperas longas, use `StartRemoteEnrollAsync(...)`: a chamada volta na hora e o resultado chega pelo Monitor como `RemoteEnrollNotification` (com `EnrollType` e o mesmo `RemoteEnrollResult`). No iDFace 6.9.12 isso não acontece: com `Save = false` a tela de cadastro não abre, e com `Save = true` a face é gravada sem notificação; confira lendo o usuário ou use o cadastro síncrono.
 - Com o equipamento em **modo online**, o resultado assíncrono não vai pelo Monitor: chega em `card_create`, `face_create`, `fingerprint_create`, `template_create`, `pin_create` ou `password_create`, que o `MapControlIdOnline` entrega em `IOnlineAccessHandler.OnRemoteEnrollAsync`. Nesse caso a foto da face vem em `Result.Face`.
 - Via Push: `PushCommand.RemoteEnroll(request)` e `result.ResponseAs<RemoteEnrollResult>()`.
 - Falhas do cadastro (timeout da pessoa, face repetida) vêm em `Error`, sem exceção; use `EnsureSuccess()` se preferir exceção.
