@@ -15,7 +15,6 @@ Correções encontradas testando num iDFace real (firmware 6.9.12).
 - `AuthorizeRemotelyAsync` era recusado sem usuário (ex.: `OnlineAuthorization.NotIdentified()`): o firmware exige `user_id`, `portal_id`, `user_name`, `user_image` e `actions`. Os que faltarem vão como 0, portal 1, vazio, `false` e lista vazia, sem alterar o objeto recebido.
 - `ConfigureOnlineModeAsync` falhava fora das IHMs (o iDFace não tem `general.ihm_enterprise_mode`, e o `set_configuration` era recusado depois de aplicar parte dos valores). `ihm_enterprise_mode` só é enviado com `OnlineModeConfiguration.IsIhm`.
 - `CreateHolidayAsync` lança `ArgumentOutOfRangeException` para datas depois de 19/01/2038, que o equipamento recusa (guarda os segundos em 32 bits).
-
 - `AccessUser.UserTypeId` lê 0 como `null`: o equipamento devolve 0 quando o campo está vazio, mas recusa gravar 0 (chave estrangeira para `user_types`), então regravar um usuário lido falhava.
 
 ### Changed
