@@ -487,6 +487,9 @@ Cada cliente limita as requisições simultâneas ao seu equipamento (`MaxConcur
 Dá para disparar quantas chamadas quiser em paralelo: as que passarem do limite esperam a vez, sem sobrecarregar o
 equipamento. Cada equipamento tem o próprio limite, então vários equipamentos rodam em paralelo entre si.
 
+O limite protege o equipamento, mas não o deixa mais rápido: um iDFace atende uma requisição por vez (cerca de 100 ms
+cada), e 32 chamadas levaram ~3,4 s com 1, 4 ou 8 simultâneas. Paralelizar compensa entre equipamentos diferentes.
+
 ```csharp
 var device = new AccessClient(new ControlIdDeviceOptions
 {
@@ -560,6 +563,8 @@ var afds = await equipamentos.RunOnRepDevicesAsync((r, ct) => r.GetAfdFileAsync(
 - Erros ao obter o cliente (ex.: equipamento registrado sem `BaseAddress`) também ficam só no resultado daquele equipamento.
 - Cancelar o token lança `OperationCanceledException` em vez de devolver resultados parciais.
 - `maxParallelism` limita quantos equipamentos são atendidos ao mesmo tempo; dentro de cada um continua valendo o `MaxConcurrentRequests`.
+- O tempo total é o do equipamento mais lento, não a soma: com um iDFace respondendo em 0,2 s e dois endereços fora do ar
+  (timeout de 4 s), a chamada levou 4 s em paralelo e 8,5 s com `maxParallelism: 1`.
 
 ## Erros
 

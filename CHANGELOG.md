@@ -4,6 +4,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+### Documentation
+- Paralelismo testado num iDFace real: `MaxConcurrentRequests` é respeitado, mas o equipamento atende uma requisição por vez, então o ganho está entre equipamentos (`ControlIdDevices.RunAsync`), não dentro de um. Anotado em `MaxConcurrentRequests`, no README e em [docs/COBERTURA.md](docs/COBERTURA.md).
+
 ## [0.4.2-alpha.1] - 2026-10-13
 
 Documentação do cadastro remoto assíncrono testado num iDFace real. Sem mudanças de código.
