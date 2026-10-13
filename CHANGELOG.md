@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+## [0.4.1-alpha.1] - 2026-10-13
+
+Correção do Monitor encontrada com uma pessoa no iDFace (cadastro e identificação reais).
+
 ### Fixed
 - `DaoNotification.GetInsertedAccessLogs()` e `ObjectChange.ValuesAs<T>()` lançavam exceção com os eventos mais comuns: pelo Monitor, o iDFace manda `user_id: ""` em rosto não identificado e `confidence: ""` em cartão negado. A leitura do Monitor passa a tratar `""` em campo numérico como vazio (`null`); antes, um servidor como o de exemplo respondia 500 e a notificação se perdia.
 
@@ -106,7 +110,8 @@ Cobertura completa da documentação pública da API de acesso (veja [docs/COBER
 - `RepClient.GetAfdFileFromNsrAsync`/`GetAfdFileFromDateAsync`/`GetAfdFileAsync` devolvem o AFD interpretado.
 - `RepClient` (REP iDClass): about, informações do sistema, data/hora, usuários (PIS/CPF) e download de AFD (incluindo modo Portaria 671).
 
-[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.0-alpha.1...HEAD
+[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.1-alpha.1...HEAD
+[0.4.1-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.0-alpha.1...v0.4.1-alpha.1
 [0.4.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.3.0-alpha.1...v0.4.0-alpha.1
 [0.3.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.2.0-alpha.1...v0.3.0-alpha.1
 [0.2.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.1.0-alpha.2...v0.2.0-alpha.1
