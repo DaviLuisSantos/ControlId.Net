@@ -27,7 +27,7 @@ public sealed class OnlineModeConfiguration
     /// <summary>Pro (padrão) ou Enterprise.</summary>
     public OnlineMode Mode { get; set; } = OnlineMode.Pro;
 
-    /// <summary>Equipamento é uma IHM (exige <c>ihm_enterprise_mode</c> no Enterprise).</summary>
+    /// <summary>Equipamento é uma IHM: grava também <c>ihm_enterprise_mode</c>, que só existe nela.</summary>
     public bool IsIhm { get; set; }
 
     /// <summary>Enterprise com biometria: <c>true</c> envia template (<c>new_biometric_template</c>), <c>false</c> a imagem.</summary>

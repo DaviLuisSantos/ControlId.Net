@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -6,6 +7,7 @@ using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using ControlId.Access.Monitoring;
@@ -24,8 +26,16 @@ public sealed class AccessClient : IAccessClient
     private const int MaxImageBytes = 1024 * 1024;
     private static readonly TimeSpan MaxBuzz = TimeSpan.FromSeconds(3);
 
+    // "Node or attribute not found. Node path: config->general->param[name=x]" ou "...->modules->module[name=monitor]->param[name=x]"
+    private static readonly Regex MissingConfigFieldError = new(
+        @"Node or attribute not found\. Node path: config->(?:modules->module\[name=(?<section>[^\]]+)\]|(?<section>[^-]+))->param\[name=(?<field>[^\]]+)\]",
+        RegexOptions.CultureInvariant);
+
     private readonly ControlIdTransport _transport;
     private readonly Uri _baseAddress;
+
+    // Parâmetros ("seção.campo") que o firmware deste equipamento não tem, para não pedi-los de novo.
+    private readonly ConcurrentDictionary<string, byte> _missingConfigFields = new(StringComparer.Ordinal);
 
     /// <summary>Cria o cliente. Se <paramref name="httpClient"/> for informado (ex.: via IHttpClientFactory), ele não é descartado por este cliente.</summary>
     public AccessClient(ControlIdDeviceOptions options, HttpClient? httpClient = null)
@@ -510,8 +520,22 @@ public sealed class AccessClient : IAccessClient
         LoadObjectsAsync<AccessHoliday>(new LoadObjectsRequest("holidays"), cancellationToken);
 
     /// <inheritdoc/>
-    public Task<long> CreateHolidayAsync(AccessHoliday holiday, CancellationToken cancellationToken = default) =>
-        CreateOneAsync("holidays", holiday, cancellationToken);
+    public Task<long> CreateHolidayAsync(AccessHoliday holiday, CancellationToken cancellationToken = default)
+    {
+        if (holiday is null)
+        {
+            throw new ArgumentNullException(nameof(holiday));
+        }
+
+        // start e end são inteiros de 32 bits no equipamento: datas depois de 19/01/2038 são recusadas.
+        if (holiday.Start is < int.MinValue or > int.MaxValue || holiday.End is < int.MinValue or > int.MaxValue)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(holiday), "O equipamento guarda o feriado em segundos de 32 bits: use datas até 19/01/2038.");
+        }
+
+        return CreateOneAsync("holidays", holiday, cancellationToken);
+    }
 
     /// <inheritdoc/>
     public Task<bool> DeleteHolidayAsync(long holidayId, CancellationToken cancellationToken = default) =>
@@ -1053,8 +1077,42 @@ public sealed class AccessClient : IAccessClient
             throw new ArgumentNullException(nameof(fields));
         }
 
-        var body = fields.ToDictionary(section => section.Key, section => section.Value.ToList());
-        var response = await _transport.PostAsync<Dictionary<string, Dictionary<string, JsonElement>>>("get_configuration.fcgi", body, cancellationToken).ConfigureAwait(false);
+        // O firmware recusa a requisição inteira se um único parâmetro não existir nele (o iDFace não tem
+        // general.catra_timeout, por exemplo). O erro diz qual é: ele sai da lista e a leitura é repetida.
+        var body = new Dictionary<string, List<string>>();
+        foreach (var section in fields)
+        {
+            var requested = (section.Value ?? throw new ArgumentException($"Campos nulos na seção '{section.Key}'.", nameof(fields))).Distinct().ToList();
+            var known = requested.Where(field => !_missingConfigFields.ContainsKey(section.Key + "." + field)).ToList();
+            if (known.Count > 0 || requested.Count == 0)
+            {
+                body[section.Key] = known;
+            }
+        }
+
+        Dictionary<string, Dictionary<string, JsonElement>> response;
+        while (true)
+        {
+            if (body.Count == 0)
+            {
+                return new Dictionary<string, IReadOnlyDictionary<string, string>>();
+            }
+
+            try
+            {
+                response = await _transport.PostAsync<Dictionary<string, Dictionary<string, JsonElement>>>("get_configuration.fcgi", body, cancellationToken).ConfigureAwait(false);
+                break;
+            }
+            catch (ControlIdException ex) when (FindMissingConfigField(ex, body) is { } missing)
+            {
+                _missingConfigFields.TryAdd(missing.Section + "." + missing.Field, 0);
+                body[missing.Section].Remove(missing.Field);
+                if (body[missing.Section].Count == 0)
+                {
+                    body.Remove(missing.Section);
+                }
+            }
+        }
 
         return response.ToDictionary(
             section => section.Key,
@@ -1171,18 +1229,20 @@ public sealed class AccessClient : IAccessClient
         }
 
         var enterprise = configuration.Mode == OnlineMode.Enterprise;
+        var general = new Dictionary<string, string>
+        {
+            ["online"] = "1",
+            ["local_identification"] = enterprise ? "0" : "1",
+        };
+
+        // Só a IHM tem ihm_enterprise_mode: o iDFace, por exemplo, recusa o set_configuration inteiro se ele vier.
+        if (configuration.IsIhm)
+        {
+            general["ihm_enterprise_mode"] = enterprise ? "1" : "0";
+        }
+
         await SetConfigurationAsync(
-            new Dictionary<string, object>
-            {
-                ["online_client"] = onlineClient,
-                ["general"] = new Dictionary<string, string>
-                {
-                    ["online"] = "1",
-                    ["local_identification"] = enterprise ? "0" : "1",
-                    ["ihm_enterprise_mode"] = enterprise && configuration.IsIhm ? "1" : "0",
-                },
-            },
-            cancellationToken).ConfigureAwait(false);
+            new Dictionary<string, object> { ["online_client"] = onlineClient, ["general"] = general }, cancellationToken).ConfigureAwait(false);
 
         return serverId;
     }
@@ -1193,9 +1253,32 @@ public sealed class AccessClient : IAccessClient
             new Dictionary<string, object> { ["general"] = new Dictionary<string, string> { ["online"] = "0" } }, cancellationToken);
 
     /// <inheritdoc/>
-    public Task AuthorizeRemotelyAsync(OnlineAuthorization authorization, CancellationToken cancellationToken = default) =>
-        _transport.PostRawAsync(
-            "remote_user_authorization.fcgi", authorization ?? throw new ArgumentNullException(nameof(authorization)), cancellationToken);
+    public Task AuthorizeRemotelyAsync(OnlineAuthorization authorization, CancellationToken cancellationToken = default)
+    {
+        if (authorization is null)
+        {
+            throw new ArgumentNullException(nameof(authorization));
+        }
+
+        // O firmware exige user_id, portal_id, user_name, user_image e actions, mesmo sem usuário (não identificado).
+        // Os que faltarem vão vazios, numa cópia: o objeto recebido não muda.
+        var body = authorization.UserId is null || authorization.PortalId is null || authorization.UserName is null
+            || authorization.UserImage is null || authorization.Actions is null
+            ? new OnlineAuthorization
+            {
+                Event = authorization.Event,
+                UserId = authorization.UserId ?? 0,
+                UserName = authorization.UserName ?? string.Empty,
+                UserImage = authorization.UserImage ?? false,
+                UserImageHash = authorization.UserImageHash,
+                PortalId = authorization.PortalId ?? 1,
+                Actions = authorization.Actions ?? new List<DeviceAction>(),
+                Duress = authorization.Duress,
+                Message = authorization.Message,
+            }
+            : authorization;
+        return _transport.PostRawAsync("remote_user_authorization.fcgi", body, cancellationToken);
+    }
 
     /// <inheritdoc/>
     public Task SetSystemTimeAsync(DateTime localTime, CancellationToken cancellationToken = default) =>
@@ -1501,6 +1584,19 @@ public sealed class AccessClient : IAccessClient
         {
             throw new ArgumentException("O equipamento só aceita imagens menores que 1 MB.", paramName);
         }
+    }
+
+    private static (string Section, string Field)? FindMissingConfigField(ControlIdException exception, Dictionary<string, List<string>> body)
+    {
+        var match = MissingConfigFieldError.Match(exception.ResponseBody ?? exception.Message);
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        var section = match.Groups["section"].Value;
+        var field = match.Groups["field"].Value;
+        return body.TryGetValue(section, out var requested) && requested.Contains(field) ? (section, field) : null;
     }
 
     // Equipamentos sem reconhecimento facial não devolvem nada ao gravar foto: isso conta como sucesso.

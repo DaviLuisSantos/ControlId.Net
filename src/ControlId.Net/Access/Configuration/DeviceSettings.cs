@@ -1107,7 +1107,7 @@ public sealed class PushServerSettings : ConfigurationSection
 
     /// <summary><c>push_remote_address</c>: Endereço ip e porta em que o servidor está rodando separados por ':'. Exemplo: 192.168.120.94:80</summary>
     [JsonPropertyName("push_remote_address")]
-    public int? PushRemoteAddress { get; set; }
+    public string? PushRemoteAddress { get; set; }
 
     /// <summary><c>push_request_period</c>: Período entre as requisições de push em segundos.</summary>
     [JsonPropertyName("push_request_period")]

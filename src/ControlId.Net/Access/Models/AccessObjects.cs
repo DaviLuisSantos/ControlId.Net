@@ -172,7 +172,7 @@ public sealed class SecBox
     public string? Name { get; set; }
 
     /// <summary>Habilitada.</summary>
-    [JsonPropertyName("enabled"), JsonConverter(typeof(LenientBooleanConverter))]
+    [JsonPropertyName("enabled"), JsonConverter(typeof(IntBooleanConverter))]
     public bool Enabled { get; set; }
 
     /// <summary>Tempo de abertura do relé.</summary>
@@ -180,11 +180,11 @@ public sealed class SecBox
     public int RelayTimeoutMilliseconds { get; set; }
 
     /// <summary>Sensor de porta habilitado.</summary>
-    [JsonPropertyName("door_sensor_enabled"), JsonConverter(typeof(LenientBooleanConverter))]
+    [JsonPropertyName("door_sensor_enabled"), JsonConverter(typeof(IntBooleanConverter))]
     public bool DoorSensorEnabled { get; set; }
 
     /// <summary>Sensor de porta NA (<c>true</c>) ou NF (<c>false</c>).</summary>
-    [JsonPropertyName("door_sensor_idle"), JsonConverter(typeof(LenientBooleanConverter))]
+    [JsonPropertyName("door_sensor_idle"), JsonConverter(typeof(IntBooleanConverter))]
     public bool DoorSensorNormallyOpen { get; set; }
 
     /// <summary>Fecha o relé quando o sensor de porta abre.</summary>

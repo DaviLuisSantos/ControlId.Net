@@ -128,7 +128,7 @@ public class OnlineModeTests
             """{"object":"devices","values":[{"name":"Meu servidor 1","ip":"http://meuservidor.com.br/api","public_key":""}]}""",
             device.RequestsTo("create_objects.fcgi").Single().Body);
         Assert.Equal(
-            """{"online_client":{"server_id":"473359","extract_template":"0","max_request_attempts":"3","request_timeout":"3000"},"general":{"online":"1","local_identification":"1","ihm_enterprise_mode":"0"}}""",
+            """{"online_client":{"server_id":"473359","extract_template":"0","max_request_attempts":"3","request_timeout":"3000"},"general":{"online":"1","local_identification":"1"}}""",
             device.RequestsTo("set_configuration.fcgi").Single().Body);
     }
 
@@ -185,7 +185,7 @@ public class OnlineModeTests
 
         Assert.Equal("""{"general":{"online":"0"}}""", device.RequestsTo("set_configuration.fcgi").Single().Body);
         Assert.Equal(
-            """{"event":7,"user_id":6,"user_name":"Brian Cox","actions":[{"action":"door","parameters":"door=1"}]}""",
+            """{"event":7,"user_id":6,"user_name":"Brian Cox","user_image":false,"portal_id":1,"actions":[{"action":"door","parameters":"door=1"}]}""",
             device.RequestsTo("remote_user_authorization.fcgi").Single().Body);
     }
 
