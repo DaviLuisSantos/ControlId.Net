@@ -4,6 +4,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+### Documentation
+- `StartRemoteEnrollAsync` no iDFace 6.9.12: com `Save = false` a tela de cadastro não abre; com `Save = true` a face é gravada, mas o resultado não chega pelo Monitor (`RemoteEnrollNotification`). Anotado no método, no README e em [docs/COBERTURA.md](docs/COBERTURA.md).
+
 ## [0.4.1-alpha.1] - 2026-10-13
 
 Correção do Monitor encontrada com uma pessoa no iDFace (cadastro e identificação reais).

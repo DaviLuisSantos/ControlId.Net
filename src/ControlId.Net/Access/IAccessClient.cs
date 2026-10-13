@@ -169,7 +169,8 @@ public interface IAccessClient : IControlIdClient
     /// <para>
     /// A espera é limitada por <see cref="ControlIdDeviceOptions.Timeout"/> (padrão 30 s). Se ela estourar ou
     /// <paramref name="cancellationToken"/> for cancelado, o cadastro é cancelado no equipamento.
-    /// Para esperas longas, prefira <see cref="StartRemoteEnrollAsync"/> com o Monitor.
+    /// Para esperas longas, prefira <see cref="StartRemoteEnrollAsync"/> com o Monitor (veja lá as limitações do iDFace).
+    /// O próprio equipamento desiste depois de cerca de 60 s e devolve <c>TIMEOUT</c>.
     /// </para>
     /// </summary>
     Task<RemoteEnrollResult> RemoteEnrollAsync(RemoteEnrollRequest request, CancellationToken cancellationToken = default);
@@ -178,6 +179,11 @@ public interface IAccessClient : IControlIdClient
     /// Inicia o cadastro remoto assíncrono e retorna em seguida. O resultado chega pelo Monitor
     /// (<c>card</c>, <c>user_image</c>, <c>face_template</c>, <c>template</c>, <c>pin</c>, <c>password</c>) como
     /// <see cref="Monitoring.RemoteEnrollNotification"/>; o Monitor precisa estar configurado.
+    /// <para>
+    /// No iDFace 6.9.12 é diferente: com <see cref="RemoteEnrollRequest.Save"/> <c>false</c> o pedido é aceito mas a tela de
+    /// cadastro não abre; com <c>true</c> a face é gravada, mas nenhuma notificação chega pelo Monitor. Confira o resultado
+    /// lendo o usuário (ex.: <see cref="GetUserIdsWithImageAsync"/>) ou use <see cref="RemoteEnrollAsync"/>, que devolve o resultado.
+    /// </para>
     /// </summary>
     Task StartRemoteEnrollAsync(RemoteEnrollRequest request, CancellationToken cancellationToken = default);
 

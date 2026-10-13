@@ -245,6 +245,7 @@ public sealed class UsbDriveEvent
 /// <summary>
 /// Resultado de um cadastro remoto assíncrono (<see cref="IAccessClient.StartRemoteEnrollAsync"/>): rotas
 /// <c>card</c>, <c>user_image</c>, <c>face_template</c>, <c>template</c>, <c>pin</c> e <c>password</c>.
+/// O iDFace 6.9.12 não envia esta notificação (veja <see cref="IAccessClient.StartRemoteEnrollAsync"/>).
 /// </summary>
 public sealed class RemoteEnrollNotification : MonitorNotification
 {

@@ -262,7 +262,8 @@ modo online. As correções que isso gerou estão no CHANGELOG.
 | `export_audit_logs` | Exportações seguidas (~4,6 MB) precederam reinícios do equipamento com pouca memória livre |
 | Logotipo | Os slots de 1 a 8 são independentes |
 | Monitor (`dao`) | Números vêm como texto, e vazios como `""` (`user_id` de rosto não identificado, `confidence` de cartão) |
-| `remote_enroll` | Face e cartão síncronos funcionam; PIN responde `UNKNOWN` em segundos; a face assíncrona com `save: false` não abriu a tela de cadastro (a confirmar) |
+| `remote_enroll` | Face e cartão síncronos funcionam, e o próprio equipamento desiste em ~60 s (`TIMEOUT`); PIN responde `UNKNOWN` em segundos |
+| `remote_enroll` assíncrono | Com `save: false` a tela de cadastro não abre; com `save: true` a face é gravada, mas nenhuma notificação chega pelo Monitor |
 | Modo online | `new_user_identified` e `device_is_alive` chegam ao servidor e a resposta libera o acesso |
 
 Não existem neste modelo e firmware (respondem "Invalid command" ou "Invalid table"):
