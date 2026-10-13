@@ -69,10 +69,13 @@ public sealed class ObjectChange
         _ => ObjectChangeType.Unknown,
     };
 
-    /// <summary>Converte <see cref="Values"/> para um modelo, ex.: <c>ValuesAs&lt;AccessLog&gt;()</c>.</summary>
+    /// <summary>
+    /// Converte <see cref="Values"/> para um modelo, ex.: <c>ValuesAs&lt;AccessLog&gt;()</c>. Campos numéricos vazios
+    /// (<c>""</c>, como o <c>user_id</c> de um rosto não identificado) viram <c>null</c>.
+    /// </summary>
     public T ValuesAs<T>() => Values.ValueKind == JsonValueKind.Undefined
-        ? ControlIdJson.Deserialize<T>("{}")
-        : ControlIdJson.Deserialize<T>(Values.GetRawText());
+        ? ControlIdJson.Deserialize<T>("{}", ControlIdJson.MonitorOptions)
+        : ControlIdJson.Deserialize<T>(Values.GetRawText(), ControlIdJson.MonitorOptions);
 }
 
 /// <summary>Valor de <see cref="ObjectChange.ChangeType"/>.</summary>

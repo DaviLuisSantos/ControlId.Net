@@ -32,20 +32,20 @@ public static class MonitorNotifications
         {
             MonitorNotification notification = name switch
             {
-                "dao" => ControlIdJson.Deserialize<DaoNotification>(json),
-                "door" => ControlIdJson.Deserialize<DoorNotification>(json),
-                "secbox" => ControlIdJson.Deserialize<SecBoxNotification>(json),
-                "catra_event" => ControlIdJson.Deserialize<TurnstileNotification>(json),
-                "operation_mode" => ControlIdJson.Deserialize<OperationModeNotification>(json),
-                "device_is_alive" => ControlIdJson.Deserialize<DeviceIsAliveNotification>(json),
-                "access_photo" => ControlIdJson.Deserialize<AccessPhotoNotification>(json),
-                "usb_drive" => ControlIdJson.Deserialize<UsbDriveNotification>(json),
+                "dao" => ControlIdJson.Deserialize<DaoNotification>(json, ControlIdJson.MonitorOptions),
+                "door" => ControlIdJson.Deserialize<DoorNotification>(json, ControlIdJson.MonitorOptions),
+                "secbox" => ControlIdJson.Deserialize<SecBoxNotification>(json, ControlIdJson.MonitorOptions),
+                "catra_event" => ControlIdJson.Deserialize<TurnstileNotification>(json, ControlIdJson.MonitorOptions),
+                "operation_mode" => ControlIdJson.Deserialize<OperationModeNotification>(json, ControlIdJson.MonitorOptions),
+                "device_is_alive" => ControlIdJson.Deserialize<DeviceIsAliveNotification>(json, ControlIdJson.MonitorOptions),
+                "access_photo" => ControlIdJson.Deserialize<AccessPhotoNotification>(json, ControlIdJson.MonitorOptions),
+                "usb_drive" => ControlIdJson.Deserialize<UsbDriveNotification>(json, ControlIdJson.MonitorOptions),
                 "card" => RemoteEnroll(json, RemoteEnrollType.Card),
                 "user_image" or "face_template" => RemoteEnroll(json, RemoteEnrollType.Face),
                 "template" => RemoteEnroll(json, RemoteEnrollType.Biometry),
                 "pin" => RemoteEnroll(json, RemoteEnrollType.Pin),
                 "password" => RemoteEnroll(json, RemoteEnrollType.Password),
-                _ => ControlIdJson.Deserialize<UnknownMonitorNotification>(json),
+                _ => ControlIdJson.Deserialize<UnknownMonitorNotification>(json, ControlIdJson.MonitorOptions),
             };
 
             using var document = JsonDocument.Parse(json);
@@ -61,7 +61,7 @@ public static class MonitorNotifications
 
     private static RemoteEnrollNotification RemoteEnroll(string json, RemoteEnrollType type)
     {
-        var notification = ControlIdJson.Deserialize<RemoteEnrollNotification>(json);
+        var notification = ControlIdJson.Deserialize<RemoteEnrollNotification>(json, ControlIdJson.MonitorOptions);
         notification.EnrollType = type;
         notification.Result = RemoteEnrollResult.Parse(json);
         return notification;

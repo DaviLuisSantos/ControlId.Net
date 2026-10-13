@@ -4,6 +4,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+### Fixed
+- `DaoNotification.GetInsertedAccessLogs()` e `ObjectChange.ValuesAs<T>()` lançavam exceção com os eventos mais comuns: pelo Monitor, o iDFace manda `user_id: ""` em rosto não identificado e `confidence: ""` em cartão negado. A leitura do Monitor passa a tratar `""` em campo numérico como vazio (`null`); antes, um servidor como o de exemplo respondia 500 e a notificação se perdia.
+
+### Documentation
+- Cadastro remoto de PIN não funciona no iDFace 6.9.12 (responde `UNKNOWN`), anotado em [docs/COBERTURA.md](docs/COBERTURA.md).
+
 ## [0.4.0-alpha.1] - 2026-10-13
 
 Correções encontradas testando num iDFace real (firmware 6.9.12).

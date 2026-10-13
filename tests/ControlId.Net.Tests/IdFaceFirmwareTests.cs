@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using ControlId.Access;
 using ControlId.Access.Configuration;
+using ControlId.Access.Monitoring;
 using ControlId.Access.Online;
 
 namespace ControlId.Tests;
@@ -178,6 +179,37 @@ public class IdFaceFirmwareTests
         Assert.Equal(
             """{"object":"users","values":{"id":2032,"name":"Vania"},"where":{"users":{"id":2032}}}""",
             device.RequestsTo("modify_objects.fcgi").Single().Body);
+    }
+
+    [Fact]
+    public void Monitor_dao_with_empty_numbers_from_unidentified_face_and_card()
+    {
+        // Rosto não identificado (user_id vazio) e cartão negado (confidence vazio), como o iDFace manda pelo Monitor.
+        const string json = """
+            {
+              "object_changes": [
+                { "object": "access_logs", "type": "inserted", "values": {
+                    "id": "91", "time": "1791900816", "event": "3", "device_id": "4408801109255795", "identifier_id": "1717658368",
+                    "user_id": "", "portal_id": "1", "identification_rule_id": "", "card_value": "", "qrcode_value": "",
+                    "pin_value": "", "confidence": "669", "mask": "0", "log_type_id": "-1" } },
+                { "object": "access_logs", "type": "inserted", "values": {
+                    "id": "90", "time": "1791900811", "event": "6", "user_id": "192180", "portal_id": "1",
+                    "card_value": "403726936091", "confidence": "", "mask": "" } }
+              ],
+              "device_id": 4408801109255795
+            }
+            """;
+
+        var dao = Assert.IsType<DaoNotification>(MonitorNotifications.Parse("dao", json));
+        var logs = dao.GetInsertedAccessLogs();
+
+        Assert.Equal(2, logs.Count);
+        Assert.Null(logs[0].UserId);
+        Assert.Equal(669, logs[0].Confidence);
+        Assert.Equal(AccessEventType.NotIdentified, logs[0].EventType);
+        Assert.Equal(192180, logs[1].UserId);
+        Assert.Null(logs[1].Confidence);
+        Assert.Equal(403726936091, logs[1].CardValue);
     }
 
     private static List<string> FieldsOf(string body, string section)
