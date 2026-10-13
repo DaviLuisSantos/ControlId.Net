@@ -161,6 +161,25 @@ public class IdFaceFirmwareTests
         Assert.Equal(1, await client.CreateHolidayAsync(AccessHoliday.FullDay("Natal", new DateTime(2030, 12, 25), TimeSpan.FromHours(-3))));
     }
 
+    [Fact]
+    public async Task User_type_zero_is_read_as_null_so_the_user_can_be_written_back()
+    {
+        var device = LoggedDevice()
+            .OnJson("load_objects.fcgi", """{"users":[{"id":2032,"name":"Vania","user_type_id":0},{"id":7,"name":"Visitante","user_type_id":1}]}""")
+            .OnJson("modify_objects.fcgi", """{"changes":1}""");
+        using var client = new AccessClient(Options, device.CreateClient());
+
+        var users = await client.GetUsersAsync();
+        Assert.Null(users[0].UserTypeId);
+        Assert.Equal(1, users[1].UserTypeId);
+
+        // Gravar user_type_id 0 viola a chave estrangeira no equipamento ("FOREIGN KEY constraint failed").
+        await client.UpdateObjectAsync(users[0]);
+        Assert.Equal(
+            """{"object":"users","values":{"id":2032,"name":"Vania"},"where":{"users":{"id":2032}}}""",
+            device.RequestsTo("modify_objects.fcgi").Single().Body);
+    }
+
     private static List<string> FieldsOf(string body, string section)
     {
         using var json = JsonDocument.Parse(body);

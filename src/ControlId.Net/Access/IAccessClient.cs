@@ -316,7 +316,13 @@ public interface IAccessClient : IControlIdClient
     /// <summary><see cref="ExportAfdAsync"/> já interpretado pelo <see cref="Rep.Afd.AfdParser"/>.</summary>
     Task<Rep.Afd.AfdFile> ExportAfdFileAsync(long? initialNsr = null, DateTime? initialDate = null, bool portaria671 = true, CancellationToken cancellationToken = default);
 
-    /// <summary><c>export_audit_logs.fcgi</c>: até os últimos 25 mil logs de auditoria das categorias escolhidas (em inglês).</summary>
+    /// <summary>
+    /// <c>export_audit_logs.fcgi</c>: até os últimos 25 mil logs de auditoria das categorias escolhidas (em inglês).
+    /// <para>
+    /// Use com moderação: num iDFace (firmware 6.9.12) com pouca memória livre, exportações seguidas (cerca de 4,6 MB cada)
+    /// foram seguidas de reinícios do equipamento poucos minutos depois. Prefira filtrar <paramref name="categories"/>.
+    /// </para>
+    /// </summary>
     Task<string> ExportAuditLogsAsync(AuditLogCategories categories = AuditLogCategories.All, CancellationToken cancellationToken = default);
 
     /// <summary>Cria a associação (usuário↔grupo, grupo↔regra, regra↔horário...).</summary>
@@ -459,7 +465,8 @@ public interface IAccessClient : IControlIdClient
 
     /// <summary>
     /// <c>set_audio_access_message.fcgi</c> (iDFace): envia o áudio personalizado de um evento (até 5 MB), em partes de até 2 MB.
-    /// Para usá-lo, configure <c>buzzer.audio_message_*</c> como <c>custom</c>.
+    /// Só aceita WAV (MP3 é recusado com "Not valid as WAVE audio file"). Para usá-lo, configure
+    /// <c>buzzer.audio_message_*</c> como <c>custom</c>.
     /// </summary>
     Task UploadAccessAudioAsync(AccessAudioEvent audioEvent, byte[] audio, CancellationToken cancellationToken = default);
 
@@ -561,7 +568,13 @@ public interface IAccessClient : IControlIdClient
     /// <summary><c>system_information.fcgi</c>.</summary>
     Task<AccessSystemInformation> GetSystemInformationAsync(CancellationToken cancellationToken = default);
 
-    /// <summary><c>set_configuration.fcgi</c> com seções arbitrárias, ex.: <c>new { general = new { beep_enabled = "0" } }</c>. Os valores devem ser strings.</summary>
+    /// <summary>
+    /// <c>set_configuration.fcgi</c> com seções arbitrárias, ex.: <c>new { general = new { beep_enabled = "0" } }</c>. Os valores devem ser strings.
+    /// <para>
+    /// A gravação não é atômica: se um parâmetro não existir no modelo, o equipamento aplica os anteriores a ele e só
+    /// então recusa a chamada. Depois de um erro, releia a configuração antes de supor que nada mudou.
+    /// </para>
+    /// </summary>
     Task SetConfigurationAsync(object configuration, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -594,7 +607,7 @@ public interface IAccessClient : IControlIdClient
     Task<T> GetConfigurationSectionAsync<T>(T section, CancellationToken cancellationToken = default)
         where T : Configuration.ConfigurationSection;
 
-    /// <summary>Grava os parâmetros preenchidos (não nulos) da seção.</summary>
+    /// <summary>Grava os parâmetros preenchidos (não nulos) da seção. Veja em <see cref="SetConfigurationAsync"/> o que acontece se um deles não existir no modelo.</summary>
     Task SetConfigurationSectionAsync(Configuration.ConfigurationSection section, CancellationToken cancellationToken = default);
 
     /// <summary>Grava várias seções numa única chamada a <c>set_configuration.fcgi</c>.</summary>

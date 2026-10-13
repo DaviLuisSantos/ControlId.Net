@@ -27,7 +27,10 @@ public sealed class PushDevice
     public Task<PushResult> SendAsync(PushCommand command, CancellationToken cancellationToken = default) =>
         _server.SendAsync(DeviceId, command, cancellationToken);
 
-    /// <summary>Envia vários comandos numa única consulta do equipamento; um resultado por comando, na mesma ordem.</summary>
+    /// <summary>
+    /// Envia vários comandos numa única consulta do equipamento; um resultado por comando, na mesma ordem. Veja em
+    /// <see cref="PushServer.SendBatchAsync"/> os firmwares que não aceitam lotes.
+    /// </summary>
     public Task<IReadOnlyList<PushResult>> SendBatchAsync(IEnumerable<PushCommand> commands, CancellationToken cancellationToken = default) =>
         _server.SendBatchAsync(DeviceId, commands, cancellationToken);
 
