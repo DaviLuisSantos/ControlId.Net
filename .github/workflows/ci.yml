@@ -1,9 +1,9 @@
 name: CI
 
+# GitHub Actions so ao lancar versao (decisao do usuario, 14/10/2026): a cota de minutos e da conta inteira.
+# Sem push nem pull_request: roda a mao (workflow_dispatch). Quem testa ao lancar e o publish.yml (tag v*.*.*).
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
