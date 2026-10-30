@@ -234,3 +234,41 @@ public sealed class CapturedImage
     [JsonPropertyName("image")]
     public byte[]? Image { get; set; }
 }
+
+/// <summary>
+/// Resposta de <c>enroller_state.fcgi</c>: o que o equipamento está fazendo no cadastro remoto e como terminou o último.
+/// Endpoint da coleção oficial do Postman (não aparece no site da documentação).
+/// </summary>
+public sealed class EnrollerState
+{
+    /// <summary>Estado do cadastro, ex.: <c>NORMAL_STATE</c>.</summary>
+    [JsonPropertyName("enroller_state")]
+    public string? State { get; set; }
+
+    /// <summary>
+    /// Estado da captura biométrica, ex.: <c>NOT_ENROLLING</c>. O firmware manda o campo como <c>biometry_sate</c> (com erro de
+    /// digitação); as duas grafias são aceitas.
+    /// </summary>
+    [JsonPropertyName("biometry_state")]
+    public string? BiometryState { get; set; }
+
+    /// <summary>O último cadastro deu certo.</summary>
+    [JsonPropertyName("last_enroll"), JsonConverter(typeof(IntBooleanConverter))]
+    public bool LastEnrollSucceeded { get; set; }
+
+    /// <summary>Erro do último cadastro, ex.: <c>TIMEOUT</c>; <c>UNKNOWN</c> quando não houve erro.</summary>
+    [JsonPropertyName("last_enroll_error")]
+    public string? LastEnrollError { get; set; }
+
+    /// <summary><c>true</c> enquanto o equipamento está na tela de cadastro.</summary>
+    [JsonIgnore]
+    public bool IsEnrolling => BiometryState is { Length: > 0 } state && state != "NOT_ENROLLING";
+
+    // Grafia do firmware (iDFace 6.13.1 e o SDK oficial): biometry_sate.
+    [JsonPropertyName("biometry_sate"), JsonInclude]
+    internal string? BiometrySate
+    {
+        get => null;
+        set => BiometryState ??= value;
+    }
+}

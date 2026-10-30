@@ -51,6 +51,7 @@ acrescente-o ao teste.
 | `doors_state.fcgi` | POST | `GetDoorStatesAsync()` |
 | `remote_enroll.fcgi` | POST | `StartRemoteEnrollAsync(new RemoteEnrollRequest(RemoteEnrollType.Card))` |
 | `cancel_remote_enroll.fcgi` | POST | `CancelRemoteEnrollAsync()` |
+| `enroller_state.fcgi` (só no Postman) | POST | `GetEnrollerStateAsync()` |
 | `message_to_screen.fcgi` | POST | `ShowMessageAsync("x")` |
 | `buzzer_buzz.fcgi` | POST | `BuzzAsync(TimeSpan.FromSeconds(1))` |
 

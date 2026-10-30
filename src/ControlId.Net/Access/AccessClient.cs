@@ -356,6 +356,10 @@ public sealed class AccessClient : IAccessClient
         _transport.PostRawAsync("cancel_remote_enroll.fcgi", null, cancellationToken);
 
     /// <inheritdoc/>
+    public Task<EnrollerState> GetEnrollerStateAsync(CancellationToken cancellationToken = default) =>
+        _transport.PostAsync<EnrollerState>("enroller_state.fcgi", null, cancellationToken);
+
+    /// <inheritdoc/>
     public Task<IReadOnlyList<T>> GetObjectsAsync<T>(object? where = null, int? limit = null, CancellationToken cancellationToken = default) =>
         LoadObjectsAsync<T>(new LoadObjectsRequest(ControlIdObjects.NameOf<T>()) { Where = where, Limit = limit }, cancellationToken);
 

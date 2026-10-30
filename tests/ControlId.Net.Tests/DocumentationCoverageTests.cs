@@ -53,6 +53,7 @@ public class DocumentationCoverageTests
         ("doors_state.fcgi", "POST", c => c.GetDoorStatesAsync()),
         ("remote_enroll.fcgi", "POST", c => c.StartRemoteEnrollAsync(new RemoteEnrollRequest(RemoteEnrollType.Card))),
         ("cancel_remote_enroll.fcgi", "POST", c => c.CancelRemoteEnrollAsync()),
+        ("enroller_state.fcgi", "POST", c => c.GetEnrollerStateAsync()),
         ("message_to_screen.fcgi", "POST", c => c.ShowMessageAsync("x")),
         ("buzzer_buzz.fcgi", "POST", c => c.BuzzAsync(TimeSpan.FromSeconds(1))),
 

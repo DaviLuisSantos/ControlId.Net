@@ -4,6 +4,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+### Added
+- `GetEnrollerStateAsync` (`enroller_state.fcgi`, da coleção oficial do Postman): estado do cadastro remoto e resultado do último, com `IsEnrolling`. O firmware manda `biometry_sate` (erro de digitação); `EnrollerState.BiometryState` aceita as duas grafias. Serve para acompanhar o cadastro assíncrono no iDFace, que não avisa pelo Monitor.
+
 ### Changed
 - `MapControlIdMonitor` também aceita o caminho no singular (`api/notification/...`) quando o configurado termina em `notifications`: o SDK oficial registra que o firmware posta `device_is_alive` assim. As duas rotas ficam no grupo devolvido.
 

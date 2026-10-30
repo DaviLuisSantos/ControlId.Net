@@ -212,6 +212,28 @@ public class IdFaceFirmwareTests
         Assert.Equal(403726936091, logs[1].CardValue);
     }
 
+    [Fact]
+    public async Task Enroller_state_accepts_the_firmware_typo_biometry_sate()
+    {
+        // Resposta real de um iDFace 6.13.1.
+        var device = LoggedDevice()
+            .OnJson("enroller_state.fcgi", """{"enroller_state":"NORMAL_STATE","biometry_sate":"NOT_ENROLLING","last_enroll":false,"last_enroll_error":"UNKNOWN"}""")
+            .OnJson("enroller_state.fcgi", """{"enroller_state":"ENROLLING","biometry_state":"WAITING_FACE","last_enroll":1,"last_enroll_error":"UNKNOWN"}""");
+        using var client = new AccessClient(Options, device.CreateClient());
+
+        var idle = await client.GetEnrollerStateAsync();
+        var busy = await client.GetEnrollerStateAsync();
+
+        Assert.Equal("NORMAL_STATE", idle.State);
+        Assert.Equal("NOT_ENROLLING", idle.BiometryState);
+        Assert.False(idle.IsEnrolling);
+        Assert.False(idle.LastEnrollSucceeded);
+        Assert.Equal("UNKNOWN", idle.LastEnrollError);
+        Assert.Equal("WAITING_FACE", busy.BiometryState);
+        Assert.True(busy.IsEnrolling);
+        Assert.True(busy.LastEnrollSucceeded);
+    }
+
     private static List<string> FieldsOf(string body, string section)
     {
         using var json = JsonDocument.Parse(body);

@@ -191,6 +191,12 @@ public interface IAccessClient : IControlIdClient
     Task CancelRemoteEnrollAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// <c>enroller_state.fcgi</c>: estado do cadastro remoto (se o equipamento está na tela de cadastro) e o resultado do
+    /// último. Útil depois de <see cref="StartRemoteEnrollAsync"/> quando o resultado não chega pelo Monitor, como no iDFace.
+    /// </summary>
+    Task<EnrollerState> GetEnrollerStateAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Lê registros de qualquer modelo marcado com <see cref="ControlIdObjectAttribute"/>, ex.:
     /// <c>GetObjectsAsync&lt;TimedAlarm&gt;()</c>. <paramref name="where"/> segue o formato de <see cref="Where"/>, com o nome
     /// de <see cref="ControlIdObjects.NameOf{T}"/>.
