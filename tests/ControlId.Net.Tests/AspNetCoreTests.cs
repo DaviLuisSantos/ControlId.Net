@@ -109,6 +109,18 @@ public sealed class AspNetCoreTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task Monitor_also_accepts_singular_notification_path()
+    {
+        var http = await StartAsync();
+
+        // O SDK oficial registra que o firmware posta device_is_alive em api/notification (singular).
+        var response = await http.PostAsync("/api/notification/device_is_alive", new StringContent("""{"access_logs":3,"device_id":1}"""));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.IsType<DeviceIsAliveNotification>(Assert.Single(_received));
+    }
+
+    [Fact]
     public async Task Monitor_invalid_json_is_bad_request()
     {
         var http = await StartAsync();

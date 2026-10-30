@@ -43,8 +43,12 @@ public static class ControlIdEndpointRouteBuilderExtensions
     /// Mapeia <c>POST {path}/{endpoint}</c> e repassa cada notificação aos <see cref="IMonitorNotificationHandler"/>
     /// registrados com <c>services.AddControlIdMonitor(...)</c>. O <paramref name="path"/> deve ser o mesmo configurado
     /// no equipamento (padrão do firmware: <c>api/notifications</c>).
+    /// <para>
+    /// Se o caminho terminar em <c>notifications</c>, o singular (<c>notification</c>) também é aceito: o SDK oficial
+    /// registra que o firmware posta <c>device_is_alive</c> em <c>api/notification</c>.
+    /// </para>
     /// </summary>
-    /// <returns>O grupo das rotas, para encadear <c>RequireHost</c>, filtros etc.</returns>
+    /// <returns>O grupo das rotas (as duas grafias), para encadear <c>RequireHost</c>, filtros etc.</returns>
     public static RouteGroupBuilder MapControlIdMonitor(this IEndpointRouteBuilder endpoints, string path = "api/notifications")
     {
         if (endpoints is null)
@@ -52,8 +56,14 @@ public static class ControlIdEndpointRouteBuilderExtensions
             throw new ArgumentNullException(nameof(endpoints));
         }
 
-        var group = endpoints.MapGroup("/" + path.Trim('/'));
-        group.MapPost("{endpoint}", HandleMonitorAsync);
+        var trimmed = (path ?? throw new ArgumentNullException(nameof(path))).Trim('/');
+        var group = endpoints.MapGroup("/");
+        group.MapPost(trimmed + "/{endpoint}", HandleMonitorAsync);
+        if (trimmed.EndsWith("notifications", StringComparison.Ordinal))
+        {
+            group.MapPost(trimmed.Substring(0, trimmed.Length - 1) + "/{endpoint}", HandleMonitorAsync);
+        }
+
         return group;
     }
 

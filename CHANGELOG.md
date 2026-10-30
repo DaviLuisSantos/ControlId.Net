@@ -4,6 +4,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+### Changed
+- `MapControlIdMonitor` também aceita o caminho no singular (`api/notification/...`) quando o configurado termina em `notifications`: o SDK oficial registra que o firmware posta `device_is_alive` assim. As duas rotas ficam no grupo devolvido.
+
 ## [0.4.3-alpha.1] - 2026-10-30
 
 Três nomes errados da API de acesso, encontrados na coleção oficial do Postman e confirmados num iDFace 6.13.1.
