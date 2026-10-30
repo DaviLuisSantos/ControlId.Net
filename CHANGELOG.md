@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+## [0.4.3-alpha.1] - 2026-10-30
+
+Três nomes errados da API de acesso, encontrados na coleção oficial do Postman e confirmados num iDFace 6.13.1.
+
 ### Fixed
 - `GetDoorStatesAsync` chamava `door_state.fcgi`, que o equipamento recusa ("Invalid command"); agora chama `doors_state.fcgi`, como o exemplo da documentação, a versão em inglês e a coleção oficial do Postman.
 - `HidSettings` gravava e lia a seção `hid`, nome inferido do título da documentação; a seção é `hid_reader`.
@@ -126,7 +130,8 @@ Cobertura completa da documentação pública da API de acesso (veja [docs/COBER
 - `RepClient.GetAfdFileFromNsrAsync`/`GetAfdFileFromDateAsync`/`GetAfdFileAsync` devolvem o AFD interpretado.
 - `RepClient` (REP iDClass): about, informações do sistema, data/hora, usuários (PIS/CPF) e download de AFD (incluindo modo Portaria 671).
 
-[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.2-alpha.1...HEAD
+[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.3-alpha.1...HEAD
+[0.4.3-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.2-alpha.1...v0.4.3-alpha.1
 [0.4.2-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.1-alpha.1...v0.4.2-alpha.1
 [0.4.1-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.0-alpha.1...v0.4.1-alpha.1
 [0.4.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.3.0-alpha.1...v0.4.0-alpha.1
