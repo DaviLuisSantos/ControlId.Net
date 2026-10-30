@@ -6,6 +6,9 @@ name: Publish
 # Usa Trusted Publishing (OIDC): não há chave do NuGet guardada no repositório. É preciso, uma vez:
 # - no nuget.org, uma política de Trusted Publishing para este repositório e o arquivo "publish.yml";
 # - no GitHub, o secret NUGET_USER com o nome de usuário (perfil) do nuget.org, não o e-mail.
+#
+# Além dos pacotes, cada versão deixa na execução: o resumo de cobertura dos testes, o SBOM (CycloneDX) e uma atestação
+# de proveniência de cada .nupkg (gh attestation verify <arquivo.nupkg> --repo DaviLuisSantos/ControlId.Net).
 on:
   push:
     tags: ['v*.*.*']
@@ -29,7 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # token OIDC trocado por uma chave temporária do NuGet
+      id-token: write # token OIDC trocado por uma chave temporária do NuGet e usado na atestação
+      attestations: write # atestação de proveniência dos pacotes
     steps:
       - uses: actions/checkout@v7
       # SDK 10 para compilar o alvo net10.0 dos testes; runtime 8 para executar o alvo net8.0.
@@ -40,9 +44,34 @@ jobs:
             10.0.x
       - name: Version from tag
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
-      - run: dotnet test tests/ControlId.Net.Tests -c Release -f net8.0
+      - run: dotnet test tests/ControlId.Net.Tests -c Release -f net8.0 --collect:"XPlat Code Coverage" --results-directory coverage
       - run: dotnet test tests/ControlId.Net.Tests -c Release -f net10.0
+      # O pack também valida a API contra a versão de base (EnablePackageValidation): uma quebra não declarada para aqui.
       - run: dotnet pack -c Release -o artifacts -p:Version=$VERSION
+
+      - name: Coverage summary
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.5.12
+          ~/.dotnet/tools/reportgenerator "-reports:coverage/**/coverage.cobertura.xml" -targetdir:coverage/report -reporttypes:MarkdownSummaryGithub "-assemblyfilters:+ControlId.Net*"
+          cat coverage/report/SummaryGithub.md >> $GITHUB_STEP_SUMMARY
+
+      - name: SBOM (CycloneDX)
+        run: |
+          dotnet tool install --global CycloneDX --version 6.3.1
+          ~/.dotnet/tools/dotnet-CycloneDX ControlId.Net.sln --exclude-test-projects -o artifacts/sbom -fn controlid-net.cdx.json -F Json -sn ControlId.Net -sv $VERSION
+
+      - name: Provenance attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: artifacts/*.nupkg
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ env.VERSION }}
+          path: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
+            artifacts/sbom/*
 
       # A chave dura 1 hora: pedida só depois de testar e empacotar.
       - name: NuGet login (OIDC)

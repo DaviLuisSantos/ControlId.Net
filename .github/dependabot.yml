@@ -1,0 +1,21 @@
+# Atualizações de dependências: um PR por mês para cada ecossistema, com tudo agrupado.
+# Os PRs não disparam Actions (a CI é manual, para poupar minutos); rode dotnet test antes de aceitar.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      nuget:
+        patterns: ["*"]
+    open-pull-requests-limit: 2
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+    open-pull-requests-limit: 2
