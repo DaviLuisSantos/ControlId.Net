@@ -1,0 +1,45 @@
+name: Problema
+description: Algo não funciona como deveria
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por relatar. Vulnerabilidades de segurança não vão aqui: veja o SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Versão do pacote
+      placeholder: "ex.: 0.4.3-alpha.1"
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Equipamento e firmware
+      description: Modelo e versão do firmware (aparecem em GetSystemInformationAsync e na interface web).
+      placeholder: "ex.: iDFace, 6.13.1"
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: .NET
+      placeholder: "ex.: .NET 8, .NET Framework 4.8"
+  - type: textarea
+    id: what
+    attributes:
+      label: O que aconteceu e o que era esperado
+    validations:
+      required: true
+  - type: textarea
+    id: code
+    attributes:
+      label: Código mínimo para reproduzir
+      render: csharp
+  - type: textarea
+    id: response
+    attributes:
+      label: Resposta do equipamento
+      description: A mensagem da exceção e o ControlIdException.ResponseBody, se houver. Tire senhas e dados pessoais.
+      render: text

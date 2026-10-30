@@ -1,0 +1,26 @@
+name: Recurso do equipamento sem suporte
+description: Algo que o equipamento Control iD faz e o pacote ainda não cobre
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        O escopo é: o que o equipamento Control iD suporta, o pacote suporta. Para outras marcas, haverá pacotes próprios.
+  - type: input
+    id: device
+    attributes:
+      label: Equipamento e firmware
+      placeholder: "ex.: iDFace Max, 7.13.3"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: O que o equipamento faz
+      description: Endpoint, objeto, parâmetro de configuração ou evento; link da documentação da Control iD, se houver.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Para que você precisa
