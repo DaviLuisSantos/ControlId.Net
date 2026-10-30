@@ -5,6 +5,7 @@ using System.Threading;
 using ControlId;
 using ControlId.Access;
 using ControlId.DependencyInjection;
+using ControlId.Internal;
 using ControlId.Rep;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -45,7 +46,7 @@ public static class ControlIdDeviceServiceCollectionExtensions
 
     /// <summary>
     /// Registra um equipamento de acesso com nome a partir de uma seção de configuração
-    /// (<c>BaseAddress</c>, <c>Login</c>, <c>Password</c>, <c>Timeout</c>, <c>AcceptAnyServerCertificate</c>,
+    /// (<c>BaseAddress</c>, <c>Login</c>, <c>Password</c>, <c>Timeout</c>, <c>AcceptAnyServerCertificate</c>, <c>ServerCertificateSha256</c>,
     /// <c>MaxConcurrentRequests</c>).
     /// </summary>
     public static IHttpClientBuilder AddControlIdAccess(this IServiceCollection services, string name, IConfiguration configuration)
@@ -135,7 +136,7 @@ public static class ControlIdDeviceServiceCollectionExtensions
         return AddHttpClient(services, ControlIdRegistry.AccessHttpClientName(name), sp =>
         {
             var options = sp.GetRequiredService<IOptionsMonitor<ControlIdDeviceOptions>>().Get(name);
-            return (options.AcceptAnyServerCertificate, options.MaxConcurrentRequests);
+            return (options.AcceptAnyServerCertificate, options.ServerCertificateSha256, options.MaxConcurrentRequests);
         });
     }
 
@@ -145,11 +146,11 @@ public static class ControlIdDeviceServiceCollectionExtensions
         return AddHttpClient(services, ControlIdRegistry.RepHttpClientName(name), sp =>
         {
             var options = sp.GetRequiredService<IOptionsMonitor<ControlIdRepOptions>>().Get(name);
-            return (options.AcceptAnyServerCertificate, options.MaxConcurrentRequests);
+            return (options.AcceptAnyServerCertificate, options.ServerCertificateSha256, options.MaxConcurrentRequests);
         });
     }
 
-    private static IHttpClientBuilder AddHttpClient(IServiceCollection services, string httpClientName, Func<IServiceProvider, (bool AcceptAnyCertificate, int MaxConnections)> handlerSettings)
+    private static IHttpClientBuilder AddHttpClient(IServiceCollection services, string httpClientName, Func<IServiceProvider, (bool AcceptAnyCertificate, string? CertificateSha256, int MaxConnections)> handlerSettings)
     {
         return services
             .AddHttpClient(httpClientName)
@@ -158,10 +159,7 @@ public static class ControlIdDeviceServiceCollectionExtensions
                 var settings = handlerSettings(sp);
                 var handler = new HttpClientHandler();
                 LimitConnections(handler, settings.MaxConnections);
-                if (settings.AcceptAnyCertificate)
-                {
-                    handler.ServerCertificateCustomValidationCallback = static (_, _, _, _) => true;
-                }
+                CertificatePinning.Configure(handler, settings.CertificateSha256, settings.AcceptAnyCertificate);
 
                 return handler;
             })

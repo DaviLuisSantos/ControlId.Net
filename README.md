@@ -380,6 +380,27 @@ var users = await rep.GetAllUsersAsync();
 await rep.SetDateTimeAsync(DateTime.Now);
 ```
 
+### Certificado do REP
+
+O construtor acima aceita qualquer certificado, porque o iDClass sai de fábrica com um autoassinado. Para não aceitar um
+certificado falso na rede, fixe a impressão digital SHA-256 do certificado do seu REP: com ela, só esse certificado passa.
+
+```csharp
+// Uma vez, numa rede confiável (confira o valor no navegador):
+string sha256 = await ControlIdCertificates.GetServerCertificateSha256Async(new Uri("https://192.168.0.130"));
+
+using var rep = new RepClient(new ControlIdDeviceOptions
+{
+    BaseAddress = new Uri("https://192.168.0.130"),
+    ServerCertificateSha256 = sha256, // aceita "AB:CD:...", com espaços ou sem separadores
+});
+```
+
+- Com `ServerCertificateSha256`, `AcceptAnyServerCertificate` é ignorado. Se o REP trocar de certificado, as chamadas
+  falham até a configuração ser atualizada.
+- No `appsettings.json` (pacote de DI): `"ponto": { "BaseAddress": "https://...", "ServerCertificateSha256": "AB:CD:..." }`.
+- Vale também para equipamentos de acesso com HTTPS ligado.
+
 ### AFD tipado
 
 O parser lê os leiautes da **Portaria 671/2021** e da **Portaria 1510/2009** (detecta sozinho, linha a linha):

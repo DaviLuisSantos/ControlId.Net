@@ -29,6 +29,14 @@ public sealed class ControlIdDeviceOptions
     /// </summary>
     public bool AcceptAnyServerCertificate { get; set; }
 
+    /// <summary>
+    /// Impressão digital SHA-256 do certificado do equipamento (hexadecimal; aceita <c>:</c> e espaços). Com ela, só esse
+    /// certificado é aceito, mesmo autoassinado, e <see cref="AcceptAnyServerCertificate"/> é ignorado: é o jeito seguro de
+    /// falar com o REP iDClass. Obtenha o valor com <see cref="ControlIdCertificates.GetServerCertificateSha256Async"/>.
+    /// Só tem efeito quando o cliente cria o próprio <see cref="System.Net.Http.HttpClient"/> (ou pelo pacote de DI).
+    /// </summary>
+    public string? ServerCertificateSha256 { get; set; }
+
     /// <summary>Valor padrão de <see cref="MaxConcurrentRequests"/>.</summary>
     public const int DefaultMaxConcurrentRequests = 4;
 
@@ -60,6 +68,8 @@ public sealed class ControlIdDeviceOptions
         {
             throw new ArgumentException($"{nameof(BaseAddress)} precisa ser uma URI absoluta.", nameof(BaseAddress));
         }
+
+        Internal.CertificatePinning.Normalize(ServerCertificateSha256);
 
         if (string.IsNullOrEmpty(Login))
         {

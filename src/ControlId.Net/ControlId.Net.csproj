@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="ControlId.Net.Tests" />
+    <InternalsVisibleTo Include="ControlId.Net.DependencyInjection" />
   </ItemGroup>
 
 </Project>

@@ -40,10 +40,7 @@ internal sealed class ControlIdTransport : IDisposable
         {
             var handler = new HttpClientHandler();
             HttpHandlers.LimitConnections(handler, options.MaxConcurrentRequests);
-            if (options.AcceptAnyServerCertificate)
-            {
-                handler.ServerCertificateCustomValidationCallback = static (_, _, _, _) => true;
-            }
+            CertificatePinning.Configure(handler, options.ServerCertificateSha256, options.AcceptAnyServerCertificate);
 
             _http = new HttpClient(handler, disposeHandler: true) { Timeout = options.Timeout };
             _ownsHttpClient = true;

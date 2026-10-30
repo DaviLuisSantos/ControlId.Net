@@ -24,6 +24,12 @@ public sealed class ControlIdRepOptions
     /// <summary>Aceita o certificado autoassinado do REP. Padrão: <c>true</c> (o iDClass sai de fábrica assim).</summary>
     public bool AcceptAnyServerCertificate { get; set; } = true;
 
+    /// <summary>
+    /// Impressão digital SHA-256 do certificado do REP. Com ela, só esse certificado é aceito e
+    /// <see cref="AcceptAnyServerCertificate"/> é ignorado. Veja <see cref="ControlIdDeviceOptions.ServerCertificateSha256"/>.
+    /// </summary>
+    public string? ServerCertificateSha256 { get; set; }
+
     /// <summary>Máximo de requisições simultâneas ao REP. Padrão: 4. Veja <see cref="ControlIdDeviceOptions.MaxConcurrentRequests"/>.</summary>
     public int MaxConcurrentRequests { get; set; } = ControlIdDeviceOptions.DefaultMaxConcurrentRequests;
 
@@ -37,6 +43,7 @@ public sealed class ControlIdRepOptions
         Password = Password,
         Timeout = Timeout,
         AcceptAnyServerCertificate = AcceptAnyServerCertificate,
+        ServerCertificateSha256 = ServerCertificateSha256,
         MaxConcurrentRequests = MaxConcurrentRequests,
     };
 }
