@@ -8,7 +8,7 @@
 Cliente .NET **não oficial** para equipamentos [Control iD](https://www.controlid.com.br):
 
 - **Linha de acesso**: iDAccess, iDFlex, iDFace, iDBox, iDUHF (API `*.fcgi` sobre HTTP).
-- **Relógios de ponto REP iDClass**: API HTTPS, incluindo AFD no layout da Portaria 671.
+- **Relógios de ponto REP iDClass**: API HTTPS completa (os 47 comandos da documentação, inclusive o REP Facial), com AFD da Portaria 671.
 
 Alvos: `net8.0` e `netstandard2.0`, então também roda em projetos .NET Framework 4.6.1+. A suíte de testes roda no .NET 8, no .NET 10 e no .NET Framework 4.8.
 
@@ -380,6 +380,66 @@ var users = await rep.GetAllUsersAsync();
 await rep.SetDateTimeAsync(DateTime.Now);
 ```
 
+O `RepClient` cobre os 47 comandos da [documentação do iDClass](https://www.controlid.com.br/suporte/api_idclass_latest.html);
+a lista completa está em [docs/COBERTURA.md](docs/COBERTURA.md#rep-idclass). No modo `Portaria671`, os usuários são
+identificados por CPF; no `Legacy`, por PIS.
+
+### Usuários
+
+```csharp
+await rep.AddUsersAsync(new[] { new RepUser { Cpf = 12345678909, Name = "Ana", Registration = "1020" } });
+
+await rep.UpdateUsersAsync(new[] { new RepUserUpdate { Cpf = 12345678909, Name = "Ana Souza", RemoveTemplates = true } });
+
+var alguns = await rep.GetUsersAsync(new[] { 12345678909L, 98765432100L });   // mais de 100 viram várias chamadas
+await foreach (var usuario in rep.EnumerateUsersAsync())                        // base grande: páginas de 100 sob demanda
+{
+}
+
+string csv = await rep.ExportUsersCsvAsync();                                  // backup
+RepCsvImportResult importados = await rep.ImportUsersCsvAsync(File.ReadAllBytes("usuarios.csv"));
+
+await rep.RemoveAdminsAsync(DataLossConfirmation.Confirmed);                   // sem volta: exige confirmação
+```
+
+### Empregador, rede e configurações
+
+```csharp
+await rep.SetCompanyAsync(new RepCompany
+{
+    Name = "Empresa Ltda",
+    DocumentType = RepCompanyDocumentType.Cnpj,
+    Document = "12.ABC.345/01DE-35",   // CNPJ alfanumérico (firmware revisão 104); só dígitos funcionam em qualquer revisão
+    Address = "Rua Hungria 888",
+});
+
+RepNetworkSettings rede = await rep.GetNetworkAsync();
+await rep.SetDaylightSavingTimeAsync(new RepDaylightSavingTime(new DateTime(2026, 11, 1), new DateTime(2027, 2, 20)));
+await rep.SetDateTimeAsync(DateTimeOffset.Now);              // com fuso horário (Portaria 671)
+
+RepSystemConfiguration config = await rep.GetSystemConfigurationAsync();
+await rep.SetEconomicReceiptEnabledAsync(true);              // comprovante curto
+await rep.SetCoilPaperAsync(300);                            // bobina nova
+
+RepAbout sobre = await rep.GetAboutAsync();
+Console.WriteLine(sobre.ApiRevision);                        // 104: revisão da API, como a documentação a numera
+```
+
+### REP iDClass Facial
+
+```csharp
+await rep.SetUserImageAsync(cpf: 12345678909, File.ReadAllBytes("ana.jpg"));
+byte[] foto = await rep.GetUserImageAsync(12345678909);
+
+await rep.StartRemoteEnrollAsync(12345678909);               // a tela do REP pede a face
+while ((await rep.GetFacialEnrollerStateAsync()).RemoteEnrolling)
+{
+    await Task.Delay(1000);
+}
+```
+
+As APIs faciais vão sempre com `mode=671`, que a documentação exige, mesmo num cliente no modo `Legacy`.
+
 ### Certificado do REP
 
 O construtor acima aceita qualquer certificado, porque o iDClass sai de fábrica com um autoassinado. Para não aceitar um
@@ -419,6 +479,8 @@ ultimoNsrLido = afd.LastNsr ?? ultimoNsrLido;         // leitura incremental
 ```
 
 - Também lê arquivos: `AfdParser.Parse(File.OpenRead("AFD.txt"))` (detecta UTF-8 ou ISO-8859-1) ou `AfdParser.ReadRecords(reader)` para ler registro a registro, sem carregar o arquivo todo.
+- Direto do REP, sem carregar o arquivo todo: `await foreach (var registro in rep.EnumerateAfdRecordsAsync(new RepAfdQuery { InitialNsr = n }))`, ou `OpenAfdStreamAsync` para gravar o arquivo em disco. Feche o stream ao terminar: aberto, ele ocupa uma das requisições simultâneas permitidas ao REP.
+- `RepAfdQuery.HeaderTop` (firmware revisão 104) pede o cabeçalho no começo e sem a linha com o nome do arquivo, como no arquivo final.
 - Disponíveis: cabeçalho (`Header`), empresa (`CompanyRecords`), empregados (`EmployeeRecords`), ajustes de relógio (`ClockAdjustments`), eventos sensíveis (`SensitiveEvents`), trailer e assinatura.
 - Datas são o horário de parede gravado pelo REP; no leiaute 671 o fuso vem em `UtcOffset` (e `TimeWithOffset`).
 - Uma linha corrompida não derruba a leitura: ela vira `AfdInvalidRecord` e aparece em `afd.Issues`, junto com divergências do trailer e NSR fora de ordem.
@@ -609,7 +671,7 @@ var afds = await equipamentos.RunOnRepDevicesAsync((r, ct) => r.GetAfdFileAsync(
 - [x] Acesso: modo online (Pro/Enterprise): configuração, eventos tipados, `MapControlIdOnline` e autorização remota
 - [x] Acesso: comandos tipados (mensagem, buzzer, login, hash de senha, reinício, reset, rede, logotipo, GPIO, LED, USB, upsert de objetos)
 - [x] Acesso: cobertura completa da documentação pública (endpoints, objetos, eventos e configurações), com teste que garante cada endpoint ([docs/COBERTURA.md](docs/COBERTURA.md))
-- [ ] REP: levantamento de cobertura (depende do acesso à documentação do iDClass)
+- [x] REP: cobertura completa da documentação (47 comandos, inclusive o REP Facial), com teste que garante cada comando ([docs/COBERTURA.md](docs/COBERTURA.md#rep-idclass))
 - [ ] Testes de integração contra equipamentos reais
 - [ ] Outras marcas de controle de acesso, em pacotes separados
 

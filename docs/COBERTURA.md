@@ -1,4 +1,8 @@
-# Cobertura da documentação da API de acesso
+# Cobertura das APIs da Control iD
+
+- [Linha de acesso](#endpoints-chamados-no-equipamento): iDAccess, iDFlex, iDFace, iDBox, iDUHF.
+- [REP iDClass](#rep-idclass): relógios de ponto.
+
 
 Levantamento feito em 2026-10-12 sobre as **74 páginas** da [documentação oficial da linha de acesso](https://www.controlid.com.br/docs/access-api-pt/). Cada endpoint, objeto, evento e seção de configuração
 documentados tem um método, modelo ou rota tipados no pacote.
@@ -14,7 +18,6 @@ A lista de endpoints abaixo é a mesma do teste `DocumentationCoverageTests`, qu
 equipamento simulado e confere o endpoint e o método HTTP. Ao surgir um endpoint novo na documentação,
 acrescente-o ao teste.
 
-> O REP iDClass não entra aqui: a documentação dele não é pública (o site responde 403).
 
 ## Endpoints chamados no equipamento
 
@@ -315,3 +318,82 @@ tem um relé), os parâmetros `totp_*` e `curl_bearer_token`/`curl_pinned_certif
 - Os nomes de módulo inferidos (Energia, RS485, RFID, OSDP) e os tipos dos parâmetros sem descrição.
 - Em que seção ficam os parâmetros `totp_*` do QR Code e os `curl_*` dos callbacks (precisa de firmware 6.22 ou mais novo).
 - O formato do resultado de `export_objects` e do corpo de `template_create` (não descritos).
+
+## REP iDClass
+
+Levantamento feito em 2026-10-30 sobre a [documentação da API do iDClass](https://www.controlid.com.br/suporte/api_idclass_latest.html)
+(versão 4.0.1; ela fica em `/suporte/`, não em `/docs/`, que responde 403). São **47 comandos**, todos com método no
+`RepClient`: 45 com exemplo de URL, mais `load_company` e `get_system_network`, que só aparecem descritos. A lista é a
+mesma do teste `RepDocumentationCoverageTests`.
+
+| Seção | Comando | Método |
+| --- | --- | --- |
+| Sessão | `login`, `logout` | `LoginAsync()`, `LogoutAsync()` |
+| Sessão | `session_is_valid` | `IsSessionValidAsync()` |
+| Sessão | `change_login` | `ChangeLoginAsync(login, senha)` (manda a confirmação igual à senha) |
+| Usuários | `add_users` | `AddUsersAsync(usuarios)` e `AddUsersAsync(usuarios, doMatch)` |
+| Usuários | `count_users` | `CountUsersAsync()` |
+| Usuários | `load_users` | `LoadUsersAsync(limit, offset)`, `GetAllUsersAsync()`, `EnumerateUsersAsync()`, `GetUsersAsync(identificadores)` |
+| Usuários | `update_users` | `UpdateUsersAsync(alteracoes, doMatch)` |
+| Usuários | `remove_users` | `RemoveUsersAsync(identificadores)` |
+| Usuários | `import_users_csv` | `ImportUsersCsvAsync(csv)` |
+| Usuários | `export_users_csv` | `ExportUsersCsvAsync()` |
+| Usuários | `remove_admins` | `RemoveAdminsAsync(DataLossConfirmation.Confirmed)` |
+| Empregador | `load_company`, `edit_company` | `GetCompanyAsync()`, `SetCompanyAsync(empregador)` |
+| Sistema | `get_system_information` | `GetSystemInformationAsync()` |
+| Sistema | `get_about` | `GetAboutAsync()` (com `ApiRevision`) |
+| Sistema | `get_info` | `GetInfoAsync()` |
+| Sistema | `get_system_configuration` | `GetSystemConfigurationAsync()` |
+| Sistema | `set_buzzer_beep` | `SetBeepEnabledAsync(bool)` |
+| Sistema | `set_animation_screen` | `SetAnimationEnabledAsync(bool)` |
+| Sistema | `set_ticket_size` | `SetEconomicReceiptEnabledAsync(bool)` |
+| Sistema | `set_identification_type` | `SetOneToOneIdentificationAsync(bool)` |
+| Sistema | `get_idcloud`, `set_idcloud` | `GetIdCloudEnabledAsync()`, `SetIdCloudEnabledAsync(bool)` |
+| Sistema | `get_public_key` | `GetPublicKeyAsync()` |
+| Sistema | `get_coil_paper`, `set_coil_paper` | `GetCoilPaperAsync()`, `SetCoilPaperAsync(int)` |
+| Sistema | `get_system_network`, `set_system_network` | `GetNetworkAsync()`, `SetNetworkAsync(rede)` |
+| Sistema | `get_system_daylight_saving_time`, `set_system_daylight_saving_time` | `GetDaylightSavingTimeAsync()`, `SetDaylightSavingTimeAsync(periodo)` |
+| Sistema | `get_system_date_time`, `set_system_date_time` | `GetDateTimeAsync()`, `SetDateTimeAsync(DateTime)`; com fuso: `GetDateTimeOffsetAsync()`, `SetDateTimeAsync(DateTimeOffset)` |
+| AFD | `get_afd` | `GetAfdAsync(...)`, `GetAfdFile...Async(...)`, `GetAfdAsync(RepAfdQuery)`, `OpenAfdStreamAsync()`, `EnumerateAfdRecordsAsync()` |
+| Biometria | `template_extract` | `ExtractTemplateAsync(bitmap, largura, altura)` |
+| Biometria | `template_merge` | `MergeTemplatesAsync(identificador, leituras)` |
+| Facial | `get_facial_module_config`, `set_facial_module_config` | `GetFacialModuleConfigAsync()`, `SetFacialModuleConfigAsync(config)` |
+| Facial | `set_facial_limit` | `SetFacialLimitAsync(senha)` |
+| Facial | `get_about_facial` | `GetAboutFacialAsync()` |
+| Facial | `facial_enroller_state` | `GetFacialEnrollerStateAsync()` |
+| Facial | `remote_enroll`, `cancel_remote_enroll` | `StartRemoteEnrollAsync(cpf)`, `CancelRemoteEnrollAsync()` |
+| Facial | `user_set_image`, `user_get_image`, `user_destroy_image` | `SetUserImageAsync(cpf, foto)`, `GetUserImageAsync(cpf)`, `DeleteUserImageAsync(cpf)` |
+| Facial | `user_import_image` | `ImportUserImageAsync(cpf, foto)` |
+
+### Revisões do firmware
+
+A documentação numera a API pela versão do firmware em hexadecimal (`get_about` devolve em decimal; `RepAbout.ApiRevision`
+converte: 260 → 104).
+
+| Revisão | O que mudou na API |
+| --- | --- |
+| 101 (257) | `mode=671`: AFD da Portaria 671, fuso horário na data e hora, CPF no lugar do PIS |
+| 102 (258) | APIs faciais (fotos, cadastro remoto, configuração, licença), `do_match`, `remove_faces`, `image`/`image_timestamp`, `face` no `load_users`, `isFacial`, DHCP e porta na rede |
+| 104 (260) | `cpf_cnpj` como texto (CNPJ alfanumérico), `registration` como texto, `headerTop` no AFD |
+
+### Divergências da documentação e como foram tratadas
+
+| Onde | Divergência | Decisão |
+| --- | --- | --- |
+| `get_system_network` | A resposta traz `DNS`; o exemplo de `set_system_network` manda `dns` | Lê as duas (sem diferenciar maiúsculas); grava `dns` |
+| `get/set_system_network` | A tabela diz `use_dhpc`; o exemplo e o changelog dizem `use_dhcp` | Lê as duas; grava `use_dhcp`, sempre (o REP assume `false` se faltar) |
+| `edit_company` | `cpf_cnpj` só aceita texto a partir da revisão 104 | Só dígitos vão como número (todas as revisões); com letras, como texto |
+| `load_company` | `cpf_cnpj` vem número antes da revisão 104 e texto depois | Lê os dois como texto |
+| APIs faciais | Exigem `mode=671` mesmo num cliente no modo legado | Sempre mandam `mode=671` |
+| `get_afd` | Sem `headerTop`, a ordem é corpo, assinatura, cabeçalho e nome do arquivo | O parser lê em qualquer ordem; `RepAfdQuery.HeaderTop` pede o cabeçalho no começo |
+| `get_afd` em stream | Lido aos poucos, não dá para testar se o texto é UTF-8 válido | Charset da resposta ou, sem ele, ISO-8859-1 (o das portarias) |
+| `template_merge`, `template_extract` | Respostas não documentadas | `template` (e `quality` na extração), como no `template_extract` da linha de acesso |
+| `user_set_image`, `user_import_image` | Respostas não documentadas | Sem retorno; erro do REP vira exceção |
+| `get_system_daylight_saving_time` | Não diz o que volta sem horário de verão | Data inválida (ex.: zeros) vira `null` |
+
+### A validar em equipamento real
+
+Nenhum REP iDClass foi testado ainda: tudo acima segue a documentação e o mesmo transporte já validado na linha de
+acesso. Ao testar, registre aqui o modelo e a revisão, em especial: as respostas não documentadas da tabela acima, o
+formato do CSV de usuários, o `headerTop` em firmware anterior à 104 e o que `get_system_daylight_saving_time` devolve sem
+horário de verão.
