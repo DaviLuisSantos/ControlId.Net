@@ -1,6 +1,6 @@
 # ControlId.Net
 
-[![CI](https://github.com/DaviLuisSantos/ControlId.Net/actions/workflows/ci.yml/badge.svg)](https://github.com/DaviLuisSantos/ControlId.Net/actions/workflows/ci.yml)
+[![Publish](https://github.com/DaviLuisSantos/ControlId.Net/actions/workflows/publish.yml/badge.svg)](https://github.com/DaviLuisSantos/ControlId.Net/actions/workflows/publish.yml)
 [![ControlId.Net](https://img.shields.io/nuget/vpre/ControlId.Net?label=ControlId.Net)](https://www.nuget.org/packages/ControlId.Net)
 [![ControlId.Net.DependencyInjection](https://img.shields.io/nuget/vpre/ControlId.Net.DependencyInjection?label=ControlId.Net.DependencyInjection)](https://www.nuget.org/packages/ControlId.Net.DependencyInjection)
 [![ControlId.Net.AspNetCore](https://img.shields.io/nuget/vpre/ControlId.Net.AspNetCore?label=ControlId.Net.AspNetCore)](https://www.nuget.org/packages/ControlId.Net.AspNetCore)
@@ -622,7 +622,9 @@ dotnet run --project samples/ControlId.Net.Sample -- access http://192.168.0.129
 dotnet run --project samples/ControlId.Net.Server -- --urls http://0.0.0.0:5000
 ```
 
-Os testes rodam em `net8.0`, `net10.0` e `net48`. Os dois primeiros exercitam o build `net8.0` das bibliotecas (o `net10.0` garante a compatibilidade com o .NET 10, inclusive o pacote ASP.NET Core sobre o ASP.NET Core 10); o `net48` exercita o build `netstandard2.0`, usado no .NET Framework, e só executa no Windows. Para compilar o alvo `net10.0` é preciso o SDK do .NET 10. Em Linux ou macOS, use `dotnet test -f net8.0` ou `-f net10.0`. No CI, os dois rodam no job Linux e o `net48` num job Windows separado; o `publish.yml` só publica se todos passarem.
+Os testes rodam em `net8.0`, `net10.0` e `net48`. Os dois primeiros exercitam o build `net8.0` das bibliotecas (o `net10.0` garante a compatibilidade com o .NET 10, inclusive o pacote ASP.NET Core sobre o ASP.NET Core 10); o `net48` exercita o build `netstandard2.0`, usado no .NET Framework, e só executa no Windows. Para compilar o alvo `net10.0` é preciso o SDK do .NET 10. Em Linux ou macOS, use `dotnet test -f net8.0` ou `-f net10.0`.
+
+O GitHub Actions só roda ao lançar versão, para poupar a cota de minutos da conta: push e pull request não disparam nada, então rode `dotnet test` antes de enviar. O `publish.yml` testa os três alvos (Linux e Windows) e só publica se todos passarem; o `ci.yml` faz o mesmo build e teste, sem publicar, quando disparado à mão (aba Actions, "Run workflow").
 
 Para publicar, crie uma tag `vX.Y.Z` e faça push. O workflow `publish.yml` empacota `ControlId.Net`, `ControlId.Net.DependencyInjection` e `ControlId.Net.AspNetCore` com a versão da tag e envia ao NuGet.org por Trusted Publishing (OIDC), sem chave guardada no repositório. Configuração única: uma política de Trusted Publishing no nuget.org para este repositório e o arquivo `publish.yml`, e o secret `NUGET_USER` com o nome de usuário do nuget.org.
 
