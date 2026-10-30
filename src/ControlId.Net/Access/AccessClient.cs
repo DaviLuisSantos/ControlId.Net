@@ -23,6 +23,9 @@ public sealed class AccessClient : IAccessClient
     /// <summary>Tamanho padrão de página das leituras paginadas (<c>Enumerate*Async</c>).</summary>
     public const int DefaultPageSize = 500;
 
+    /// <summary>Registros removidos por requisição em <see cref="DestroyObjectsAsync"/> (o mesmo do SDK oficial).</summary>
+    public const int DestroyPageSize = 200;
+
     private const int MaxImageBytes = 1024 * 1024;
     private static readonly TimeSpan MaxBuzz = TimeSpan.FromSeconds(3);
 
@@ -116,9 +119,20 @@ public sealed class AccessClient : IAccessClient
     /// <inheritdoc/>
     public async Task<int> DestroyObjectsAsync(string @object, object where, CancellationToken cancellationToken = default)
     {
-        var body = new Dictionary<string, object?> { ["object"] = @object, ["where"] = where };
-        var response = await _transport.PostAsync<ChangesResponse>("destroy_objects.fcgi", body, cancellationToken).ConfigureAwait(false);
-        return response.Changes;
+        // Exclusões grandes em lotes, como o SDK oficial ("delete paginado"). Um lote incompleto quer dizer que acabou;
+        // se o firmware ignorar o limit e apagar tudo de uma vez, a próxima volta devolve 0.
+        var body = new Dictionary<string, object?> { ["object"] = @object, ["where"] = where, ["limit"] = DestroyPageSize };
+        var total = 0;
+        int changes;
+        do
+        {
+            var response = await _transport.PostAsync<ChangesResponse>("destroy_objects.fcgi", body, cancellationToken).ConfigureAwait(false);
+            changes = response.Changes;
+            total += changes;
+        }
+        while (changes >= DestroyPageSize);
+
+        return total;
     }
 
     /// <inheritdoc/>

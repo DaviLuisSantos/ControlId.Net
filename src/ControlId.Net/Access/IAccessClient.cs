@@ -41,7 +41,11 @@ public interface IAccessClient : IControlIdClient
     /// <summary><c>modify_objects.fcgi</c> — devolve a quantidade de registros alterados.</summary>
     Task<int> ModifyObjectsAsync(string @object, object values, object where, CancellationToken cancellationToken = default);
 
-    /// <summary><c>destroy_objects.fcgi</c> — devolve a quantidade de registros removidos.</summary>
+    /// <summary>
+    /// <c>destroy_objects.fcgi</c> — devolve a quantidade de registros removidos. Remove em lotes de
+    /// <see cref="AccessClient.DestroyPageSize"/> (<c>limit</c>) até não sobrar nada, como o SDK oficial da Control iD faz
+    /// desde 2026-09 para exclusões grandes; exclusões pequenas continuam numa requisição só.
+    /// </summary>
     Task<int> DestroyObjectsAsync(string @object, object where, CancellationToken cancellationToken = default);
 
     /// <summary>Lista todos os usuários.</summary>

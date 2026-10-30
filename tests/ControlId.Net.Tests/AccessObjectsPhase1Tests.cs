@@ -64,7 +64,7 @@ public class AccessObjectsPhase1Tests
             device.RequestsTo("modify_objects.fcgi").Single().Body);
         // actions usa "group_id" como chave.
         Assert.Equal(
-            """{"object":"actions","where":{"actions":{"group_id":9}}}""",
+            """{"object":"actions","where":{"actions":{"group_id":9}},"limit":200}""",
             device.RequestsTo("destroy_objects.fcgi").Single().Body);
     }
 
@@ -113,7 +113,7 @@ public class AccessObjectsPhase1Tests
 
         await client.SetAdministratorAsync(7, isAdministrator);
 
-        Assert.Equal("""{"object":"user_roles","where":{"user_roles":{"user_id":7}}}""", device.RequestsTo("destroy_objects.fcgi").Single().Body);
+        Assert.Equal("""{"object":"user_roles","where":{"user_roles":{"user_id":7}},"limit":200}""", device.RequestsTo("destroy_objects.fcgi").Single().Body);
         if (isAdministrator)
         {
             Assert.Equal("""{"object":"user_roles","values":[{"user_id":7,"role":1}]}""", device.RequestsTo("create_objects.fcgi").Single().Body);

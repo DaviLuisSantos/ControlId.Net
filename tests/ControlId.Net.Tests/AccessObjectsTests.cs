@@ -65,7 +65,7 @@ public class AccessObjectsTests
 
         Assert.True(await client.DeleteTemplateAsync(9));
         Assert.Equal(
-            """{"object":"templates","where":{"templates":{"id":9}}}""",
+            """{"object":"templates","where":{"templates":{"id":9}},"limit":200}""",
             device.RequestsTo("destroy_objects.fcgi").Single().Body);
     }
 
@@ -112,7 +112,7 @@ public class AccessObjectsTests
             """{"object":"user_groups","values":[{"user_id":7,"group_id":2}]}""",
             device.RequestsTo("create_objects.fcgi").Single().Body);
         Assert.Equal(
-            """{"object":"user_groups","where":{"user_groups":{"user_id":7,"group_id":2}}}""",
+            """{"object":"user_groups","where":{"user_groups":{"user_id":7,"group_id":2}},"limit":200}""",
             device.RequestsTo("destroy_objects.fcgi").Single().Body);
     }
 
@@ -252,5 +252,23 @@ public class AccessObjectsTests
 
         var bodies = device.RequestsTo("user_destroy_image.fcgi").Select(r => r.Body).ToList();
         Assert.Equal(new[] { """{"user_id":7}""", """{"all":true}""" }, bodies);
+    }
+
+    [Fact]
+    public async Task Destroy_removes_in_pages_of_200_until_a_partial_page()
+    {
+        var device = new FakeDeviceHandler()
+            .OnJson("login.fcgi", """{"session":"s"}""")
+            .OnJson("destroy_objects.fcgi", """{"changes":200}""")
+            .OnJson("destroy_objects.fcgi", """{"changes":200}""")
+            .OnJson("destroy_objects.fcgi", """{"changes":37}""");
+        using var client = new AccessClient(new ControlIdDeviceOptions { BaseAddress = new Uri("http://10.0.0.5") }, device.CreateClient());
+
+        var removed = await client.DestroyObjectsAsync("users", Where.Equal("users", "user_type_id", 1));
+
+        Assert.Equal(437, removed);
+        var requests = device.RequestsTo("destroy_objects.fcgi").ToList();
+        Assert.Equal(3, requests.Count);
+        Assert.All(requests, r => Assert.Contains("\"limit\":200", r.Body));
     }
 }
