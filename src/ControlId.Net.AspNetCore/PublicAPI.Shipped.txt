@@ -1,0 +1,20 @@
+#nullable enable
+ControlId.AspNetCore.IMonitorNotificationHandler
+ControlId.AspNetCore.IMonitorNotificationHandler.HandleAsync(ControlId.Access.Monitoring.MonitorNotification! notification, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+ControlId.AspNetCore.IOnlineAccessHandler
+ControlId.AspNetCore.IOnlineAccessHandler.AuthorizeAsync(ControlId.Access.Online.OnlineIdentificationEvent! identification, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<ControlId.Access.Online.OnlineAuthorization!>!
+ControlId.AspNetCore.IOnlineAccessHandler.GetUserImageAsync(long userId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<byte[]?>!
+ControlId.AspNetCore.IOnlineAccessHandler.OnExitButtonAsync(ControlId.Access.Online.ExitButtonEvent! exitButton, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+ControlId.AspNetCore.IOnlineAccessHandler.OnRemoteEnrollAsync(ControlId.Access.Online.OnlineEnrollEvent! enrollment, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Microsoft.AspNetCore.Builder.ControlIdEndpointRouteBuilderExtensions
+Microsoft.AspNetCore.Builder.ControlIdOnlineEndpointRouteBuilderExtensions
+Microsoft.AspNetCore.Builder.ControlIdOnlineServiceCollectionExtensions
+Microsoft.Extensions.DependencyInjection.ControlIdServiceCollectionExtensions
+static Microsoft.AspNetCore.Builder.ControlIdEndpointRouteBuilderExtensions.MapControlIdMonitor(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints, string! path = "api/notifications") -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
+static Microsoft.AspNetCore.Builder.ControlIdEndpointRouteBuilderExtensions.MapControlIdPush(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints, string! prefix = "/") -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
+static Microsoft.AspNetCore.Builder.ControlIdOnlineEndpointRouteBuilderExtensions.MapControlIdOnline(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints, string! prefix = "/") -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
+static Microsoft.AspNetCore.Builder.ControlIdOnlineServiceCollectionExtensions.AddControlIdOnline(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Func<ControlId.Access.Online.OnlineIdentificationEvent!, System.Threading.CancellationToken, System.Threading.Tasks.Task<ControlId.Access.Online.OnlineAuthorization!>!>! authorize) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Microsoft.AspNetCore.Builder.ControlIdOnlineServiceCollectionExtensions.AddControlIdOnline<THandler>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Microsoft.Extensions.DependencyInjection.ControlIdServiceCollectionExtensions.AddControlIdMonitor(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Func<ControlId.Access.Monitoring.MonitorNotification!, System.Threading.CancellationToken, System.Threading.Tasks.Task!>! handler) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Microsoft.Extensions.DependencyInjection.ControlIdServiceCollectionExtensions.AddControlIdMonitor<THandler>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Microsoft.Extensions.DependencyInjection.ControlIdServiceCollectionExtensions.AddControlIdPush(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

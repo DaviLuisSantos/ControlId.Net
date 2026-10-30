@@ -1,0 +1,3 @@
+#nullable enable
+ControlId.DependencyInjection.ControlIdRepOptions.ServerCertificateSha256.get -> string?
+ControlId.DependencyInjection.ControlIdRepOptions.ServerCertificateSha256.set -> void

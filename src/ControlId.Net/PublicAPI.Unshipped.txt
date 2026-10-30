@@ -1,0 +1,30 @@
+#nullable enable
+const ControlId.Access.AccessClient.DestroyPageSize = 200 -> int
+ControlId.Access.AccessClient.DeleteAllAdministratorsAsync(ControlId.DataLossConfirmation confirmation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.DeleteAllFaceTemplatesAsync(ControlId.DataLossConfirmation confirmation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.DeleteAllUserImagesAsync(ControlId.DataLossConfirmation confirmation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.GetEnrollerStateAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.EnrollerState!>!
+ControlId.Access.AccessClient.ResetToFactoryDefaultAsync(ControlId.DataLossConfirmation confirmation, bool keepNetworkSettings, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.EnrollerState
+ControlId.Access.EnrollerState.BiometryState.get -> string?
+ControlId.Access.EnrollerState.BiometryState.set -> void
+ControlId.Access.EnrollerState.EnrollerState() -> void
+ControlId.Access.EnrollerState.IsEnrolling.get -> bool
+ControlId.Access.EnrollerState.LastEnrollError.get -> string?
+ControlId.Access.EnrollerState.LastEnrollError.set -> void
+ControlId.Access.EnrollerState.LastEnrollSucceeded.get -> bool
+ControlId.Access.EnrollerState.LastEnrollSucceeded.set -> void
+ControlId.Access.EnrollerState.State.get -> string?
+ControlId.Access.EnrollerState.State.set -> void
+ControlId.Access.IAccessClient.DeleteAllAdministratorsAsync(ControlId.DataLossConfirmation confirmation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.DeleteAllFaceTemplatesAsync(ControlId.DataLossConfirmation confirmation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.DeleteAllUserImagesAsync(ControlId.DataLossConfirmation confirmation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.GetEnrollerStateAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.EnrollerState!>!
+ControlId.Access.IAccessClient.ResetToFactoryDefaultAsync(ControlId.DataLossConfirmation confirmation, bool keepNetworkSettings, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.ControlIdCertificates
+ControlId.ControlIdDeviceOptions.ServerCertificateSha256.get -> string?
+ControlId.ControlIdDeviceOptions.ServerCertificateSha256.set -> void
+ControlId.DataLossConfirmation
+ControlId.DataLossConfirmation.Confirmed = 1 -> ControlId.DataLossConfirmation
+ControlId.DataLossConfirmation.None = 0 -> ControlId.DataLossConfirmation
+static ControlId.ControlIdCertificates.GetServerCertificateSha256Async(System.Uri! baseAddress, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
