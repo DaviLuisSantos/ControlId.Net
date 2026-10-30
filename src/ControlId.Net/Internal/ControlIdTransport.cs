@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -119,6 +120,79 @@ internal sealed class ControlIdTransport : IDisposable
         using var response = await SendCommandAsync(HttpMethod.Post, endpoint, () => JsonContent(body), extraQuery, requiresSession: true, cancellationToken).ConfigureAwait(false);
         var content = await ReadAsByteArrayAsync(response, cancellationToken).ConfigureAwait(false);
         return (content, response.Content.Headers.ContentType?.CharSet);
+    }
+
+    /// <summary>
+    /// POST com corpo JSON; devolve o corpo da resposta como stream, lido sob demanda (ex.: AFD grande). A vaga do limite de
+    /// requisições fica ocupada até o stream ser fechado. Refaz o login uma vez em 401, como os demais comandos.
+    /// </summary>
+    public async Task<(Stream Stream, string? CharSet)> PostForStreamAsync(string endpoint, object? body, CancellationToken cancellationToken, string? extraQuery = null)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            var session = await EnsureSessionAsync(cancellationToken).ConfigureAwait(false);
+            using var request = BuildRequest(HttpMethod.Post, endpoint, JsonContent(body), session, extraQuery);
+
+            await _throttle.WaitAsync(cancellationToken).ConfigureAwait(false);
+            HttpResponseMessage response;
+            try
+            {
+                response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            }
+            catch (HttpRequestException ex)
+            {
+                _throttle.Release();
+                throw new ControlIdException($"Falha de comunicação com {_options.BaseAddress} ao chamar '{endpoint}'.", innerException: ex);
+            }
+            catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                _throttle.Release();
+                throw new ControlIdException($"Timeout ao chamar '{endpoint}' em {_options.BaseAddress}.", innerException: ex);
+            }
+            catch
+            {
+                _throttle.Release();
+                throw;
+            }
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized && attempt == 0)
+            {
+                response.Dispose();
+                _throttle.Release();
+                Interlocked.CompareExchange(ref _session, null, session);
+                continue;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                try
+                {
+                    var text = await ReadAsStringAsync(response, cancellationToken).ConfigureAwait(false);
+                    EnsureSuccess(response, endpoint, text);
+                }
+                finally
+                {
+                    response.Dispose();
+                    _throttle.Release();
+                }
+            }
+
+            try
+            {
+#if NET5_0_OR_GREATER
+                var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+#else
+                var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+#endif
+                return (new ResponseStream(stream, response, _throttle), response.Content.Headers.ContentType?.CharSet);
+            }
+            catch
+            {
+                response.Dispose();
+                _throttle.Release();
+                throw;
+            }
+        }
     }
 
     /// <summary>Envia bytes crus (<paramref name="contentType"/>) e devolve o corpo da resposta como texto.</summary>
