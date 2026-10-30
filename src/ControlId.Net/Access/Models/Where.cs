@@ -20,7 +20,7 @@ public static class Where
     public static object In<T>(string @object, string field, IEnumerable<T> values) =>
         Compare(@object, field, "IN", values);
 
-    private static object Wrap(string @object, string field, object condition) =>
+    private static Dictionary<string, object> Wrap(string @object, string field, object condition) =>
         new Dictionary<string, object>
         {
             [@object] = new Dictionary<string, object> { [field] = condition },

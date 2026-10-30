@@ -20,6 +20,17 @@
       versões já é verificada pela validação de pacote acima.
     -->
     <NoWarn>$(NoWarn);RS0026;RS0027</NoWarn>
+
+    <!--
+      Regras de qualidade recomendadas pela Microsoft, com estas exceções:
+      - CA1510, CA1513, CA1845, CA1846, CA1847, CA1850, CA1865, CA2249: sugerem APIs que não existem no netstandard2.0
+        (ThrowIfNull, ThrowIf, sobrecargas com Span, HashData, Contains/EndsWith(char)); atender exigiria #if em cada ponto.
+      - CA1716, CA1720: parâmetros como "object" seguem os nomes da API do equipamento; renomear quebraria quem usa
+        argumentos nomeados.
+      - CA1848: LoggerMessage entra junto com a instrumentação (fase 3 do docs/PLANO.md).
+    -->
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <NoWarn>$(NoWarn);CA1510;CA1513;CA1845;CA1846;CA1847;CA1850;CA1865;CA2249;CA1716;CA1720;CA1848</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

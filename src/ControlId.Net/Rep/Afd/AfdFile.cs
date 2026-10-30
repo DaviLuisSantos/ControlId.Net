@@ -70,7 +70,7 @@ public sealed class AfdFile
     /// </summary>
     public IReadOnlyList<string> Issues { get; }
 
-    private IReadOnlyList<string> Validate()
+    private List<string> Validate()
     {
         var issues = InvalidRecords.Select(r => $"Linha {r.LineNumber}: {r.Error}").ToList();
 

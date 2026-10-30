@@ -185,7 +185,9 @@ public sealed class PushServer
         }
         else
         {
-            var results = pending.Batch ? ParseBatchResults(deviceId, pending.Commands, root) : new[] { ParseSingleResult(deviceId, pending.Commands[0], root) };
+            IReadOnlyList<PushResult> results = pending.Batch
+                ? ParseBatchResults(deviceId, pending.Commands, root)
+                : new[] { ParseSingleResult(deviceId, pending.Commands[0], root) };
             pending.Completion.TrySetResult(results);
         }
 
@@ -208,7 +210,7 @@ public sealed class PushServer
         return new PushResult(deviceId, command.Endpoint, response, error);
     }
 
-    private static IReadOnlyList<PushResult> ParseBatchResults(long deviceId, IReadOnlyList<PushCommand> commands, JsonElement root)
+    private static List<PushResult> ParseBatchResults(long deviceId, IReadOnlyList<PushCommand> commands, JsonElement root)
     {
         var byTransaction = new Dictionary<int, PushResult>();
         string? generalError = null;

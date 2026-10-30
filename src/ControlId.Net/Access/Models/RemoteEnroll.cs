@@ -62,7 +62,7 @@ public sealed class RemoteEnrollRequest
     {
         if (Save && UserId is null)
         {
-            throw new ArgumentException("Informe UserId para gravar o cadastro no equipamento (Save = true).", nameof(UserId));
+            throw new ArgumentException("Informe UserId para gravar o cadastro no equipamento (Save = true).");
         }
 
         var body = new Dictionary<string, object>
@@ -74,7 +74,7 @@ public sealed class RemoteEnrollRequest
                 RemoteEnrollType.Biometry => "biometry",
                 RemoteEnrollType.Pin => "pin",
                 RemoteEnrollType.Password => "password",
-                _ => throw new ArgumentOutOfRangeException(nameof(Type)),
+                _ => throw new ArgumentException($"Tipo de cadastro remoto desconhecido: {Type}."),
             },
             ["save"] = Save,
             ["sync"] = sync,

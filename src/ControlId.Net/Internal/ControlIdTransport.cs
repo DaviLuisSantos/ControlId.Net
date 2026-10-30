@@ -264,7 +264,7 @@ internal sealed class ControlIdTransport : IDisposable
         return new HttpRequestMessage(method, uri) { Content = content };
     }
 
-    private static HttpContent JsonContent(object? body) =>
+    private static StringContent JsonContent(object? body) =>
         new StringContent(ControlIdJson.Serialize(body), Encoding.UTF8, "application/json");
 
     private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, string endpoint, CancellationToken cancellationToken)

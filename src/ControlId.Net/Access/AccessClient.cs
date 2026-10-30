@@ -1654,7 +1654,7 @@ public sealed class AccessClient : IAccessClient
     private static FaceImageResult ParseFaceResult(string text) =>
         string.IsNullOrWhiteSpace(text) ? new FaceImageResult { Success = true } : ControlIdJson.Deserialize<FaceImageResult>(text);
 
-    private static IReadOnlyList<FaceImageResult> ParseResults(string text) =>
+    private static List<FaceImageResult> ParseResults(string text) =>
         string.IsNullOrWhiteSpace(text) ? new List<FaceImageResult>() : ControlIdJson.Deserialize<ResultsResponse>(text).Results ?? new List<FaceImageResult>();
 
     private sealed class ResultsResponse
