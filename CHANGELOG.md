@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+## [0.5.0-alpha.1] - 2026-10-30
+
+REP iDClass completo, proteção contra operações destrutivas, certificado fixado e governança da publicação.
+
 ### Added
 - **REP iDClass completo**: os 47 comandos da [documentação da API](https://www.controlid.com.br/suporte/api_idclass_latest.html) (v4.0.1), com `RepDocumentationCoverageTests` garantindo cada um. Novos no `RepClient`:
   - Sessão: `IsSessionValidAsync`, `ChangeLoginAsync`.
@@ -15,12 +19,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
   - REP Facial: configuração do módulo, licença de 10 mil faces, informações do módulo, estado do cadastro, cadastro remoto, e fotos (`SetUserImageAsync`, `GetUserImageAsync`, `DeleteUserImageAsync`, `ImportUserImageAsync`).
 - Confirmação explícita para o que apaga dados sem volta: `ResetToFactoryDefaultAsync`, `DeleteAllAdministratorsAsync`, `DeleteAllUserImagesAsync` e `DeleteAllFaceTemplatesAsync` ganham sobrecargas que exigem `DataLossConfirmation.Confirmed`. Sem ela (inclusive com o valor padrão do enum), a chamada é recusada antes de ir ao equipamento.
 - Certificado fixado: `ControlIdDeviceOptions.ServerCertificateSha256` (e em `ControlIdRepOptions`) aceita só o certificado com aquela impressão digital SHA-256, mesmo autoassinado, no lugar de aceitar qualquer um. `ControlIdCertificates.GetServerCertificateSha256Async` lê a impressão digital do equipamento para gravar na configuração. O padrão não muda: sem impressão digital, o REP continua aceitando qualquer certificado.
+- Publicação com governança: cada `dotnet pack` valida a API contra a versão publicada e entre os alvos (quebras viram erro), a API pública fica registrada em `PublicAPI.Shipped.txt`/`PublicAPI.Unshipped.txt`, e as regras de qualidade recomendadas estão ligadas sem nenhum aviso. Cada versão publicada leva resumo de cobertura dos testes, SBOM (CycloneDX) e atestação de proveniência dos pacotes (`gh attestation verify <arquivo.nupkg> --repo DaviLuisSantos/ControlId.Net`).
+- `SECURITY.md` (relato privado de vulnerabilidades e uso seguro), `CONTRIBUTING.md`, modelos de issue e de PR, e as decisões de arquitetura em [docs/adr](docs/adr/README.md).
 - `GetEnrollerStateAsync` (`enroller_state.fcgi`, da coleção oficial do Postman): estado do cadastro remoto e resultado do último, com `IsEnrolling`. O firmware manda `biometry_sate` (erro de digitação); `EnrollerState.BiometryState` aceita as duas grafias. Serve para acompanhar o cadastro assíncrono no iDFace, que não avisa pelo Monitor.
 
 ### Deprecated
 - As sobrecargas antigas desses quatro métodos, sem confirmação, ficam `[Obsolete]`. Continuam funcionando e saem numa versão futura.
 
 ### Changed
+- **Quebra de compatibilidade:** `IAccessClient` e `IRepClient` ganham membros novos. Quem só usa `AccessClient` e `RepClient` não é afetado; quem implementa as interfaces por conta própria (ex.: um mock) precisa implementar os membros novos.
 - `DestroyObjectsAsync` remove em lotes de 200 (`limit`, novo `AccessClient.DestroyPageSize`) até acabar, como o SDK oficial da Control iD passou a fazer em 2026-09 para exclusões grandes. Exclusões com menos de 200 registros continuam numa requisição só.
 - `MapControlIdMonitor` também aceita o caminho no singular (`api/notification/...`) quando o configurado termina em `notifications`: o SDK oficial registra que o firmware posta `device_is_alive` assim. As duas rotas ficam no grupo devolvido.
 
@@ -150,7 +157,8 @@ Cobertura completa da documentação pública da API de acesso (veja [docs/COBER
 - `RepClient.GetAfdFileFromNsrAsync`/`GetAfdFileFromDateAsync`/`GetAfdFileAsync` devolvem o AFD interpretado.
 - `RepClient` (REP iDClass): about, informações do sistema, data/hora, usuários (PIS/CPF) e download de AFD (incluindo modo Portaria 671).
 
-[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.3-alpha.1...HEAD
+[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.5.0-alpha.1...HEAD
+[0.5.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.3-alpha.1...v0.5.0-alpha.1
 [0.4.3-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.2-alpha.1...v0.4.3-alpha.1
 [0.4.2-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.1-alpha.1...v0.4.2-alpha.1
 [0.4.1-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.0-alpha.1...v0.4.1-alpha.1
