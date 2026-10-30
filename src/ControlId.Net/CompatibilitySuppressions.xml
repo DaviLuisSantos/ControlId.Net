@@ -1,0 +1,80 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- https://learn.microsoft.com/dotnet/fundamentals/package-validation/diagnostic-ids -->
+<!--
+  Quebras aceitas de propósito em relação à versão de base (PackageValidationBaselineVersion, em src/Directory.Build.props).
+  CP0006: membros novos em IAccessClient (GetEnrollerStateAsync e as sobrecargas com DataLossConfirmation). Só afeta quem
+  implementa a interface por conta própria (ex.: um mock); quem só usa AccessClient não é afetado.
+  Ao publicar uma versão, atualize a base para ela e apague este arquivo.
+-->
+<Suppressions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Suppression>
+    <DiagnosticId>CP0006</DiagnosticId>
+    <Target>M:ControlId.Access.IAccessClient.DeleteAllAdministratorsAsync(ControlId.DataLossConfirmation,System.Threading.CancellationToken)</Target>
+    <Left>lib/net8.0/ControlId.Net.dll</Left>
+    <Right>lib/net8.0/ControlId.Net.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0006</DiagnosticId>
+    <Target>M:ControlId.Access.IAccessClient.DeleteAllFaceTemplatesAsync(ControlId.DataLossConfirmation,System.Threading.CancellationToken)</Target>
+    <Left>lib/net8.0/ControlId.Net.dll</Left>
+    <Right>lib/net8.0/ControlId.Net.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0006</DiagnosticId>
+    <Target>M:ControlId.Access.IAccessClient.DeleteAllUserImagesAsync(ControlId.DataLossConfirmation,System.Threading.CancellationToken)</Target>
+    <Left>lib/net8.0/ControlId.Net.dll</Left>
+    <Right>lib/net8.0/ControlId.Net.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0006</DiagnosticId>
+    <Target>M:ControlId.Access.IAccessClient.GetEnrollerStateAsync(System.Threading.CancellationToken)</Target>
+    <Left>lib/net8.0/ControlId.Net.dll</Left>
+    <Right>lib/net8.0/ControlId.Net.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0006</DiagnosticId>
+    <Target>M:ControlId.Access.IAccessClient.ResetToFactoryDefaultAsync(ControlId.DataLossConfirmation,System.Boolean,System.Threading.CancellationToken)</Target>
+    <Left>lib/net8.0/ControlId.Net.dll</Left>
+    <Right>lib/net8.0/ControlId.Net.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0006</DiagnosticId>
+    <Target>M:ControlId.Access.IAccessClient.DeleteAllAdministratorsAsync(ControlId.DataLossConfirmation,System.Threading.CancellationToken)</Target>
+    <Left>lib/netstandard2.0/ControlId.Net.dll</Left>
+    <Right>lib/netstandard2.0/ControlId.Net.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0006</DiagnosticId>
+    <Target>M:ControlId.Access.IAccessClient.DeleteAllFaceTemplatesAsync(ControlId.DataLossConfirmation,System.Threading.CancellationToken)</Target>
+    <Left>lib/netstandard2.0/ControlId.Net.dll</Left>
+    <Right>lib/netstandard2.0/ControlId.Net.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0006</DiagnosticId>
+    <Target>M:ControlId.Access.IAccessClient.DeleteAllUserImagesAsync(ControlId.DataLossConfirmation,System.Threading.CancellationToken)</Target>
+    <Left>lib/netstandard2.0/ControlId.Net.dll</Left>
+    <Right>lib/netstandard2.0/ControlId.Net.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0006</DiagnosticId>
+    <Target>M:ControlId.Access.IAccessClient.GetEnrollerStateAsync(System.Threading.CancellationToken)</Target>
+    <Left>lib/netstandard2.0/ControlId.Net.dll</Left>
+    <Right>lib/netstandard2.0/ControlId.Net.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0006</DiagnosticId>
+    <Target>M:ControlId.Access.IAccessClient.ResetToFactoryDefaultAsync(ControlId.DataLossConfirmation,System.Boolean,System.Threading.CancellationToken)</Target>
+    <Left>lib/netstandard2.0/ControlId.Net.dll</Left>
+    <Right>lib/netstandard2.0/ControlId.Net.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+</Suppressions>

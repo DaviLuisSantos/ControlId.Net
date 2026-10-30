@@ -9,6 +9,10 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
+
+    <!-- Compara a API com a última versão publicada e com os outros alvos do mesmo pacote; quebras viram erro no pack. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion>0.4.3-alpha.1</PackageValidationBaselineVersion>
   </PropertyGroup>
 
   <ItemGroup>
