@@ -14,6 +14,8 @@ ControlId.DependencyInjection.ControlIdRepOptions.Mode.get -> ControlId.Rep.RepM
 ControlId.DependencyInjection.ControlIdRepOptions.Mode.set -> void
 ControlId.DependencyInjection.ControlIdRepOptions.Password.get -> string!
 ControlId.DependencyInjection.ControlIdRepOptions.Password.set -> void
+ControlId.DependencyInjection.ControlIdRepOptions.ServerCertificateSha256.get -> string?
+ControlId.DependencyInjection.ControlIdRepOptions.ServerCertificateSha256.set -> void
 ControlId.DependencyInjection.ControlIdRepOptions.Timeout.get -> System.TimeSpan
 ControlId.DependencyInjection.ControlIdRepOptions.Timeout.set -> void
 ControlId.DependencyInjection.IControlIdClientFactory
