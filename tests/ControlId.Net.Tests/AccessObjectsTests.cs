@@ -248,7 +248,7 @@ public class AccessObjectsTests
         using var client = new AccessClient(Options, device.CreateClient());
 
         await client.DeleteUserImageAsync(7);
-        await client.DeleteAllUserImagesAsync();
+        await client.DeleteAllUserImagesAsync(DataLossConfirmation.Confirmed);
 
         var bodies = device.RequestsTo("user_destroy_image.fcgi").Select(r => r.Body).ToList();
         Assert.Equal(new[] { """{"user_id":7}""", """{"all":true}""" }, bodies);

@@ -119,7 +119,7 @@ public class FacePhase3Tests
         var enrolled = await client.EnrollFaceTemplatesAsync(
             new[] { new FaceTemplateEnrollment(1, "q/HSO4", DateTimeOffset.FromUnixTimeSeconds(1628727478)) }, rejectExistingFaces: true);
         await client.DeleteFaceTemplatesAsync(new long[] { 1, 2 });
-        await client.DeleteAllFaceTemplatesAsync();
+        await client.DeleteAllFaceTemplatesAsync(DataLossConfirmation.Confirmed);
 
         Assert.Equal(2, extracted[1].Id);
         Assert.Equal(1, enrolled[1].Errors[0].Info!.MatchUserId);

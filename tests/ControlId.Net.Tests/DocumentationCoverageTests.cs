@@ -68,7 +68,7 @@ public class DocumentationCoverageTests
         ("face_template_extract.fcgi", "POST", c => c.ExtractFaceTemplateAsync(Bytes)),
         ("face_template_extract_list.fcgi", "POST", c => c.ExtractFaceTemplatesAsync(new[] { new FaceTemplateImage(1, Bytes) })),
         ("face_template_enroll.fcgi", "POST", c => c.EnrollFaceTemplatesAsync(new[] { new FaceTemplateEnrollment(1, "t") })),
-        ("face_template_destroy.fcgi", "POST", c => c.DeleteAllFaceTemplatesAsync()),
+        ("face_template_destroy.fcgi", "POST", c => c.DeleteAllFaceTemplatesAsync(DataLossConfirmation.Confirmed)),
         ("save_screenshot.fcgi", "POST", c => c.CaptureCameraAsync()),
 
         // Logotipo e modo propaganda
@@ -107,8 +107,8 @@ public class DocumentationCoverageTests
         ("configure_802_1X.fcgi", "POST", c => c.Configure8021XAsync(true)),
         ("set_osdp_installation_mode.fcgi", "POST", c => c.SetOsdpInstallationModeAsync(true)),
         ("set_system_time.fcgi", "POST", c => c.SetSystemTimeAsync(new DateTime(2026, 1, 1))),
-        ("reset_to_factory_default.fcgi", "POST", c => c.ResetToFactoryDefaultAsync(true)),
-        ("delete_admins.fcgi", "POST", c => c.DeleteAllAdministratorsAsync()),
+        ("reset_to_factory_default.fcgi", "POST", c => c.ResetToFactoryDefaultAsync(DataLossConfirmation.Confirmed, true)),
+        ("delete_admins.fcgi", "POST", c => c.DeleteAllAdministratorsAsync(DataLossConfirmation.Confirmed)),
         ("reboot_recovery.fcgi", "POST", c => c.RebootToUpdateModeAsync()),
         ("reboot.fcgi", "POST", c => c.RebootAsync()),
         ("reboot", "GET", c => c.RebootWithoutSessionAsync()),

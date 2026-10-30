@@ -271,8 +271,16 @@ public sealed class AccessClient : IAccessClient
         _transport.PostRawAsync("user_destroy_image.fcgi", new Dictionary<string, object> { ["dangling"] = true }, cancellationToken);
 
     /// <inheritdoc/>
+    [Obsolete("Apaga dados sem volta: use a sobrecarga com DataLossConfirmation.Confirmed.")]
     public Task DeleteAllUserImagesAsync(CancellationToken cancellationToken = default) =>
-        _transport.PostRawAsync("user_destroy_image.fcgi", new Dictionary<string, object> { ["all"] = true }, cancellationToken);
+        DeleteAllUserImagesAsync(DataLossConfirmation.Confirmed, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task DeleteAllUserImagesAsync(DataLossConfirmation confirmation, CancellationToken cancellationToken = default)
+    {
+        DataLoss.Require(confirmation, nameof(DeleteAllUserImagesAsync));
+        return _transport.PostRawAsync("user_destroy_image.fcgi", new Dictionary<string, object> { ["all"] = true }, cancellationToken);
+    }
 
     /// <inheritdoc/>
     public async Task<FaceImageResult> ExtractFaceTemplateAsync(byte[] image, CancellationToken cancellationToken = default)
@@ -311,8 +319,16 @@ public sealed class AccessClient : IAccessClient
             cancellationToken);
 
     /// <inheritdoc/>
+    [Obsolete("Apaga dados sem volta: use a sobrecarga com DataLossConfirmation.Confirmed.")]
     public Task DeleteAllFaceTemplatesAsync(CancellationToken cancellationToken = default) =>
-        _transport.PostRawAsync("face_template_destroy.fcgi", new Dictionary<string, object> { ["all"] = true }, cancellationToken);
+        DeleteAllFaceTemplatesAsync(DataLossConfirmation.Confirmed, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task DeleteAllFaceTemplatesAsync(DataLossConfirmation confirmation, CancellationToken cancellationToken = default)
+    {
+        DataLoss.Require(confirmation, nameof(DeleteAllFaceTemplatesAsync));
+        return _transport.PostRawAsync("face_template_destroy.fcgi", new Dictionary<string, object> { ["all"] = true }, cancellationToken);
+    }
 
     /// <inheritdoc/>
     public async Task<byte[]> CaptureCameraAsync(CameraType camera = CameraType.Rgb, CancellationToken cancellationToken = default)
@@ -775,13 +791,29 @@ public sealed class AccessClient : IAccessClient
         _transport.PostRawAsync("reboot_recovery.fcgi", null, cancellationToken);
 
     /// <inheritdoc/>
+    [Obsolete("Apaga dados sem volta: use a sobrecarga com DataLossConfirmation.Confirmed.")]
     public Task ResetToFactoryDefaultAsync(bool keepNetworkSettings, CancellationToken cancellationToken = default) =>
-        _transport.PostRawAsync(
-            "reset_to_factory_default.fcgi", new Dictionary<string, object> { ["keep_network_info"] = keepNetworkSettings }, cancellationToken);
+        ResetToFactoryDefaultAsync(DataLossConfirmation.Confirmed, keepNetworkSettings, cancellationToken);
 
     /// <inheritdoc/>
+    public Task ResetToFactoryDefaultAsync(DataLossConfirmation confirmation, bool keepNetworkSettings, CancellationToken cancellationToken = default)
+    {
+        DataLoss.Require(confirmation, nameof(ResetToFactoryDefaultAsync));
+        return _transport.PostRawAsync(
+            "reset_to_factory_default.fcgi", new Dictionary<string, object> { ["keep_network_info"] = keepNetworkSettings }, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    [Obsolete("Apaga dados sem volta: use a sobrecarga com DataLossConfirmation.Confirmed.")]
     public Task DeleteAllAdministratorsAsync(CancellationToken cancellationToken = default) =>
-        _transport.PostRawAsync("delete_admins.fcgi", null, cancellationToken);
+        DeleteAllAdministratorsAsync(DataLossConfirmation.Confirmed, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task DeleteAllAdministratorsAsync(DataLossConfirmation confirmation, CancellationToken cancellationToken = default)
+    {
+        DataLoss.Require(confirmation, nameof(DeleteAllAdministratorsAsync));
+        return _transport.PostRawAsync("delete_admins.fcgi", null, cancellationToken);
+    }
 
     /// <inheritdoc/>
     public Task SetNetworkAsync(NetworkSettings settings, CancellationToken cancellationToken = default) =>

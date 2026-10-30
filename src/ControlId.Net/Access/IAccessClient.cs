@@ -129,8 +129,15 @@ public interface IAccessClient : IControlIdClient
     /// <summary>Remove as fotos que não pertencem a nenhum usuário (<c>dangling</c>).</summary>
     Task DeleteDanglingUserImagesAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Remove as fotos de todos os usuários.</summary>
+    /// <summary>Remove as fotos de todos os usuários. Obsoleto: use a sobrecarga com <see cref="DataLossConfirmation"/>.</summary>
+    [Obsolete("Apaga dados sem volta: use a sobrecarga com DataLossConfirmation.Confirmed.")]
     Task DeleteAllUserImagesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Remove as fotos de todos os usuários (e, no facial, o cadastro facial deles), sem volta. Exige
+    /// <see cref="DataLossConfirmation.Confirmed"/>.
+    /// </summary>
+    Task DeleteAllUserImagesAsync(DataLossConfirmation confirmation, CancellationToken cancellationToken = default);
 
     /// <summary><c>face_template_extract.fcgi</c>: extrai o template facial de uma imagem (em <see cref="FaceImageResult.FaceTemplate"/>).</summary>
     Task<FaceImageResult> ExtractFaceTemplateAsync(byte[] image, CancellationToken cancellationToken = default);
@@ -145,8 +152,15 @@ public interface IAccessClient : IControlIdClient
     /// <summary><c>face_template_destroy.fcgi</c>: remove os templates faciais dos usuários informados.</summary>
     Task DeleteFaceTemplatesAsync(IEnumerable<long> userIds, CancellationToken cancellationToken = default);
 
-    /// <summary><c>face_template_destroy.fcgi</c> com <c>all</c>: remove todos os templates faciais.</summary>
+    /// <summary><c>face_template_destroy.fcgi</c> com <c>all</c>. Obsoleto: use a sobrecarga com <see cref="DataLossConfirmation"/>.</summary>
+    [Obsolete("Apaga dados sem volta: use a sobrecarga com DataLossConfirmation.Confirmed.")]
     Task DeleteAllFaceTemplatesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <c>face_template_destroy.fcgi</c> com <c>all</c>: remove todos os templates faciais, sem volta. Exige
+    /// <see cref="DataLossConfirmation.Confirmed"/>.
+    /// </summary>
+    Task DeleteAllFaceTemplatesAsync(DataLossConfirmation confirmation, CancellationToken cancellationToken = default);
 
     /// <summary><c>save_screenshot.fcgi</c>: captura da câmera (ângulo maior que o do display), em PNG.</summary>
     Task<byte[]> CaptureCameraAsync(CameraType camera = CameraType.Rgb, CancellationToken cancellationToken = default);
@@ -402,13 +416,27 @@ public interface IAccessClient : IControlIdClient
     Task RebootToUpdateModeAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// <c>reset_to_factory_default.fcgi</c>: APAGA TODOS OS DADOS e volta às configurações de fábrica.
-    /// Com <paramref name="keepNetworkSettings"/>, mantém IP e rede.
+    /// <c>reset_to_factory_default.fcgi</c>. Obsoleto: use a sobrecarga com <see cref="DataLossConfirmation"/>.
     /// </summary>
+    [Obsolete("Apaga dados sem volta: use a sobrecarga com DataLossConfirmation.Confirmed.")]
     Task ResetToFactoryDefaultAsync(bool keepNetworkSettings, CancellationToken cancellationToken = default);
 
-    /// <summary><c>delete_admins.fcgi</c>: remove todos os administradores do equipamento.</summary>
+    /// <summary>
+    /// <c>reset_to_factory_default.fcgi</c>: APAGA TODOS OS DADOS (usuários, fotos, logs, regras, configuração) e volta às
+    /// configurações de fábrica. Com <paramref name="keepNetworkSettings"/>, mantém IP e rede. Exige
+    /// <see cref="DataLossConfirmation.Confirmed"/>.
+    /// </summary>
+    Task ResetToFactoryDefaultAsync(DataLossConfirmation confirmation, bool keepNetworkSettings, CancellationToken cancellationToken = default);
+
+    /// <summary><c>delete_admins.fcgi</c>. Obsoleto: use a sobrecarga com <see cref="DataLossConfirmation"/>.</summary>
+    [Obsolete("Apaga dados sem volta: use a sobrecarga com DataLossConfirmation.Confirmed.")]
     Task DeleteAllAdministratorsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <c>delete_admins.fcgi</c>: remove todos os administradores do equipamento, sem volta. Exige
+    /// <see cref="DataLossConfirmation.Confirmed"/>.
+    /// </summary>
+    Task DeleteAllAdministratorsAsync(DataLossConfirmation confirmation, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// <c>set_system_network.fcgi</c>: altera IP, máscara, gateway, DNS, hostname e servidor web. Se o IP ou a porta

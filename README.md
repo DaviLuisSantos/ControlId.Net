@@ -168,8 +168,8 @@ await device.RebootAsync();
 | `ChangeLoginAsync` | `change_login` |
 | `HashPasswordAsync` | `user_hash_password` |
 | `RebootAsync` / `RebootToUpdateModeAsync` | `reboot` / `reboot_recovery` |
-| `ResetToFactoryDefaultAsync` (apaga tudo) | `reset_to_factory_default` |
-| `DeleteAllAdministratorsAsync` | `delete_admins` |
+| `ResetToFactoryDefaultAsync(DataLossConfirmation.Confirmed, ...)` (apaga tudo) | `reset_to_factory_default` |
+| `DeleteAllAdministratorsAsync(DataLossConfirmation.Confirmed)` | `delete_admins` |
 | `SetNetworkAsync` | `set_system_network` |
 | `GetLogoAsync` / `SetLogoAsync` / `DeleteLogoAsync` / `ShowLogoAsync` | `logo`, `logo_change`, `logo_destroy`, `general.show_logo` |
 | `GetGpioStateAsync` | `gpio_state` |

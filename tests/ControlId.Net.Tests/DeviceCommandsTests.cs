@@ -107,7 +107,7 @@ public class DeviceCommandsTests
         {
             "reboot.fcgi" => c => c.RebootAsync(),
             "reboot_recovery.fcgi" => c => c.RebootToUpdateModeAsync(),
-            "delete_admins.fcgi" => c => c.DeleteAllAdministratorsAsync(),
+            "delete_admins.fcgi" => c => c.DeleteAllAdministratorsAsync(DataLossConfirmation.Confirmed),
             _ => c => c.RefreshLedAsync(),
         };
 
@@ -119,7 +119,7 @@ public class DeviceCommandsTests
     {
         Assert.Equal(
             """{"keep_network_info":true}""",
-            (await RunAsync("reset_to_factory_default.fcgi", c => c.ResetToFactoryDefaultAsync(keepNetworkSettings: true))).Body);
+            (await RunAsync("reset_to_factory_default.fcgi", c => c.ResetToFactoryDefaultAsync(DataLossConfirmation.Confirmed, keepNetworkSettings: true))).Body);
     }
 
     [Fact]
