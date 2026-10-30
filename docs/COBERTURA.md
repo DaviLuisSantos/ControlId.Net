@@ -278,12 +278,39 @@ Não existem neste modelo e firmware (respondem "Invalid command" ou "Invalid ta
 - Seções de configuração inteiras: `barras`, `bio_id`, `card_reader1`, `catra`, `energy`, `enroller`, `gpio`, `ntp`,
   `opening_times`, `osdp`, `sec_box`, `snmp_agent`, `video_player`, `video_stream`, `w_out0`.
 - `door_state`, a seção `hid` e a seção `sec_boxs` também falharam, mas eram nomes errados da biblioteca (corrigidos para
-  `doors_state`, `hid_reader` e `sec_box`). Os nomes certos ainda não foram testados no iDFace.
+  `doors_state`, `hid_reader` e `sec_box`, e confirmados no iDFace 6.13.1, abaixo).
 
 Não testados no equipamento: reset de fábrica, `delete_admins`, rede, SSL, VPN, 802.1X e `reboot_recovery` (destrutivos).
+
+## Observado num iDFace real (firmware 6.13.1)
+
+Testado em 2026-10-30, só com leituras, num segundo iDFace (serial 0M0200/00FCE4).
+
+**Nomes corrigidos na biblioteca, confirmados:**
+
+| Nome | Resultado | Nome antigo |
+| --- | --- | --- |
+| `doors_state.fcgi` | Reconhecido. Sem relé conectado, responde o erro documentado "Sec Box count message parameter is invalid", que a biblioteca devolve como exceção | `door_state`: "Invalid command" |
+| Seção `hid_reader` | Os 7 parâmetros de `HidSettings` | `hid`: nenhum parâmetro |
+| `out_mode` em `sec_box` | Existe (vazio, o padrão); `wiegand_format_size` não existe neste modelo | `sec_boxs`: nenhum parâmetro |
+
+**Existem neste firmware, ainda sem modelo tipado na biblioteca** (usáveis por `SendAsync`, `LoadObjectsAsync<JsonElement>` e
+`GetConfigurationAsync`):
+
+- `enroller_state.fcgi`: estado do cadastro remoto; a resposta traz `biometry_sate`, com o erro de digitação do firmware.
+- `object_metadata.fcgi`: tipos, chaves e chaves estrangeiras de todas as tabelas.
+- Campos customizados: objetos `custom_tables` (`c_users`, `c_visits`, `_visitors`), `custom_columns` e `c_users`.
+- `actions.run_at`; `onvif.rtsp_video_width` e `rtsp_video_height`; `general.auto_reboot`.
+- Em `system_information`: `auth802_1x`, `secbox_version`, `iDCloud_code` e `online_available`.
+
+**Não existem neste modelo e firmware:** `get_catra_info`, `get_slideshow_images_list`, `get_kiosk_icons_list`, os objetos
+`contact_groups` e `kiosk_buttons`, as seções `w_in0`, `bio_module` e `guiFaceID`, os parâmetros das portas 2 a 4 (o iDFace
+tem um relé), os parâmetros `totp_*` e `curl_bearer_token`/`curl_pinned_certificate` (entraram no firmware 6.22, depois deste).
+
+**Sem conclusão:** `get_osdp_installation_mode` responde "No reply": o comando existe, mas não havia OSDP conectado.
 
 ## A validar em equipamento real
 
 - Os nomes de módulo inferidos (Energia, RS485, RFID, OSDP) e os tipos dos parâmetros sem descrição.
-- `doors_state` e a seção `hid_reader` no equipamento.
+- Em que seção ficam os parâmetros `totp_*` do QR Code e os `curl_*` dos callbacks (precisa de firmware 6.22 ou mais novo).
 - O formato do resultado de `export_objects` e do corpo de `template_create` (não descritos).

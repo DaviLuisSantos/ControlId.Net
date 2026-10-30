@@ -10,6 +10,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 - `out_mode` e `wiegand_format_size` da SecBox ficam na seção `sec_box`, não em `sec_boxs`: passam a existir em `SecBoxSettings` (`OutMode`, `WiegandFormatSize`). `SecBoxsSettings` fica obsoleta e agora grava em `sec_box`.
 
 ### Documentation
+- Os três nomes corrigidos (`doors_state`, `hid_reader`, `sec_box`) confirmados num iDFace 6.13.1, com o que mais existe e não existe nesse firmware, em [docs/COBERTURA.md](docs/COBERTURA.md).
 - Paralelismo testado num iDFace real: `MaxConcurrentRequests` é respeitado, mas o equipamento atende uma requisição por vez, então o ganho está entre equipamentos (`ControlIdDevices.RunAsync`), não dentro de um. Anotado em `MaxConcurrentRequests`, no README e em [docs/COBERTURA.md](docs/COBERTURA.md).
 
 ## [0.4.2-alpha.1] - 2026-10-13
