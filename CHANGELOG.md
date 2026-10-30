@@ -5,6 +5,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 ## [Unreleased]
 
 ### Added
+- **REP iDClass completo**: os 47 comandos da [documentação da API](https://www.controlid.com.br/suporte/api_idclass_latest.html) (v4.0.1), com `RepDocumentationCoverageTests` garantindo cada um. Novos no `RepClient`:
+  - Sessão: `IsSessionValidAsync`, `ChangeLoginAsync`.
+  - Usuários: `UpdateUsersAsync` (`RepUserUpdate`), `GetUsersAsync` por PIS/CPF, `EnumerateUsersAsync`, `ImportUsersCsvAsync`, `ExportUsersCsvAsync`, `RemoveAdminsAsync` (exige `DataLossConfirmation.Confirmed`), `AddUsersAsync` com `doMatch`, e foto no cadastro (`RepUser.Image`, `ImageTimestamp`, `HasFace`).
+  - Empregador: `GetCompanyAsync`, `SetCompanyAsync` (`RepCompany`, com CNPJ alfanumérico).
+  - Sistema: `GetInfoAsync`, `GetSystemConfigurationAsync`, beep, animação, comprovante curto, identificação 1:1, iDCloud, chave pública, bobina, rede (`RepNetworkSettings`), horário de verão (`RepDaylightSavingTime`) e data e hora com fuso (`GetDateTimeOffsetAsync`, `SetDateTimeAsync(DateTimeOffset)`). `RepAbout.ApiRevision` dá a revisão da API (260 → 104); `RepSystemInformation` ganha bobina e cortes.
+  - AFD: `GetAfdAsync(RepAfdQuery)` com `headerTop`, e leitura sob demanda com `OpenAfdStreamAsync` e `EnumerateAfdRecordsAsync`.
+  - Biometria: `ExtractTemplateAsync`, `MergeTemplatesAsync`.
+  - REP Facial: configuração do módulo, licença de 10 mil faces, informações do módulo, estado do cadastro, cadastro remoto, e fotos (`SetUserImageAsync`, `GetUserImageAsync`, `DeleteUserImageAsync`, `ImportUserImageAsync`).
 - Confirmação explícita para o que apaga dados sem volta: `ResetToFactoryDefaultAsync`, `DeleteAllAdministratorsAsync`, `DeleteAllUserImagesAsync` e `DeleteAllFaceTemplatesAsync` ganham sobrecargas que exigem `DataLossConfirmation.Confirmed`. Sem ela (inclusive com o valor padrão do enum), a chamada é recusada antes de ir ao equipamento.
 - Certificado fixado: `ControlIdDeviceOptions.ServerCertificateSha256` (e em `ControlIdRepOptions`) aceita só o certificado com aquela impressão digital SHA-256, mesmo autoassinado, no lugar de aceitar qualquer um. `ControlIdCertificates.GetServerCertificateSha256Async` lê a impressão digital do equipamento para gravar na configuração. O padrão não muda: sem impressão digital, o REP continua aceitando qualquer certificado.
 - `GetEnrollerStateAsync` (`enroller_state.fcgi`, da coleção oficial do Postman): estado do cadastro remoto e resultado do último, com `IsEnrolling`. O firmware manda `biometry_sate` (erro de digitação); `EnrollerState.BiometryState` aceita as duas grafias. Serve para acompanhar o cadastro assíncrono no iDFace, que não avisa pelo Monitor.

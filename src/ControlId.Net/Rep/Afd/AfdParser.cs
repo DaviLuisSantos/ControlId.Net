@@ -16,7 +16,7 @@ public static class AfdParser
 {
     private const string TrailerNsr = "999999999";
 
-    /// <summary>Interpreta o AFD inteiro já em texto (ex.: o retorno de <see cref="IRepClient.GetAfdAsync"/>).</summary>
+    /// <summary>Interpreta o AFD inteiro já em texto (ex.: o retorno de <see cref="IRepClient.GetAfdAsync(System.Threading.CancellationToken)"/>).</summary>
     public static AfdFile Parse(string text)
     {
         if (text is null)

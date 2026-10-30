@@ -20,6 +20,13 @@ public sealed class RepAbout
 
     /// <summary>Modelo facial.</summary>
     [JsonPropertyName("isFacial")] public bool IsFacial { get; set; }
+
+    /// <summary>
+    /// Revisão da API, como o changelog da documentação a numera: <see cref="FirmwareVersion"/> em hexadecimal (260 → 104).
+    /// A 101 trouxe a Portaria 671, a 102 as APIs faciais e a 104 o CNPJ alfanumérico e o <c>headerTop</c> do AFD.
+    /// </summary>
+    [JsonIgnore]
+    public int ApiRevision => int.Parse(FirmwareVersion.ToString("X", System.Globalization.CultureInfo.InvariantCulture), System.Globalization.CultureInfo.InvariantCulture);
 }
 
 /// <summary>Resposta de <c>get_system_information.fcgi</c>.</summary>
@@ -51,6 +58,18 @@ public sealed class RepSystemInformation
 
     /// <summary>Último NSR gravado.</summary>
     [JsonPropertyName("last_nsr")] public long LastNsr { get; set; }
+
+    /// <summary>Tempo ligado (contador interno).</summary>
+    [JsonPropertyName("ticks")] public long? Ticks { get; set; }
+
+    /// <summary>Comprovantes impressos.</summary>
+    [JsonPropertyName("cuts")] public long? Cuts { get; set; }
+
+    /// <summary>Bobina restante.</summary>
+    [JsonPropertyName("coil_paper")] public long? CoilPaper { get; set; }
+
+    /// <summary>Tamanho da bobina antes do uso.</summary>
+    [JsonPropertyName("total_paper")] public long? TotalPaper { get; set; }
 }
 
 /// <summary>Usuário do REP. Identificado por PIS (legado) ou CPF (Portaria 671).</summary>
@@ -85,6 +104,15 @@ public sealed class RepUser
 
     /// <summary>Templates biométricos em base64.</summary>
     [JsonPropertyName("templates")] public List<string>? Templates { get; set; }
+
+    /// <summary>Data da foto (Unix timestamp), junto com <see cref="Image"/> (REP iDClass Facial).</summary>
+    [JsonPropertyName("image_timestamp")] public long? ImageTimestamp { get; set; }
+
+    /// <summary>Foto do usuário (JPEG ou PNG) para o cadastro; vai em base 64 (REP iDClass Facial).</summary>
+    [JsonPropertyName("image")] public byte[]? Image { get; set; }
+
+    /// <summary>O usuário tem face cadastrada (só leitura, REP iDClass Facial).</summary>
+    [JsonPropertyName("face")] public bool? HasFace { get; set; }
 }
 
 /// <summary>Resultado paginado de <c>load_users.fcgi</c>.</summary>
