@@ -50,7 +50,7 @@ public class DocumentationCoverageTests
         // Ações
         ("remote_user_authorization.fcgi", "POST", c => c.AuthorizeRemotelyAsync(OnlineAuthorization.Grant(1, "x"))),
         ("execute_actions.fcgi", "POST", c => c.OpenDoorAsync()),
-        ("door_state.fcgi", "POST", c => c.GetDoorStatesAsync()),
+        ("doors_state.fcgi", "POST", c => c.GetDoorStatesAsync()),
         ("remote_enroll.fcgi", "POST", c => c.StartRemoteEnrollAsync(new RemoteEnrollRequest(RemoteEnrollType.Card))),
         ("cancel_remote_enroll.fcgi", "POST", c => c.CancelRemoteEnrollAsync()),
         ("message_to_screen.fcgi", "POST", c => c.ShowMessageAsync("x")),

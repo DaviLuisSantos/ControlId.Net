@@ -836,8 +836,9 @@ public sealed class AccessClient : IAccessClient
 
     /// <inheritdoc/>
     public Task<DoorsState> GetDoorStatesAsync(CancellationToken cancellationToken = default) =>
-        // O título da documentação diz door_state; o exemplo da mesma página usa doors_state.
-        _transport.PostAsync<DoorsState>("door_state.fcgi", null, cancellationToken);
+        // O título da documentação diz door_state, mas o exemplo da mesma página, a versão em inglês e a coleção oficial do
+        // Postman usam doors_state; door_state responde "Invalid command" (iDFace 6.9.12).
+        _transport.PostAsync<DoorsState>("doors_state.fcgi", null, cancellationToken);
 
     /// <inheritdoc/>
     public Task<AlarmStatus> GetAlarmStatusAsync(CancellationToken cancellationToken = default) =>

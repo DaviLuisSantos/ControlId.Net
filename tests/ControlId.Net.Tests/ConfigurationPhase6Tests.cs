@@ -137,4 +137,31 @@ public class ConfigurationPhase6Tests
             Assert.Equal(values, ConfigurationSectionMapper.ToValues(copy));
         }
     }
+
+    [Fact]
+    public async Task Section_names_from_the_official_postman_collection()
+    {
+        var device = LoggedDevice().OnJson("set_configuration.fcgi", "{}");
+        using var client = new AccessClient(Options, device.CreateClient());
+
+        // A documentação só dá o título "HID" e põe out_mode/wiegand_format_size em "sec_boxs"; o Postman oficial usa
+        // hid_reader e sec_box.
+        await client.SetConfigurationSectionsAsync(new ConfigurationSection[]
+        {
+            new HidSettings { FormatAsk = true },
+            new SecBoxSettings { OutMode = "CARD", WiegandFormatSize = "26" },
+        });
+
+        Assert.Equal(
+            """{"hid_reader":{"format_ask":"1"},"sec_box":{"out_mode":"CARD","wiegand_format_size":"26"}}""",
+            device.RequestsTo("set_configuration.fcgi").Single().Body);
+    }
+
+#pragma warning disable CS0618 // a classe antiga continua funcionando, agora na seção certa
+    [Fact]
+    public void Obsolete_SecBoxsSettings_writes_to_sec_box()
+    {
+        Assert.Equal("sec_box", new SecBoxsSettings().SectionName);
+    }
+#pragma warning restore CS0618
 }

@@ -547,15 +547,13 @@ public sealed class GpioSettings : ConfigurationSection
 }
 
 /// <summary>
-/// Seção <c>hid</c>: Leitor HID.
-/// <para><b>Nome do módulo não confirmado:</b> a documentação só traz o título da seção; o nome foi inferido dele.
-/// Se o equipamento recusar, use <see cref="IAccessClient.SetConfigurationAsync"/> com o nome correto.</para>
+/// Seção <c>hid_reader</c>: Leitor HID. A documentação só traz o título da seção; o nome vem da coleção oficial do Postman.
 /// </summary>
 public sealed class HidSettings : ConfigurationSection
 {
     /// <summary>Cria a seção.</summary>
     public HidSettings()
-        : base("hid")
+        : base("hid_reader")
     {
     }
 
@@ -1167,7 +1165,8 @@ public sealed class Rs485Settings : ConfigurationSection
 }
 
 /// <summary>
-/// Seção <c>sec_box</c>: Catraca iDBlock Next (papel no conjunto, giros, relés, contadores).
+/// Seção <c>sec_box</c>: módulo de acionamento externo (MAE/SecBox) — saída Wiegand — e catraca iDBlock Next (papel no
+/// conjunto, giros, relés, contadores).
 /// </summary>
 public sealed class SecBoxSettings : ConfigurationSection
 {
@@ -1176,6 +1175,14 @@ public sealed class SecBoxSettings : ConfigurationSection
         : base("sec_box")
     {
     }
+
+    /// <summary><c>out_mode</c>: Define o tipo de dado de saída via protocolo Wiegand, ("") para transmissão de ID (Padrão), "CARD" para transmissão de cartões autorizados, "RELAY_CARD" para transmissão de qualquer cartão e USERS_CARD para transmissão do primeiro cartão associado ao usuário.</summary>
+    [JsonPropertyName("out_mode")]
+    public string? OutMode { get; set; }
+
+    /// <summary><c>wiegand_format_size</c>: Define o formato de do protocolo Wiegand. Valores: "custom" (modo manual, editável pela interface Web), "26", "32", "34", "35", "37(H10302)", "37(H10304)", "40", "42", "48", "56", "64", "66". Caso um valor inválido seja definido, o formato será setado para o valor padrão (26 bits).</summary>
+    [JsonPropertyName("wiegand_format_size")]
+    public string? WiegandFormatSize { get; set; }
 
     /// <summary><c>catra_bio_sync_period</c>: Intervalo de tempo em que haverá sincronismo periódico de biometria entre os dispositivos primário e secundário(s), em milissegundos. Valor padrão: "1000".</summary>
     [JsonPropertyName("catra_bio_sync_period")]
@@ -1247,13 +1254,16 @@ public sealed class SecBoxSettings : ConfigurationSection
 }
 
 /// <summary>
-/// Seção <c>sec_boxs</c>: Configurações internas do módulo de acionamento externo (MAE/SecBox).
+/// <c>out_mode</c> e <c>wiegand_format_size</c> da SecBox. A documentação os coloca numa seção <c>sec_boxs</c>, mas a coleção
+/// oficial do Postman (e a própria descrição de <c>denied_transaction_code</c>) usa <c>sec_box</c>: esta classe grava em
+/// <c>sec_box</c>. Prefira <see cref="SecBoxSettings.OutMode"/> e <see cref="SecBoxSettings.WiegandFormatSize"/>.
 /// </summary>
+[System.Obsolete("Use SecBoxSettings.OutMode e SecBoxSettings.WiegandFormatSize: os parâmetros ficam na seção sec_box, não em sec_boxs.")]
 public sealed class SecBoxsSettings : ConfigurationSection
 {
     /// <summary>Cria a seção.</summary>
     public SecBoxsSettings()
-        : base("sec_boxs")
+        : base("sec_box")
     {
     }
 

@@ -48,7 +48,7 @@ acrescente-o ao teste.
 | --- | --- | --- |
 | `remote_user_authorization.fcgi` | POST | `AuthorizeRemotelyAsync(OnlineAuthorization.Grant(1, "x"))` |
 | `execute_actions.fcgi` | POST | `OpenDoorAsync()` |
-| `door_state.fcgi` | POST | `GetDoorStatesAsync()` |
+| `doors_state.fcgi` | POST | `GetDoorStatesAsync()` |
 | `remote_enroll.fcgi` | POST | `StartRemoteEnrollAsync(new RemoteEnrollRequest(RemoteEnrollType.Card))` |
 | `cancel_remote_enroll.fcgi` | POST | `CancelRemoteEnrollAsync()` |
 | `message_to_screen.fcgi` | POST | `ShowMessageAsync("x")` |
@@ -202,7 +202,7 @@ em exemplos, sem descrição, ficam como `string`.
 | `face_module` | `FaceModuleSettings` | 2 |
 | `general` | `GeneralSettings` | 39 |
 | `gpio` | `GpioSettings` | 4 |
-| `hid` (nome inferido) | `HidSettings` | 7 |
+| `hid_reader` | `HidSettings` | 7 |
 | `identifier` | `IdentifierSettings` | 18 |
 | `led_white` | `LedWhiteSettings` | 1 |
 | `mifare` | `MifareSettings` | 5 |
@@ -217,7 +217,7 @@ em exemplos, sem descrição, ficam como `string`.
 | `rfid` (nome inferido) | `RfidSettings` | 2 |
 | `rs485` (nome inferido) | `Rs485Settings` | 3 |
 | `sec_box` | `SecBoxSettings` | 17 |
-| `sec_boxs` | `SecBoxsSettings` | 2 |
+| `sec_box` (parâmetros da SecBox) | `SecBoxSettings.OutMode`, `SecBoxSettings.WiegandFormatSize` (antes em `SecBoxsSettings`, hoje obsoleta) | 2 |
 | `snmp_agent` | `SnmpAgentSettings` | 1 |
 | `uhf` | `UhfSettings` | 10 |
 | `video_player` | `VideoPlayerSettings` | 6 |
@@ -229,7 +229,7 @@ em exemplos, sem descrição, ficam como `string`.
 | Onde | Divergência | Decisão |
 | --- | --- | --- |
 | `remote_enroll` | Tabela diz `msg`; descrição e exemplo dizem `message` | `message` |
-| `door_state` | Título diz `door_state`; exemplo usa `doors_state` | `door_state` |
+| `doors_state` | Título diz `door_state`; o exemplo, a versão em inglês e a coleção oficial do Postman usam `doors_state` | `doors_state` (até a 0.4.2 a biblioteca usava `door_state`, que dava "Invalid command") |
 | `alarm_status` | `stop` tem padrão `true`, e a consulta "não tem parâmetros" | A consulta envia `stop: false` |
 | `set_custom_video` | Tabela diz `custom_video_enable` (bool); exemplo usa `custom_video_enabled: "1"` | Exemplo |
 | `face_template_enroll` | Tabela diz `face_tempaltes`; exemplo usa `face_templates` | `face_templates` |
@@ -240,7 +240,8 @@ em exemplos, sem descrição, ficam como `string`.
 | `user_set_image_list` | Limite de 1 MB numa página e 2 MB na outra | Documentado nos dois valores |
 | Eventos de acesso | Lista dos 15 tipos sem números | Numerados de 1 a 15 pela ordem (3, 7 e 11 confirmados no texto) |
 | `alarm_logs.event` | Lista sem números | Mantido como `int` |
-| Configuração | Módulos de Energia, RS485, RFID, HID e OSDP sem nome | Nome inferido do título e marcado nas classes |
+| Configuração | Módulos de Energia, RS485, RFID, HID e OSDP sem nome | Nome inferido do título e marcado nas classes; o HID foi corrigido para `hid_reader` pela coleção do Postman |
+| `sec_boxs` (configuração) | O site põe `out_mode` e `wiegand_format_size` em `sec_boxs`; o Postman e a descrição de `denied_transaction_code` usam `sec_box` | `sec_box` |
 | `session_is_valid` (servidor) | Resposta não documentada | `{"session_is_valid": true}` |
 
 ## Observado num iDFace real (firmware 6.9.12)
@@ -269,18 +270,20 @@ modo online. As correções que isso gerou estão no CHANGELOG.
 
 Não existem neste modelo e firmware (respondem "Invalid command" ou "Invalid table"):
 
-- Endpoints: `door_state`, `remote_led_control`, `create_or_modify_objects`, `face_template_extract_list`,
+- Endpoints: `remote_led_control`, `create_or_modify_objects`, `face_template_extract_list`,
   `face_template_enroll`, `face_template_destroy`, `template_sync_init`, `template_sync_end`, `is_valid_biometry`,
   `connection_test`, `ping_test`, `nslookup_test`, `set_network_interlock`, `send_video`, `set_custom_video`,
   `remove_custom_video`, `set_osdp_installation_mode`, `upgrade_*_face_templates` acima de 10 mil e `idflex_upgrade_enterprise`.
 - Objetos: `uhf_tags`, `access_events`, `timed_alarms`, `scheduled_unlocks`, `network_interlocking_rules`.
-- Seções de configuração inteiras: `barras`, `bio_id`, `card_reader1`, `catra`, `energy`, `enroller`, `gpio`, `hid`, `ntp`,
-  `opening_times`, `osdp`, `sec_box`, `sec_boxs`, `snmp_agent`, `video_player`, `video_stream`, `w_out0`.
+- Seções de configuração inteiras: `barras`, `bio_id`, `card_reader1`, `catra`, `energy`, `enroller`, `gpio`, `ntp`,
+  `opening_times`, `osdp`, `sec_box`, `snmp_agent`, `video_player`, `video_stream`, `w_out0`.
+- `door_state`, a seção `hid` e a seção `sec_boxs` também falharam, mas eram nomes errados da biblioteca (corrigidos para
+  `doors_state`, `hid_reader` e `sec_box`). Os nomes certos ainda não foram testados no iDFace.
 
 Não testados no equipamento: reset de fábrica, `delete_admins`, rede, SSL, VPN, 802.1X e `reboot_recovery` (destrutivos).
 
 ## A validar em equipamento real
 
-- Os nomes de módulo inferidos (Energia, RS485, RFID, HID, OSDP) e os tipos dos parâmetros sem descrição.
-- As decisões da tabela acima, em especial `message`, `door_state`, a numeração dos eventos e o slot do logotipo.
+- Os nomes de módulo inferidos (Energia, RS485, RFID, OSDP) e os tipos dos parâmetros sem descrição.
+- `doors_state` e a seção `hid_reader` no equipamento.
 - O formato do resultado de `export_objects` e do corpo de `template_create` (não descritos).

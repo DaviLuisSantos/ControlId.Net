@@ -14,8 +14,8 @@ public class DeviceStatePhase2Tests
     public async Task Door_states_for_relays_and_secboxes()
     {
         var device = LoggedDevice()
-            .OnJson("door_state.fcgi", """{"doors":[{"id":1,"open":false},{"id":2,"open":true}]}""")
-            .OnJson("door_state.fcgi", """{"sec_boxes":[{"id":122641794705017745,"open":false},{"id":65793,"open":true}]}""");
+            .OnJson("doors_state.fcgi", """{"doors":[{"id":1,"open":false},{"id":2,"open":true}]}""")
+            .OnJson("doors_state.fcgi", """{"sec_boxes":[{"id":122641794705017745,"open":false},{"id":65793,"open":true}]}""");
         using var client = new AccessClient(Options, device.CreateClient());
 
         var relays = await client.GetDoorStatesAsync();
@@ -30,7 +30,7 @@ public class DeviceStatePhase2Tests
     [Fact]
     public async Task Door_state_error_without_relay_is_surfaced()
     {
-        var device = LoggedDevice().On("door_state.fcgi", HttpStatusCode.BadRequest, """{"error":"Sec Box count message parameter is invalid","code":1}""");
+        var device = LoggedDevice().On("doors_state.fcgi", HttpStatusCode.BadRequest, """{"error":"Sec Box count message parameter is invalid","code":1}""");
         using var client = new AccessClient(Options, device.CreateClient());
 
         var ex = await Assert.ThrowsAsync<ControlIdException>(() => client.GetDoorStatesAsync());

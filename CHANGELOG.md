@@ -4,6 +4,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+### Fixed
+- `GetDoorStatesAsync` chamava `door_state.fcgi`, que o equipamento recusa ("Invalid command"); agora chama `doors_state.fcgi`, como o exemplo da documentação, a versão em inglês e a coleção oficial do Postman.
+- `HidSettings` gravava e lia a seção `hid`, nome inferido do título da documentação; a seção é `hid_reader`.
+- `out_mode` e `wiegand_format_size` da SecBox ficam na seção `sec_box`, não em `sec_boxs`: passam a existir em `SecBoxSettings` (`OutMode`, `WiegandFormatSize`). `SecBoxsSettings` fica obsoleta e agora grava em `sec_box`.
+
 ### Documentation
 - Paralelismo testado num iDFace real: `MaxConcurrentRequests` é respeitado, mas o equipamento atende uma requisição por vez, então o ganho está entre equipamentos (`ControlIdDevices.RunAsync`), não dentro de um. Anotado em `MaxConcurrentRequests`, no README e em [docs/COBERTURA.md](docs/COBERTURA.md).
 

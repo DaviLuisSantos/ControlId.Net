@@ -4,7 +4,7 @@ using ControlId.Access.Monitoring;
 
 namespace ControlId.Access;
 
-/// <summary>Resposta de <c>door_state.fcgi</c>: portas por relé ou SecBoxes, conforme o equipamento.</summary>
+/// <summary>Resposta de <c>doors_state.fcgi</c>: portas por relé ou SecBoxes, conforme o equipamento.</summary>
 public sealed class DoorsState
 {
     /// <summary>Portas acionadas por relé (iDAccess, iDFit, iDBox).</summary>

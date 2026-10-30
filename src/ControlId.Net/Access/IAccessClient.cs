@@ -436,7 +436,7 @@ public interface IAccessClient : IControlIdClient
     /// </summary>
     Task<IReadOnlyList<DeviceActionStatus>> ExecuteActionsWithStatusAsync(IEnumerable<DeviceAction> actions, CancellationToken cancellationToken = default);
 
-    /// <summary><c>door_state.fcgi</c>: estado (aberta/fechada) das portas por relé ou das SecBoxes.</summary>
+    /// <summary><c>doors_state.fcgi</c>: estado (aberta/fechada) das portas por relé ou das SecBoxes.</summary>
     Task<DoorsState> GetDoorStatesAsync(CancellationToken cancellationToken = default);
 
     /// <summary><c>alarm_status.fcgi</c>: alarme ativo e a causa. Não desliga o alarme.</summary>
