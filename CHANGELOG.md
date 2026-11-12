@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+### Changed
+- Dependências de runtime na 10.x (`System.Text.Json`, `Microsoft.Bcl.AsyncInterfaces`, `Microsoft.Extensions.Http`, `Microsoft.Extensions.Options.ConfigurationExtensions`): o .NET 8 saiu de suporte em 2026-11-10, e a 10.x continua com alvos `net8.0` e `netstandard2.0` ([ADR 0010](docs/adr/0010-dependencias-no-lts-suportado.md)). Quem usa o .NET Framework passa a receber as correções de segurança da `System.Text.Json`.
+- A CI roda em todo push na `main` e em cada pull request, com build sem avisos, os três alvos de teste, validação da API pública e resumo de cobertura ([ADR 0009](docs/adr/0009-ci-em-push-e-pull-request.md)).
+
 ## [0.5.0-alpha.1] - 2026-10-30
 
 REP iDClass completo, proteção contra operações destrutivas, certificado fixado e governança da publicação.
