@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    Simulador de equipamento Control iD (linha de acesso): fala a API *.fcgi com estado em memória, para testar a
+    biblioteca e os samples sem hardware. Não referencia o ControlId.Net de propósito: o simulador segue o protocolo do
+    equipamento, e um erro da biblioteca não pode se repetir aqui e passar despercebido nos testes de integração.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <RootNamespace>ControlId.Simulator</RootNamespace>
+  </PropertyGroup>
+
+</Project>
