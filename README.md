@@ -1,695 +1,159 @@
 # ControlId.Net
 
 [![CI](https://github.com/DaviLuisSantos/ControlId.Net/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/DaviLuisSantos/ControlId.Net/actions/workflows/ci.yml)
-[![ControlId.Net](https://img.shields.io/nuget/vpre/ControlId.Net?label=ControlId.Net)](https://www.nuget.org/packages/ControlId.Net)
-[![ControlId.Net.DependencyInjection](https://img.shields.io/nuget/vpre/ControlId.Net.DependencyInjection?label=ControlId.Net.DependencyInjection)](https://www.nuget.org/packages/ControlId.Net.DependencyInjection)
-[![ControlId.Net.AspNetCore](https://img.shields.io/nuget/vpre/ControlId.Net.AspNetCore?label=ControlId.Net.AspNetCore)](https://www.nuget.org/packages/ControlId.Net.AspNetCore)
+[![NuGet](https://img.shields.io/nuget/vpre/ControlId.Net?label=ControlId.Net)](https://www.nuget.org/packages/ControlId.Net)
+[![NuGet](https://img.shields.io/nuget/vpre/ControlId.Net.DependencyInjection?label=DependencyInjection)](https://www.nuget.org/packages/ControlId.Net.DependencyInjection)
+[![NuGet](https://img.shields.io/nuget/vpre/ControlId.Net.AspNetCore?label=AspNetCore)](https://www.nuget.org/packages/ControlId.Net.AspNetCore)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Cliente .NET **não oficial** para equipamentos [Control iD](https://www.controlid.com.br):
+**English** · [Português](README.pt-BR.md)
 
-- **Linha de acesso**: iDAccess, iDFlex, iDFace, iDBox, iDUHF (API `*.fcgi` sobre HTTP).
-- **Relógios de ponto REP iDClass**: API HTTPS completa (os 47 comandos da documentação, inclusive o REP Facial), com AFD da Portaria 671.
+An unofficial, fully typed .NET SDK for [Control iD](https://www.controlid.com.br) hardware: the access control line
+(iDAccess, iDFlex, iDFace, iDBox, iDUHF) and the iDClass time clocks (REP) used for legal timekeeping in Brazil.
 
-Alvos: `net8.0` e `netstandard2.0`, então também roda em projetos .NET Framework 4.6.1+. A suíte de testes roda no .NET 8, no .NET 10 e no .NET Framework 4.8.
+Control iD devices are everywhere in Brazilian offices, condos and factories, but their HTTP API is undocumented in places,
+inconsistent across firmware versions, and has no official .NET client. ControlId.Net turns it into a typed, async,
+dependency-injection-friendly library, verified against real devices.
 
-> Projeto independente, sem vínculo com a Control iD. "Control iD", "iDAccess", "iDFlex", "iDFace" e "iDClass" são marcas da Control iD.
+> Independent project, not affiliated with Control iD. "Control iD", "iDAccess", "iDFlex", "iDFace" and "iDClass" are
+> trademarks of Control iD.
 
-## Instalação
+## Highlights
+
+- **Complete API coverage, enforced by tests.** All 85 endpoints, 37 objects and 34 configuration sections of the access
+  API, plus all 47 commands of the iDClass API. A test fails if any documented endpoint lacks a typed method
+  ([coverage matrix](docs/COBERTURA.md)).
+- **Verified on real hardware.** Discrepancies between the docs and the firmware (wrong endpoint names, typos in JSON
+  fields, events that never fire) were found on real iDFace devices and handled in code, each one recorded.
+- **Real-time integrations.** Monitor (webhooks), Push (command queue for devices behind NAT) and Online mode (your server
+  authorizes each access) as ASP.NET Core endpoints in one line.
+- **Brazilian labor law compliance.** A streaming parser for the AFD file of Portaria 671/2021 and 1510/2009, with
+  CRC-16/KERMIT validation, that survives corrupt lines.
+- **Safe by default.** Destructive operations require an explicit `DataLossConfirmation.Confirmed`; optional SHA-256
+  certificate pinning for self-signed device certificates; per-device concurrency limits sized from measurements on real
+  devices.
+- **Runs anywhere .NET runs.** `net8.0` and `netstandard2.0` targets, tested on .NET 8, .NET 10 and .NET Framework 4.8.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph app["Your application"]
+        code["Your code"]
+        handlers["IMonitorNotificationHandler<br/>IOnlineAccessHandler"]
+    end
+
+    subgraph sdk["ControlId.Net"]
+        access["AccessClient"]
+        rep["RepClient + AFD parser"]
+        push["PushServer<br/>(command queue)"]
+        di["DependencyInjection<br/>named devices, IHttpClientFactory"]
+        aspnet["AspNetCore<br/>MapControlIdMonitor / Push / Online"]
+    end
+
+    subgraph devices["Control iD devices"]
+        acc["iDFace · iDFlex · iDAccess"]
+        clock["REP iDClass"]
+    end
+
+    code --> di --> access & rep
+    access -- "HTTP *.fcgi<br/>session + auto re-login" --> acc
+    rep -- "HTTPS + certificate pinning" --> clock
+    acc -- "Monitor events / Online mode" --> aspnet --> handlers
+    acc -- "polls GET /push, POST /result" --> aspnet
+    aspnet <--> push
+    code -- "commands via Push" --> push
+```
+
+The device calls your server in three of the four integration modes. The SDK never opens a port by itself: it parses
+what the device sends and plugs into the routing of the framework you already use.
+
+## Quick start
 
 ```bash
 dotnet add package ControlId.Net --prerelease
 ```
-
-Pacotes complementares:
-
-| Pacote | Para quê |
-| --- | --- |
-| `ControlId.Net.DependencyInjection` | `AddControlIdAccess` / `AddControlIdRep` no `IServiceCollection`, com vários equipamentos e `appsettings.json` |
-| `ControlId.Net.AspNetCore` | Rotas de Push e Monitor no ASP.NET Core (net8.0+); inclui o pacote de DI |
-
-## Linha de acesso
-
-O pacote cobre **toda a documentação pública da API de acesso**: os 85 endpoints, os 37 objetos, os eventos do Monitor,
-do Push e do modo online e as 34 seções de configuração têm métodos, modelos ou rotas tipados. A matriz completa, com
-as divergências da documentação e como foram tratadas, está em [docs/COBERTURA.md](docs/COBERTURA.md).
 
 ```csharp
 using ControlId.Access;
 
 using var device = new AccessClient("http://192.168.0.129", "admin", "admin");
 
-// O login é feito sozinho na primeira chamada e refeito se a sessão expirar.
-var users = await device.GetUsersAsync();
-
+// Login happens on the first call and is redone when the session expires.
 var id = await device.CreateUserAsync(new AccessUser { Name = "Maria", Registration = "1020" });
-
+await device.SetUserImageAsync(id, File.ReadAllBytes("maria.jpg"));   // photo; the face template on iDFace
 await device.OpenDoorAsync(door: 1);
-await device.ReleaseTurnstileAsync(TurnstileDirection.Clockwise);
 
-var logs = await device.GetAccessLogsAsync(afterId: 0, limit: 100);
-```
-
-Qualquer objeto da API (`groups`, `access_rules`, `cards`, `templates`...) pode ser lido e escrito pelos métodos genéricos:
-
-```csharp
-var cards = await device.LoadObjectsAsync<AccessCard>(new LoadObjectsRequest("cards")
+// Large databases are read page by page, on demand.
+long lastId = 0;
+await foreach (var log in device.EnumerateAccessLogsAsync(afterId: lastId))
 {
-    Where = Where.Equal("cards", "user_id", id),
-});
-
-await device.ModifyObjectsAsync("users", new { name = "Maria Silva" }, Where.Equal("users", "id", id));
-await device.DestroyObjectsAsync("cards", Where.In("cards", "id", new[] { 1L, 2L }));
-```
-
-### Cartões, digitais e fotos
-
-```csharp
-await device.CreateCardAsync(new AccessCard { UserId = id, Value = 123456789 });
-var digitais = await device.GetTemplatesAsync(userId: id);
-
-await device.SetUserImageAsync(id, File.ReadAllBytes("maria.jpg")); // JPEG < 1 MB
-byte[] foto = await device.GetUserImageAsync(id);
-```
-
-### Áreas, feriados, eventos, alarmes e SecBox
-
-```csharp
-var garagem = await device.CreateAreaAsync(new AccessArea { Name = "Garagem" });
-await device.LinkAsync(AccessLink.AreaAccessRule(garagem, regra));
-
-await device.CreateHolidayAsync(AccessHoliday.FullDay("Natal", new DateTime(2026, 12, 25), TimeSpan.FromHours(-3), repeats: true));
-
-var aberturas = await device.GetAccessEventsAsync(afterId: ultimoEvento);   // portas, SecBox e catraca
-var alarmes = await device.GetAlarmLogsAsync(afterId: ultimoAlarme);
-
-var secBox = await device.GetSecBoxAsync();                                   // iDFlex, iDAccess Pro/Nano
-secBox!.RelayTimeoutMilliseconds = 5000;
-await device.UpdateSecBoxAsync(secBox);
-```
-
-### Relatórios e exportações
-
-```csharp
-string csv = await device.GenerateReportAsync(new ReportRequest("users")
-{
-    Delimiter = ";",
-    Header = "Nome;Matrícula",
-    Columns = { ReportColumn.ObjectField("users", "name"), ReportColumn.ObjectField("users", "registration") },
-});
-
-AfdFile afd = await device.ExportAfdFileAsync(initialNsr: 1);           // AFD do equipamento de acesso (iDFlex Attendance)
-string auditoria = await device.ExportAuditLogsAsync(AuditLogCategories.Config | AuditLogCategories.Api);
-```
-
-Os textos devolvidos são decodificados como o AFD do REP: usa o charset informado; sem ele, UTF-8 se for válido e,
-senão, ISO-8859-1.
-
-### Cadastro remoto (cartão, face, digital, PIN, senha)
-
-O equipamento pede a credencial à pessoa e devolve o resultado:
-
-```csharp
-// Síncrono: a chamada espera a pessoa concluir.
-var resultado = await device.RemoteEnrollAsync(new RemoteEnrollRequest(RemoteEnrollType.Face)
-{
-    UserId = id,
-    Save = true,                         // grava no usuário; false só captura e devolve
-    Auto = true,
-    Countdown = TimeSpan.FromSeconds(3),
-});
-
-if (!resultado.Success)
-{
-    Console.WriteLine(resultado.Error);  // ex.: FACE_EXISTS (resultado.MatchUserId diz de quem é a face)
+    lastId = log.Id;
 }
 ```
 
-- A espera síncrona é limitada pelo `Timeout` do cliente (30 s por padrão). Se ele estourar ou o `CancellationToken` for cancelado, o cadastro é cancelado no equipamento (`cancel_remote_enroll`), para ele não ficar preso na tela de cadastro.
-- Para esperas longas, use `StartRemoteEnrollAsync(...)`: a chamada volta na hora e o resultado chega pelo Monitor como `RemoteEnrollNotification` (com `EnrollType` e o mesmo `RemoteEnrollResult`). No iDFace 6.9.12 isso não acontece: com `Save = false` a tela de cadastro não abre, e com `Save = true` a face é gravada sem notificação; confira lendo o usuário ou use o cadastro síncrono.
-- Com o equipamento em **modo online**, o resultado assíncrono não vai pelo Monitor: chega em `card_create`, `face_create`, `fingerprint_create`, `template_create`, `pin_create` ou `password_create`, que o `MapControlIdOnline` entrega em `IOnlineAccessHandler.OnRemoteEnrollAsync`. Nesse caso a foto da face vem em `Result.Face`.
-- Via Push: `PushCommand.RemoteEnroll(request)` e `result.ResponseAs<RemoteEnrollResult>()`.
-- Falhas do cadastro (timeout da pessoa, face repetida) vêm em `Error`, sem exceção; use `EnsureSuccess()` se preferir exceção.
-
-### Grupos, horários e regras de acesso
+Receive events in real time with ASP.NET Core:
 
 ```csharp
-var grupo = await device.CreateGroupAsync(new AccessGroup { Name = "Administrativo" });
-var horario = await device.CreateTimeZoneAsync(new AccessTimeZone { Name = "Comercial" });
-await device.CreateTimeSpanAsync(AccessTimeSpan.Weekdays(horario, TimeSpan.FromHours(8), TimeSpan.FromHours(18)));
-var regra = await device.CreateAccessRuleAsync(new AccessRule { Name = "Comercial", Type = AccessRuleType.Allow, Priority = 0 });
-
-await device.LinkAsync(AccessLink.UserGroup(id, grupo));
-await device.LinkAsync(AccessLink.GroupAccessRule(grupo, regra));
-await device.LinkAsync(AccessLink.AccessRuleTimeZone(regra, horario));
-await device.LinkAsync(AccessLink.PortalAccessRule(portalId: 1, regra));
+builder.Services.AddControlIdMonitor<AccessLogHandler>();
+app.MapControlIdMonitor();   // POST /api/notifications/{endpoint}
 ```
 
-### Comandos do equipamento
-
-```csharp
-await device.ShowMessageAsync("Bem-vindo!", TimeSpan.FromSeconds(5));   // sem duração: fica até ser trocada
-await device.BuzzAsync(TimeSpan.FromMilliseconds(500));                 // até 3 s por chamada
-
-await device.SetLogoAsync(File.ReadAllBytes("logo.png"), slot: 1);
-await device.ShowLogoAsync(1);
-
-var sensor = await device.GetGpioStateAsync(5);                          // iDAccess: sensor de porta 1
-var hash = await device.HashPasswordAsync("1234");                       // para AccessUser.Password/Salt
-
-await device.ChangeLoginAsync("operador", "nova-senha");                 // o cliente passa a usar as novas credenciais
-await device.SetNetworkAsync(new NetworkSettings("192.168.0.33", "255.255.255.0", "192.168.0.1"));
-await device.RebootAsync();
-```
-
-| Método | Endpoint |
-| --- | --- |
-| `ShowMessageAsync` / `ClearMessageAsync` | `message_to_screen` |
-| `BuzzAsync` | `buzzer_buzz` |
-| `ChangeLoginAsync` | `change_login` |
-| `HashPasswordAsync` | `user_hash_password` |
-| `RebootAsync` / `RebootToUpdateModeAsync` | `reboot` / `reboot_recovery` |
-| `ResetToFactoryDefaultAsync(DataLossConfirmation.Confirmed, ...)` (apaga tudo) | `reset_to_factory_default` |
-| `DeleteAllAdministratorsAsync(DataLossConfirmation.Confirmed)` | `delete_admins` |
-| `SetNetworkAsync` | `set_system_network` |
-| `GetLogoAsync` / `SetLogoAsync` / `DeleteLogoAsync` / `ShowLogoAsync` | `logo`, `logo_change`, `logo_destroy`, `general.show_logo` |
-| `GetGpioStateAsync` | `gpio_state` |
-| `RefreshLedAsync` | `led_rgb_refresh` |
-| `SetUsbPortEnabledAsync` | `general.usb_port_enabled` |
-| `CreateOrModifyObjectsAsync` | `create_or_modify_objects` |
-
-Via Push: `PushCommand.ShowMessage`, `PushCommand.Buzz` e `PushCommand.Reboot`.
-
-### Configurações
-
-Cada seção documentada tem uma classe tipada em `ControlId.Access.Configuration`:
-
-```csharp
-using ControlId.Access.Configuration;
-
-var geral = await device.GetConfigurationSectionAsync<GeneralSettings>();
-Console.WriteLine(geral.Language);
-
-// Envia só o que foi preenchido; várias seções numa chamada.
-await device.SetConfigurationSectionsAsync(new ConfigurationSection[]
-{
-    new GeneralSettings { BeepEnabled = true, CatraTimeout = 3000 },
-    new PjsipSettings { Enabled = true, ServerIp = "pbx.local", ServerPort = 5060 },
-});
-```
-
-O acesso genérico, por nome de seção e campo, continua disponível:
-
-```csharp
-var monitor = await device.GetConfigurationAsync("monitor", new[] { "hostname", "port" });
-await device.SetConfigurationAsync(new { general = new { beep_enabled = "1" } }); // valores sempre em texto
-```
-
-### Qualquer objeto, tipado
-
-Todos os objetos da documentação têm modelo e funcionam com o CRUD genérico:
-
-```csharp
-var alarmes = await device.GetObjectsAsync<TimedAlarm>();
-await device.CreateObjectAsync(TimedAlarm.Weekdays("Almoço", TimeSpan.FromHours(12)));
-await device.UpdateObjectAsync(new AlarmZone { Zone = 1, Enabled = true });
-await device.DeleteObjectAsync<ScheduledUnlock>(3);
-```
-
-### Endpoints sem método próprio
-
-A API tem muitos comandos que ainda não têm método tipado (cadastro remoto, mensagem na tela, rede, logotipo,
-reinício...). Todos podem ser chamados pelos métodos genéricos, que valem para `AccessClient` e `RepClient`
-(interface `IControlIdClient`) e mantêm a sessão e o re-login automáticos:
-
-```csharp
-await device.SendRawAsync("message_to_screen", new { message = "Bem-vindo!", timeout = 5000 });
-
-var resposta = await device.SendAsync<JsonElement>("endpoint", corpo, queryString: "user_id=7");
-await device.SendBytesAsync("endpoint", bytes, "application/octet-stream", "id=1");   // corpo binário
-byte[] arquivo = await device.DownloadAsync("endpoint", method: HttpMethod.Get);     // resposta binária
-```
-
-O endpoint pode vir com ou sem `.fcgi`. Consulte o corpo de cada comando na
-[documentação da Control iD](https://www.controlid.com.br/docs/access-api-pt/). No REP, o `mode=671` não é
-acrescentado automaticamente nessas chamadas: passe-o em `queryString` quando o comando exigir.
-
-### Monitor e Push (tempo real)
-
-Nos dois modos é o **equipamento que chama o seu servidor**. A biblioteca não sobe servidor HTTP:
-ela interpreta as notificações (Monitor) e mantém a fila de comandos (Push), e você liga isso nas rotas
-do framework que já usa.
-
-- **Monitor**: o equipamento faz `POST` em `{path}/{endpoint}` a cada evento (log de acesso, porta, catraca, modo de operação...).
-- **Push**: o equipamento consulta `GET /push` periodicamente, executa o comando recebido e devolve o resultado em `POST /result`. Serve para equipamentos atrás de NAT, sem IP acessível.
-
-```csharp
-// Uma vez, pelo cliente HTTP normal:
-await device.ConfigureMonitorAsync(new MonitorConfiguration { Hostname = "192.168.0.20", Port = 5000, Path = "api/notifications" });
-await device.ConfigurePushAsync(new PushConfiguration { RemoteAddress = "192.168.0.20:5000", RequestPeriod = TimeSpan.FromSeconds(5) });
-```
-
-Com ASP.NET Core, o pacote `ControlId.Net.AspNetCore` monta as rotas:
-
-```bash
-dotnet add package ControlId.Net.AspNetCore --prerelease
-```
-
-```csharp
-using ControlId.Access.Monitoring;
-using ControlId.Access.Push;
-using ControlId.AspNetCore;
-
-builder.Services.AddControlIdPush();                      // PushServer singleton
-builder.Services.AddControlIdMonitor<MeuHandler>();       // ou AddControlIdMonitor((notificacao, ct) => ...)
-
-app.MapControlIdPush();                                   // GET /push e POST /result
-app.MapControlIdMonitor();                                // POST /api/notifications/{endpoint}
-
-public sealed class MeuHandler : IMonitorNotificationHandler   // scoped: pode receber DbContext etc.
-{
-    public Task HandleAsync(MonitorNotification notificacao, CancellationToken ct)
-    {
-        if (notificacao is DaoNotification dao)
-        {
-            foreach (var log in dao.GetInsertedAccessLogs())
-            {
-                Console.WriteLine($"Acesso: usuário {log.UserId}, evento {log.Event}");
-            }
-        }
-
-        return Task.CompletedTask;
-    }
-}
-```
-
-Os dois `Map...` devolvem o `RouteGroupBuilder`, então dá para encadear `RequireHost`, filtros etc.
-O equipamento espera a resposta HTTP do Monitor: mantenha o handler curto ou jogue o trabalho numa fila.
-
-Em qualquer lugar da aplicação, comande o equipamento pelo `PushServer` injetado. Cada chamada espera o
-equipamento buscar o comando e responder:
-
-```csharp
-using var prazo = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-await push.Device(deviceId).OpenDoorAsync(door: 1, prazo.Token);
-var usuarios = await push.Device(deviceId).LoadObjectsAsync<AccessUser>(new LoadObjectsRequest("users"), prazo.Token);
-
-// Vários comandos numa única consulta do equipamento (objeto "transactions"):
-var resultados = await push.Device(deviceId).SendBatchAsync(new[]
-{
-    PushCommand.SetConfiguration(new { general = new { beep_enabled = "0" } }),
-    PushCommand.ExecuteActions(new DeviceAction("door", "door=1")),
-}, prazo.Token);
-// Um PushResult por comando, na mesma ordem; a falha de um não cancela os outros.
-```
-
-Qualquer endpoint da API pode ir via Push com `new PushCommand("endpoint", body)`.
-Sempre passe um `CancellationToken` com prazo: se o equipamento estiver offline, o comando fica na fila até ele aparecer.
-`push.GetLastSeen(deviceId)` informa a última consulta de cada equipamento.
-
-Sem ASP.NET Core, use `MonitorNotifications.Parse(rota, corpo)`, `PushServer.HandlePush(deviceId, uuid)` e
-`PushServer.HandleResult(deviceId, uuid, corpo)` nas rotas do seu servidor HTTP.
-O sample `samples/ControlId.Net.Server` tem um servidor completo.
-
-### Modo online (Pro e Enterprise)
-
-No modo online o equipamento pergunta ao **seu servidor**, a cada tentativa de acesso, se deve liberar:
-
-- **Pro**: o equipamento identifica a pessoa e envia o ID do usuário (`UserIdentifiedEvent`).
-- **Enterprise**: o equipamento envia a credencial crua e o servidor identifica: cartão, QR Code, tag UHF, ID e senha, imagem ou template da digital (`CardEvent`, `QrCodeEvent`, `UhfTagEvent`, `UserIdAndPasswordEvent`, `BiometricEvent`).
-
-```csharp
-using ControlId.Access.Online;
-
-// No equipamento, uma vez: registra o servidor e liga o modo online.
-await device.ConfigureOnlineModeAsync(new OnlineModeConfiguration
-{
-    ServerAddress = "http://192.168.0.20:5000/api",
-    Mode = OnlineMode.Pro,
-    RequestTimeout = TimeSpan.FromSeconds(3),   // máx. 5 s
-    MaxRequestAttempts = 3,                     // falhas antes da contingência
-});
-```
-
-No servidor (pacote `ControlId.Net.AspNetCore`):
-
-```csharp
-builder.Services.AddControlIdOnline<RegrasDeAcesso>();
-app.MapControlIdOnline("/api");   // o mesmo caminho do ServerAddress
-
-public sealed class RegrasDeAcesso(MeuDbContext db) : IOnlineAccessHandler
-{
-    public async Task<OnlineAuthorization> AuthorizeAsync(OnlineIdentificationEvent tentativa, CancellationToken ct)
-    {
-        var pessoa = tentativa switch
-        {
-            UserIdentifiedEvent u => await db.Pessoas.FindAsync([u.UserId], ct),
-            CardEvent c => await db.Pessoas.FirstOrDefaultAsync(p => p.Cartao == c.CardValue, ct),
-            _ => null,
-        };
-
-        if (pessoa is null) return OnlineAuthorization.NotIdentified();
-        if (!pessoa.Ativa) return OnlineAuthorization.Deny(pessoa.Id, pessoa.Nome, "Cadastro inativo");
-
-        return OnlineAuthorization.Grant(pessoa.Id, pessoa.Nome, DeviceAction.OpenDoor(1));
-        // iDFlex/iDAccess Pro/Nano: DeviceAction.OpenSecBox(); iDBlock: DeviceAction.ReleaseTurnstile(...)
-    }
-
-    // Opcionais: botoeira, resultado de cadastro remoto e foto exibida no display (com UserImage = true na autorização).
-    public Task OnExitButtonAsync(ExitButtonEvent e, CancellationToken ct) => Task.CompletedTask;
-    public Task OnRemoteEnrollAsync(OnlineEnrollEvent e, CancellationToken ct) => Task.CompletedTask;
-    public Task<byte[]?> GetUserImageAsync(long userId, CancellationToken ct) => Task.FromResult<byte[]?>(null);
-}
-```
-
-- O equipamento espera a resposta por no máximo `RequestTimeout` (até 5 s). Exceção ou demora contam como falha; depois de `MaxRequestAttempts` falhas ele entra em **contingência** e decide sozinho com os dados locais, até o servidor voltar (`device_is_alive`, já respondido pelas rotas).
-- `client.AuthorizeRemotelyAsync(...)` libera um acesso em tempo real a partir do servidor (`remote_user_authorization`).
-- Sem ASP.NET Core: `OnlineEvents.Parse(rota, campos, corpo)` interpreta a requisição, `authorization.ToResponseJson()` gera a resposta e `OnlineEvents.ParseEnroll(rota, json)` lê os resultados de cadastro remoto.
-
-## REP iDClass
+Read punches from a time clock:
 
 ```csharp
 using ControlId.Rep;
-
-// O REP usa HTTPS com certificado autoassinado; esse construtor já aceita o certificado.
-using var rep = new RepClient("https://192.168.0.130", mode: RepMode.Portaria671);
-
-var info = await rep.GetSystemInformationAsync();
-string afdTexto = await rep.GetAfdFromNsrAsync(info.LastNsr - 100);   // texto cru
-
-var users = await rep.GetAllUsersAsync();
-await rep.SetDateTimeAsync(DateTime.Now);
-```
-
-O `RepClient` cobre os 47 comandos da [documentação do iDClass](https://www.controlid.com.br/suporte/api_idclass_latest.html);
-a lista completa está em [docs/COBERTURA.md](docs/COBERTURA.md#rep-idclass). No modo `Portaria671`, os usuários são
-identificados por CPF; no `Legacy`, por PIS.
-
-### Usuários
-
-```csharp
-await rep.AddUsersAsync(new[] { new RepUser { Cpf = 12345678909, Name = "Ana", Registration = "1020" } });
-
-await rep.UpdateUsersAsync(new[] { new RepUserUpdate { Cpf = 12345678909, Name = "Ana Souza", RemoveTemplates = true } });
-
-var alguns = await rep.GetUsersAsync(new[] { 12345678909L, 98765432100L });   // mais de 100 viram várias chamadas
-await foreach (var usuario in rep.EnumerateUsersAsync())                        // base grande: páginas de 100 sob demanda
-{
-}
-
-string csv = await rep.ExportUsersCsvAsync();                                  // backup
-RepCsvImportResult importados = await rep.ImportUsersCsvAsync(File.ReadAllBytes("usuarios.csv"));
-
-await rep.RemoveAdminsAsync(DataLossConfirmation.Confirmed);                   // sem volta: exige confirmação
-```
-
-### Empregador, rede e configurações
-
-```csharp
-await rep.SetCompanyAsync(new RepCompany
-{
-    Name = "Empresa Ltda",
-    DocumentType = RepCompanyDocumentType.Cnpj,
-    Document = "12.ABC.345/01DE-35",   // CNPJ alfanumérico (firmware revisão 104); só dígitos funcionam em qualquer revisão
-    Address = "Rua Hungria 888",
-});
-
-RepNetworkSettings rede = await rep.GetNetworkAsync();
-await rep.SetDaylightSavingTimeAsync(new RepDaylightSavingTime(new DateTime(2026, 11, 1), new DateTime(2027, 2, 20)));
-await rep.SetDateTimeAsync(DateTimeOffset.Now);              // com fuso horário (Portaria 671)
-
-RepSystemConfiguration config = await rep.GetSystemConfigurationAsync();
-await rep.SetEconomicReceiptEnabledAsync(true);              // comprovante curto
-await rep.SetCoilPaperAsync(300);                            // bobina nova
-
-RepAbout sobre = await rep.GetAboutAsync();
-Console.WriteLine(sobre.ApiRevision);                        // 104: revisão da API, como a documentação a numera
-```
-
-### REP iDClass Facial
-
-```csharp
-await rep.SetUserImageAsync(cpf: 12345678909, File.ReadAllBytes("ana.jpg"));
-byte[] foto = await rep.GetUserImageAsync(12345678909);
-
-await rep.StartRemoteEnrollAsync(12345678909);               // a tela do REP pede a face
-while ((await rep.GetFacialEnrollerStateAsync()).RemoteEnrolling)
-{
-    await Task.Delay(1000);
-}
-```
-
-As APIs faciais vão sempre com `mode=671`, que a documentação exige, mesmo num cliente no modo `Legacy`.
-
-### Certificado do REP
-
-O construtor acima aceita qualquer certificado, porque o iDClass sai de fábrica com um autoassinado. Para não aceitar um
-certificado falso na rede, fixe a impressão digital SHA-256 do certificado do seu REP: com ela, só esse certificado passa.
-
-```csharp
-// Uma vez, numa rede confiável (confira o valor no navegador):
-string sha256 = await ControlIdCertificates.GetServerCertificateSha256Async(new Uri("https://192.168.0.130"));
-
-using var rep = new RepClient(new ControlIdDeviceOptions
-{
-    BaseAddress = new Uri("https://192.168.0.130"),
-    ServerCertificateSha256 = sha256, // aceita "AB:CD:...", com espaços ou sem separadores
-});
-```
-
-- Com `ServerCertificateSha256`, `AcceptAnyServerCertificate` é ignorado. Se o REP trocar de certificado, as chamadas
-  falham até a configuração ser atualizada.
-- No `appsettings.json` (pacote de DI): `"ponto": { "BaseAddress": "https://...", "ServerCertificateSha256": "AB:CD:..." }`.
-- Vale também para equipamentos de acesso com HTTPS ligado.
-
-### AFD tipado
-
-O parser lê os leiautes da **Portaria 671/2021** e da **Portaria 1510/2009** (detecta sozinho, linha a linha):
-
-```csharp
 using ControlId.Rep.Afd;
 
-AfdFile afd = await rep.GetAfdFileFromNsrAsync(ultimoNsrLido + 1);
+using var rep = new RepClient("https://192.168.0.130", mode: RepMode.Portaria671);
 
-foreach (var marcacao in afd.Punches)                // tipos 3 (REP-C/REP-A) e 7 (REP-P)
+AfdFile afd = await rep.GetAfdFileFromNsrAsync(lastNsr + 1);
+foreach (var punch in afd.Punches)
 {
-    Console.WriteLine($"{marcacao.Nsr} {marcacao.Time:dd/MM/yyyy HH:mm} {marcacao.EmployeeId}");  // CPF (671) ou PIS (1510)
-}
-
-ultimoNsrLido = afd.LastNsr ?? ultimoNsrLido;         // leitura incremental
-```
-
-- Também lê arquivos: `AfdParser.Parse(File.OpenRead("AFD.txt"))` (detecta UTF-8 ou ISO-8859-1) ou `AfdParser.ReadRecords(reader)` para ler registro a registro, sem carregar o arquivo todo.
-- Direto do REP, sem carregar o arquivo todo: `await foreach (var registro in rep.EnumerateAfdRecordsAsync(new RepAfdQuery { InitialNsr = n }))`, ou `OpenAfdStreamAsync` para gravar o arquivo em disco. Feche o stream ao terminar: aberto, ele ocupa uma das requisições simultâneas permitidas ao REP.
-- `RepAfdQuery.HeaderTop` (firmware revisão 104) pede o cabeçalho no começo e sem a linha com o nome do arquivo, como no arquivo final.
-- Disponíveis: cabeçalho (`Header`), empresa (`CompanyRecords`), empregados (`EmployeeRecords`), ajustes de relógio (`ClockAdjustments`), eventos sensíveis (`SensitiveEvents`), trailer e assinatura.
-- Datas são o horário de parede gravado pelo REP; no leiaute 671 o fuso vem em `UtcOffset` (e `TimeWithOffset`).
-- Uma linha corrompida não derruba a leitura: ela vira `AfdInvalidRecord` e aparece em `afd.Issues`, junto com divergências do trailer e NSR fora de ordem.
-- `IsCrcValid` confere o CRC-16/KERMIT, o algoritmo que a portaria exige para REP-A e REP-P. Para REP-C a portaria não define o algoritmo, então trate o valor como informativo.
-- O `RepClient` decodifica o AFD como ISO-8859-1 quando o REP não informa o charset, para não corromper nomes acentuados.
-
-## Injeção de dependência
-
-```bash
-dotnet add package ControlId.Net.DependencyInjection --prerelease
-```
-
-Um equipamento só (fica injetável como `IAccessClient` / `IRepClient`):
-
-```csharp
-builder.Services.AddControlIdAccess(o =>
-{
-    o.BaseAddress = new Uri("http://192.168.0.129");
-    o.Password = builder.Configuration["ControlId:Senha"]!;
-});
-
-builder.Services.AddControlIdRep(o => o.BaseAddress = new Uri("https://192.168.0.130")); // aceita o certificado autoassinado
-
-public class PortariaService(IAccessClient portaria) { ... }
-```
-
-Vários equipamentos, direto do `appsettings.json` (a chave vira o nome):
-
-```json
-{
-  "ControlId": {
-    "Access": {
-      "portaria": { "BaseAddress": "http://192.168.0.129", "Password": "..." },
-      "garagem":  { "BaseAddress": "http://192.168.0.131", "Timeout": "00:00:10" }
-    },
-    "Rep": {
-      "rh": { "BaseAddress": "https://192.168.0.130", "Mode": "Portaria671" }
-    }
-  }
+    Console.WriteLine($"{punch.Nsr} {punch.Time:yyyy-MM-dd HH:mm} {punch.EmployeeId}");
 }
 ```
 
-```csharp
-builder.Services.AddControlIdAccessDevices(builder.Configuration.GetSection("ControlId:Access"));
-builder.Services.AddControlIdRepDevices(builder.Configuration.GetSection("ControlId:Rep"));
+The full guide (in Portuguese) covers every area of the API: users, cards, biometrics, access rules, device commands,
+configuration, Push, Monitor, Online mode, REP, AFD, dependency injection and multi-device operations:
+**[docs/guia.md](docs/guia.md)**.
 
-public class Sincronizacao(IControlIdClientFactory equipamentos)
-{
-    public async Task RodarAsync()
-    {
-        foreach (var nome in equipamentos.AccessDeviceNames)
-        {
-            var logs = await equipamentos.GetAccessClient(nome).GetAccessLogsAsync();
-        }
+## Packages
 
-        var afd = await equipamentos.GetRepClient("rh").GetAfdFileAsync();
-    }
-}
-```
-
-- Cada equipamento tem um cliente único durante a vida da aplicação, então a sessão de login é reaproveitada. Não descarte os clientes: o container faz isso.
-- O `HttpClient` vem do `IHttpClientFactory`. `AddControlIdAccess`/`AddControlIdRep` devolvem o `IHttpClientBuilder`, para encadear handlers (proxy, retry, logging).
-- Nome desconhecido ou configuração inválida geram `InvalidOperationException` com o nome do equipamento.
-- O `ControlId.Net.AspNetCore` já inclui este pacote.
-
-## HttpClient externo
-
-Sem o pacote de DI, os dois clientes também aceitam um `HttpClient` externo, que eles não descartam:
-
-```csharp
-services.AddHttpClient("portaria-principal");
-
-var http = factory.CreateClient("portaria-principal");
-var device = new AccessClient(new ControlIdDeviceOptions
-{
-    BaseAddress = new Uri("http://192.168.0.129"),
-    Login = "admin",
-    Password = "admin",
-}, http);
-```
-
-## Bases grandes e vários equipamentos
-
-### Limite por equipamento
-
-Cada cliente limita as requisições simultâneas ao seu equipamento (`MaxConcurrentRequests`, padrão 4, login incluído).
-Dá para disparar quantas chamadas quiser em paralelo: as que passarem do limite esperam a vez, sem sobrecarregar o
-equipamento. Cada equipamento tem o próprio limite, então vários equipamentos rodam em paralelo entre si.
-
-O limite protege o equipamento, mas não o deixa mais rápido: um iDFace atende uma requisição por vez (cerca de 100 ms
-cada), e 32 chamadas levaram ~3,4 s com 1, 4 ou 8 simultâneas. Paralelizar compensa entre equipamentos diferentes.
-
-```csharp
-var device = new AccessClient(new ControlIdDeviceOptions
-{
-    BaseAddress = new Uri("http://192.168.0.129"),
-    MaxConcurrentRequests = 2, // equipamento mais modesto ou rede lenta
-});
-
-var fotos = await Task.WhenAll(ids.Select(id => device.GetUserImageAsync(id))); // no máximo 2 por vez no equipamento
-```
-
-- O limite é o mesmo em qualquer runtime. Sem ele, o .NET Framework seguraria em 2 conexões por servidor e o .NET Core
-  não limitaria nada. Quando o pacote cria o `HttpClient` (ou pelo pacote de DI), o limite de conexões do handler acompanha o valor.
-- Com um `HttpClient` externo, o limite do cliente continua valendo, mas o limite de conexões do handler fica por sua conta.
-- No `appsettings.json`: `"portaria": { "BaseAddress": "...", "MaxConcurrentRequests": 2 }`.
-
-### Leitura paginada
-
-`GetUsersAsync` e `GetObjectsAsync` trazem tudo numa requisição só. Em bases grandes, use os `Enumerate*Async`, que leem
-em páginas (500 registros por padrão) e só buscam a próxima quando a anterior foi consumida:
-
-```csharp
-await foreach (var usuario in device.EnumerateUsersAsync())
-{
-    await SincronizarAsync(usuario);
-}
-
-// Coleta incremental: guarde o último ID e continue dele na próxima vez.
-await foreach (var log in device.EnumerateAccessLogsAsync(afterId: ultimoId, pageSize: 1000))
-{
-    ultimoId = log.Id;
-}
-
-await foreach (var cartao in device.EnumerateObjectsAsync<AccessCard>(Where.Equal("cards", "user_id", 42L))) { }
-
-// Qualquer objeto: Offset é o ponto de partida e Limit, o total máximo.
-var request = new LoadObjectsRequest("user_groups") { Order = new List<string> { "user_id" } };
-await foreach (var linha in device.EnumerateObjectsAsync<JsonElement>(request, pageSize: 200)) { }
-```
-
-- Usuários e logs seguem pelo ID (`id > último`): criar ou remover registros durante a leitura não faz pular nem repetir os demais.
-- Os outros objetos usam `limit`/`offset`, ordenados pela chave do modelo. Com `LoadObjectsRequest`, informe `Order` para as páginas ficarem estáveis.
-- Sair do `await foreach` (ou cancelar o token) para a leitura sem buscar as páginas restantes.
-
-### Vários equipamentos de uma vez
-
-`ControlIdDevices.RunAsync` executa a mesma operação em vários equipamentos em paralelo (8 por vez, por padrão) e devolve
-um resultado por equipamento, na ordem de entrada. Um equipamento fora do ar não interrompe os demais:
-
-```csharp
-var equipamentos = new Dictionary<string, IAccessClient> { ["portaria"] = portaria, ["garagem"] = garagem };
-
-var resultados = await ControlIdDevices.RunAsync(equipamentos, (d, ct) => d.CreateUserAsync(usuario, ct), maxParallelism: 4);
-
-foreach (var r in resultados)
-{
-    if (r.Succeeded) Console.WriteLine($"{r.Device}: criado com ID {r.Value} em {r.Elapsed.TotalMilliseconds} ms");
-    else Console.WriteLine($"{r.Device}: {r.Error!.Message}");
-}
-```
-
-Com o pacote de DI, direto nos equipamentos registrados:
-
-```csharp
-// Todos os equipamentos de acesso (ou só alguns: RunOnAccessDevicesAsync(new[] { "portaria", "garagem" }, ...)).
-var logs = await equipamentos.RunOnAccessDevicesAsync((d, ct) => d.GetAccessLogsAsync(ultimoId, cancellationToken: ct));
-var porta = await equipamentos.RunOnAccessDevicesAsync((d, ct) => d.OpenDoorAsync(1, ct)); // sem valor: DeviceResult
-var afds = await equipamentos.RunOnRepDevicesAsync((r, ct) => r.GetAfdFileAsync(cancellationToken: ct));
-```
-
-- `r.Value` de um equipamento que falhou lança `InvalidOperationException` com o erro original em `InnerException`; confira `Succeeded` antes.
-- Erros ao obter o cliente (ex.: equipamento registrado sem `BaseAddress`) também ficam só no resultado daquele equipamento.
-- Cancelar o token lança `OperationCanceledException` em vez de devolver resultados parciais.
-- `maxParallelism` limita quantos equipamentos são atendidos ao mesmo tempo; dentro de cada um continua valendo o `MaxConcurrentRequests`.
-- O tempo total é o do equipamento mais lento, não a soma: com um iDFace respondendo em 0,2 s e dois endereços fora do ar
-  (timeout de 4 s), a chamada levou 4 s em paralelo e 8,5 s com `maxParallelism: 1`.
-
-## Erros
-
-| Exceção | Quando |
+| Package | Purpose |
 | --- | --- |
-| `ControlIdAuthenticationException` | Usuário ou senha recusados no `login.fcgi` |
-| `ControlIdException` | HTTP de erro do equipamento (com `StatusCode`, `DeviceErrorCode` e `ResponseBody`), timeout ou falha de rede |
+| `ControlId.Net` | `AccessClient`, `RepClient`, AFD parser, Push and Monitor models |
+| `ControlId.Net.DependencyInjection` | `AddControlIdAccess` / `AddControlIdRep`, many devices from `appsettings.json` |
+| `ControlId.Net.AspNetCore` | Push, Monitor and Online mode endpoints for ASP.NET Core (net8.0+) |
+
+## Engineering
+
+| Practice | How |
+| --- | --- |
+| Tests | 427 tests on .NET 8 and .NET 10, 414 on .NET Framework 4.8; devices simulated by an in-memory HTTP handler |
+| CI | Every push and pull request: warning-free build, three target frameworks on Linux and Windows, coverage summary |
+| API governance | Public API tracked in `PublicAPI.*.txt`; `dotnet pack` fails on undeclared breaking changes against the last release |
+| Supply chain | NuGet Trusted Publishing (OIDC, no stored keys), CycloneDX SBOM, build provenance attestation, deterministic builds, SourceLink |
+| Static analysis | .NET `latest-recommended` rule set with zero warnings, nullable reference types everywhere |
+| Decisions | [Architecture Decision Records](docs/adr/README.md) for the key design choices |
+| Security | [Private vulnerability reporting](SECURITY.md) and safe-usage notes |
 
 ## Roadmap
 
-- [x] Transporte com sessão automática e re-login
-- [x] Acesso: objetos genéricos, usuários, logs, porta/SecBox/catraca, sistema, data/hora
-- [x] REP: about, sistema, data/hora, usuários, AFD
-- [x] Acesso: cartões, digitais, fotos, grupos, horários, portais e regras de acesso tipados
-- [x] Acesso: modo Push e Monitor (eventos em tempo real)
-- [x] Acesso: Push em lote (`transactions`) e pacote `ControlId.Net.AspNetCore` com `MapControlIdPush`/`MapControlIdMonitor`
-- [x] REP: parser do AFD (Portaria 671 e legado) para objetos tipados
-- [x] Extensões para `IServiceCollection` (`AddControlIdAccess`, `AddControlIdRep`)
-- [x] Chamadas genéricas a qualquer endpoint (`SendAsync`, `SendRawAsync`, `SendBytesAsync`, `DownloadAsync`) e `get_configuration`
-- [x] Acesso: cadastro remoto (`remote_enroll`) síncrono, assíncrono via Monitor e via Push
-- [x] Acesso: modo online (Pro/Enterprise): configuração, eventos tipados, `MapControlIdOnline` e autorização remota
-- [x] Acesso: comandos tipados (mensagem, buzzer, login, hash de senha, reinício, reset, rede, logotipo, GPIO, LED, USB, upsert de objetos)
-- [x] Acesso: cobertura completa da documentação pública (endpoints, objetos, eventos e configurações), com teste que garante cada endpoint ([docs/COBERTURA.md](docs/COBERTURA.md))
-- [x] REP: cobertura completa da documentação (47 comandos, inclusive o REP Facial), com teste que garante cada comando ([docs/COBERTURA.md](docs/COBERTURA.md#rep-idclass))
-- [ ] Testes de integração contra equipamentos reais
-- [ ] Outras marcas de controle de acesso, em pacotes separados
+- [x] Full coverage of the public access API and of the iDClass API
+- [x] Push, Monitor and Online mode on ASP.NET Core
+- [x] AFD parser (Portaria 671 and 1510)
+- [ ] Device simulator in a Docker image, with integration tests that run in CI
+- [ ] OpenTelemetry instrumentation (traces, metrics and structured logs)
+- [ ] Resilience pipeline and health checks per device
+- [ ] Native AOT and trimming support
+- [ ] Real-time dashboard sample (Blazor + SignalR)
 
-## Desenvolvimento
+## Contributing
 
-```bash
-dotnet build
-dotnet test
-dotnet run --project samples/ControlId.Net.Sample -- access http://192.168.0.129 admin admin
-dotnet run --project samples/ControlId.Net.Server -- --urls http://0.0.0.0:5000
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports from real devices are especially welcome: please include the model
+and firmware version.
 
-Os testes rodam em `net8.0`, `net10.0` e `net48`. Os dois primeiros exercitam o build `net8.0` das bibliotecas (o `net10.0` garante a compatibilidade com o .NET 10, inclusive o pacote ASP.NET Core sobre o ASP.NET Core 10); o `net48` exercita o build `netstandard2.0`, usado no .NET Framework, e só executa no Windows. Para compilar o alvo `net10.0` é preciso o SDK do .NET 10. Em Linux ou macOS, use `dotnet test -f net8.0` ou `-f net10.0`.
-
-O `ci.yml` roda a cada push na `main` e em todo pull request: build sem avisos, testes nos três alvos (Linux e Windows), validação da API pública e resumo de cobertura. O `publish.yml` repete os testes ao lançar versão e só publica se todos passarem.
-
-Para publicar, crie uma tag `vX.Y.Z` e faça push. O workflow `publish.yml` empacota `ControlId.Net`, `ControlId.Net.DependencyInjection` e `ControlId.Net.AspNetCore` com a versão da tag e envia ao NuGet.org por Trusted Publishing (OIDC), sem chave guardada no repositório. Configuração única: uma política de Trusted Publishing no nuget.org para este repositório e o arquivo `publish.yml`, e o secret `NUGET_USER` com o nome de usuário do nuget.org.
-
-## Licença
+## License
 
 [MIT](LICENSE)

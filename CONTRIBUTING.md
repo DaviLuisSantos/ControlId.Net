@@ -19,7 +19,7 @@ A CI roda em todo pull request: build sem avisos, testes em `net8.0`, `net10.0` 
 - **API pública**: mudanças na API aparecem como aviso RS0016/RS0017 no build. Acrescente as linhas em
   `PublicAPI.Unshipped.txt` do projeto (a IDE sugere a correção). Se a mudança quebra a compatibilidade com a última
   versão publicada, o `dotnet pack` falha; quebras intencionais vão em `CompatibilitySuppressions.xml`, com o motivo.
-- **Documentação**: XML em português nos membros públicos; o README e o `docs/COBERTURA.md` quando mudar o que o pacote
+- **Documentação**: XML em português nos membros públicos; o `docs/guia.md` e o `docs/COBERTURA.md` quando mudar o que o pacote
   cobre.
 - **Nenhum aviso novo** no build (`dotnet build --no-incremental`).
 
