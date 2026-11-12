@@ -46,8 +46,12 @@
     <Reference Include="System.Net.Http" />
     <!-- Assemblies de referência do .NET Framework sem depender do targeting pack instalado. -->
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
-    <!-- AddInMemoryCollection; nos demais alvos vem pelo framework do ASP.NET Core. -->
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.14" />
+    <!--
+      AddInMemoryCollection vem do Microsoft.Extensions.Configuration, que chega pelo pacote de DI
+      (Options.ConfigurationExtensions -> Configuration.Binder). Uma referência direta aqui ficaria para trás nas
+      atualizações do Dependabot (que não altera ItemGroups condicionais) e quebraria o restore com NU1605.
+    -->
+
   </ItemGroup>
 
 </Project>
