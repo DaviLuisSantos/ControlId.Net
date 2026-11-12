@@ -34,7 +34,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)../README.md" Pack="true" PackagePath="\" Visible="false" />
+    <!-- Página do NuGet: versão curta, com links absolutos (o nuget.org não resolve links relativos nem Mermaid). -->
+    <None Include="$(MSBuildThisFileDirectory)PACKAGE.md" Pack="true" PackagePath="\README.md" Visible="false" />
   </ItemGroup>
 
   <!--

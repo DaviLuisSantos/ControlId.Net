@@ -22,7 +22,7 @@ O pacote só faz o que a API do equipamento permite, então a segurança depende
 - **Troque a senha padrão.** Os equipamentos saem de fábrica com `admin`/`admin`. Use `ChangeLoginAsync` ou a interface
   web, e guarde a nova senha num cofre de segredos, nunca no código ou no `appsettings.json` versionado.
 - **Prefira HTTPS** quando o equipamento oferecer. No REP iDClass, que usa certificado autoassinado, fixe a impressão
-  digital com `ServerCertificateSha256` em vez de aceitar qualquer certificado (veja o README).
+  digital com `ServerCertificateSha256` em vez de aceitar qualquer certificado (veja o [guia](docs/guia.md#certificado-do-rep)).
 - **A sessão vai na URL** (`?session=...`), porque é assim que a API do equipamento funciona. Não registre URLs de
   requisição em logs que outras pessoas leiam.
 - **Proteja as rotas do servidor.** `MapControlIdPush`, `MapControlIdMonitor` e `MapControlIdOnline` não exigem
