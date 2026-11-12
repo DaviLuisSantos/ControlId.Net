@@ -15,6 +15,8 @@ A CI roda em todo pull request: build sem avisos, testes em `net8.0`, `net10.0` 
 
 - **Teste** para o comportamento novo ou corrigido. Os testes simulam o equipamento com o `FakeDeviceHandler`; quando a
   correção vier de um equipamento real, use a resposta real dele no teste e cite o modelo e o firmware.
+- **Simulador**: comportamento observado num equipamento real que a biblioteca passa a tratar entra também no
+  [simulador](tools/ControlId.Net.Simulator/README.md), com um teste em `tests/ControlId.Net.IntegrationTests`.
 - **CHANGELOG.md**: uma linha na seção `[Unreleased]`, no formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - **API pública**: mudanças na API aparecem como aviso RS0016/RS0017 no build. Acrescente as linhas em
   `PublicAPI.Unshipped.txt` do projeto (a IDE sugere a correção). Se a mudança quebra a compatibilidade com a última

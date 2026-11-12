@@ -119,6 +119,16 @@ O guia completo cobre todas as áreas da API: usuários, cartões, biometria, re
 configurações, Push, Monitor, modo online, REP, AFD, injeção de dependência e operações em vários equipamentos:
 **[docs/guia.md](docs/guia.md)**.
 
+## Experimente sem equipamento
+
+```bash
+docker run --rm -p 8080:8080 ghcr.io/daviluissantos/controlid-simulator
+```
+
+O [simulador de equipamento](tools/ControlId.Net.Simulator/README.md) fala a API de acesso com estado em memória e envia
+as notificações do Monitor, reproduzindo as divergências do firmware que o SDK trata. Aponte o `AccessClient` para
+`http://localhost:8080` e simule uma pessoa no equipamento com `POST /simulator/identify`.
+
 ## Pacotes
 
 | Pacote | Para quê |
@@ -131,7 +141,7 @@ configurações, Push, Monitor, modo online, REP, AFD, injeção de dependência
 
 | Prática | Como |
 | --- | --- |
-| Testes | 427 testes no .NET 8 e no .NET 10 e 414 no .NET Framework 4.8; os equipamentos são simulados por um handler HTTP em memória |
+| Testes | 427 testes unitários no .NET 8 e no .NET 10 e 414 no .NET Framework 4.8; testes de ponta a ponta com HTTP de verdade contra o [simulador de equipamento](tools/ControlId.Net.Simulator/README.md) |
 | CI | A cada push e pull request: build sem avisos, três alvos no Linux e no Windows, resumo de cobertura |
 | Governança da API | API pública registrada em `PublicAPI.*.txt`; o `dotnet pack` falha numa quebra não declarada em relação à última versão |
 | Cadeia de suprimentos | Trusted Publishing no NuGet (OIDC, sem chave guardada), SBOM CycloneDX, atestação de proveniência, builds determinísticos, SourceLink |
@@ -144,7 +154,7 @@ configurações, Push, Monitor, modo online, REP, AFD, injeção de dependência
 - [x] Cobertura completa da API pública de acesso e da API do iDClass
 - [x] Push, Monitor e modo online no ASP.NET Core
 - [x] Parser de AFD (Portaria 671 e 1510)
-- [ ] Simulador de equipamento em imagem Docker, com testes de integração na CI
+- [x] Simulador de equipamento em imagem Docker, com testes de integração na CI
 - [ ] Instrumentação com OpenTelemetry (traces, métricas e logs estruturados)
 - [ ] Pipeline de resiliência e health checks por equipamento
 - [ ] Suporte a Native AOT e trimming

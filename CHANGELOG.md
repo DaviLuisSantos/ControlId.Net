@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+### Added
+- **Simulador de equipamento** ([tools/ControlId.Net.Simulator](tools/ControlId.Net.Simulator/README.md)): a API `*.fcgi` da linha de acesso com estado em memória (sessão, objetos com filtro e paginação, fotos, configuração, portas) e notificações do Monitor, mais rotas `/simulator/*` para provocar identificações e reinícios. Reproduz as divergências do firmware de que a biblioteca depende. Imagem Docker publicada no GitHub Container Registry a cada versão ([ADR 0011](docs/adr/0011-simulador-de-equipamento.md)).
+- Testes de integração (`tests/ControlId.Net.IntegrationTests`): a biblioteca contra o simulador com HTTP de verdade, inclusive re-login, paginação, exclusão em lotes, configuração tolerante e o Monitor de ponta a ponta até as rotas do `ControlId.Net.AspNetCore`. Rodam na CI, junto com um teste de fumaça da imagem.
+
 ### Changed
 - Dependências de runtime na 10.x (`System.Text.Json`, `Microsoft.Bcl.AsyncInterfaces`, `Microsoft.Extensions.Http`, `Microsoft.Extensions.Options.ConfigurationExtensions`): o .NET 8 saiu de suporte em 2026-11-10, e a 10.x continua com alvos `net8.0` e `netstandard2.0` ([ADR 0010](docs/adr/0010-dependencias-no-lts-suportado.md)). Quem usa o .NET Framework passa a receber as correções de segurança da `System.Text.Json`.
 - README reorganizado: página de apresentação em inglês (`README.md`) e em português (`README.pt-BR.md`), com diagrama de arquitetura e roadmap; o guia de uso completo foi para [docs/guia.md](docs/guia.md). A página do NuGet usa uma versão curta, com links absolutos (`src/PACKAGE.md`).
