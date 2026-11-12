@@ -35,6 +35,8 @@ jobs:
       # net48 não executa no Linux; ele roda no job netfx.
       - run: dotnet test tests/ControlId.Net.Tests --no-build -c Release -f net8.0 --collect:"XPlat Code Coverage" --results-directory coverage
       - run: dotnet test tests/ControlId.Net.Tests --no-build -c Release -f net10.0
+      # Ponta a ponta: a biblioteca contra o simulador de equipamento, com HTTP de verdade.
+      - run: dotnet test tests/ControlId.Net.IntegrationTests --no-build -c Release
       # O pack valida a API contra a versão publicada (EnablePackageValidation): uma quebra não declarada falha aqui.
       - run: dotnet pack -c Release --no-build -o artifacts
 
@@ -48,6 +50,22 @@ jobs:
         with:
           name: nupkg
           path: artifacts/*
+
+  # Constrói a imagem do simulador e confere que ela sobe e atende login e leitura de usuários.
+  simulator-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -f tools/ControlId.Net.Simulator/Dockerfile -t controlid-simulator .
+      - name: Smoke test
+        run: |
+          docker run -d --rm -p 8080:8080 --name sim controlid-simulator
+          for i in $(seq 1 30); do curl -sf http://localhost:8080/health && break; sleep 1; done
+          session=$(curl -sf -X POST http://localhost:8080/login.fcgi -H 'Content-Type: application/json' \
+            -d '{"login":"admin","password":"admin"}' | jq -r .session)
+          curl -sf -X POST "http://localhost:8080/load_objects.fcgi?session=$session" -H 'Content-Type: application/json' \
+            -d '{"object":"users"}' | jq -e '.users | length == 3'
+          docker stop sim
 
   # Testa o build netstandard2.0 das bibliotecas no .NET Framework 4.8.
   netfx:

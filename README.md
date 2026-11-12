@@ -118,6 +118,16 @@ The full guide (in Portuguese) covers every area of the API: users, cards, biome
 configuration, Push, Monitor, Online mode, REP, AFD, dependency injection and multi-device operations:
 **[docs/guia.md](docs/guia.md)**.
 
+## Try it without hardware
+
+```bash
+docker run --rm -p 8080:8080 ghcr.io/daviluissantos/controlid-simulator
+```
+
+The [device simulator](tools/ControlId.Net.Simulator/README.md) speaks the access API with in-memory state and sends
+Monitor notifications, reproducing the firmware quirks the SDK handles. Point `AccessClient` at `http://localhost:8080`
+and trigger a person at the device with `POST /simulator/identify`.
+
 ## Packages
 
 | Package | Purpose |
@@ -130,7 +140,7 @@ configuration, Push, Monitor, Online mode, REP, AFD, dependency injection and mu
 
 | Practice | How |
 | --- | --- |
-| Tests | 427 tests on .NET 8 and .NET 10, 414 on .NET Framework 4.8; devices simulated by an in-memory HTTP handler |
+| Tests | 427 unit tests on .NET 8 and .NET 10, 414 on .NET Framework 4.8; end-to-end tests over real HTTP against the [device simulator](tools/ControlId.Net.Simulator/README.md) |
 | CI | Every push and pull request: warning-free build, three target frameworks on Linux and Windows, coverage summary |
 | API governance | Public API tracked in `PublicAPI.*.txt`; `dotnet pack` fails on undeclared breaking changes against the last release |
 | Supply chain | NuGet Trusted Publishing (OIDC, no stored keys), CycloneDX SBOM, build provenance attestation, deterministic builds, SourceLink |
@@ -143,7 +153,7 @@ configuration, Push, Monitor, Online mode, REP, AFD, dependency injection and mu
 - [x] Full coverage of the public access API and of the iDClass API
 - [x] Push, Monitor and Online mode on ASP.NET Core
 - [x] AFD parser (Portaria 671 and 1510)
-- [ ] Device simulator in a Docker image, with integration tests that run in CI
+- [x] Device simulator in a Docker image, with integration tests that run in CI
 - [ ] OpenTelemetry instrumentation (traces, metrics and structured logs)
 - [ ] Resilience pipeline and health checks per device
 - [ ] Native AOT and trimming support
