@@ -626,6 +626,46 @@ var afds = await equipamentos.RunOnRepDevicesAsync((r, ct) => r.GetAfdFileAsync(
 - O tempo total é o do equipamento mais lento, não a soma: com um iDFace respondendo em 0,2 s e dois endereços fora do ar
   (timeout de 4 s), a chamada levou 4 s em paralelo e 8,5 s com `maxParallelism: 1`.
 
+## Observabilidade (OpenTelemetry)
+
+Os clientes emitem traces e métricas pelas APIs do próprio .NET (`ActivitySource` e `Meter`), sem depender do
+OpenTelemetry. Para coletar, registre os nomes de `ControlIdTelemetry`:
+
+```csharp
+builder.Services.AddOpenTelemetry()
+    .WithTracing(t => t.AddSource(ControlIdTelemetry.ActivitySourceName).AddHttpClientInstrumentation())
+    .WithMetrics(m => m.AddMeter(ControlIdTelemetry.MeterName))
+    .UseOtlpExporter();
+```
+
+**Traces**: um span `Client` por comando, com o nome do comando (`load_objects`, `execute_actions`...). Ele cobre a espera
+no limite de requisições, o re-login e a requisição HTTP, que aparece como filho (com a instrumentação do `HttpClient`).
+O login é um span `login` filho do comando que o disparou, e um re-login vira o evento `controlid.relogin`.
+
+| Atributo | Valor |
+| --- | --- |
+| `controlid.command` | Comando, sem `.fcgi` |
+| `server.address`, `server.port` | Equipamento |
+| `error.type` | Status HTTP (`400`), `canceled` ou o tipo da exceção, quando falha |
+| `http.response.status_code`, `controlid.device.error_code` | Quando o equipamento devolve erro |
+
+A sessão, o login e a senha nunca vão para os atributos.
+
+**Métricas** (com `server.address` e `server.port`):
+
+| Métrica | Tipo | O que mostra |
+| --- | --- | --- |
+| `controlid.client.operation.duration` | Histograma (s) | Duração por comando (`controlid.command`, `error.type`) |
+| `controlid.client.relogins` | Contador | Sessões expiradas, ex.: o equipamento reiniciou |
+| `controlid.client.requests.queued` | UpDownCounter | Requisições esperando vaga no `MaxConcurrentRequests` |
+| `controlid.client.requests.active` | UpDownCounter | Requisições em andamento no equipamento |
+
+Uma fila que não esvazia indica que o equipamento não está dando conta (um iDFace atende uma requisição por vez); muitos
+re-logins indicam um equipamento reiniciando.
+
+Para ver tudo sem hardware, o `samples/docker-compose.yml` sobe o simulador e o dashboard do Aspire, e o
+`samples/ControlId.Net.Server` já vem ligado aos dois (instruções no topo do `Program.cs`).
+
 ## Erros
 
 | Exceção | Quando |

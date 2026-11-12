@@ -14,9 +14,9 @@ internal sealed class ResponseStream : Stream
 {
     private readonly Stream _inner;
     private readonly HttpResponseMessage _response;
-    private SemaphoreSlim? _throttle;
+    private RequestSlots? _throttle;
 
-    public ResponseStream(Stream inner, HttpResponseMessage response, SemaphoreSlim throttle)
+    public ResponseStream(Stream inner, HttpResponseMessage response, RequestSlots throttle)
     {
         _inner = inner;
         _response = response;

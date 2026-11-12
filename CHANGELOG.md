@@ -5,6 +5,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 ## [Unreleased]
 
 ### Added
+- **Traces e métricas (OpenTelemetry)**: um span por comando ao equipamento (com fila, re-login e HTTP) e as métricas `controlid.client.operation.duration`, `controlid.client.relogins`, `controlid.client.requests.queued` e `controlid.client.requests.active`. Pelas APIs do .NET, sem dependência do OpenTelemetry; os nomes ficam em `ControlIdTelemetry` ([ADR 0012](docs/adr/0012-telemetria-sem-dependencia-do-opentelemetry.md), [guia](docs/guia.md#observabilidade-opentelemetry)). O `netstandard2.0` passa a depender de `System.Diagnostics.DiagnosticSource`.
+- `samples/docker-compose.yml` com o simulador e o dashboard do Aspire; o `samples/ControlId.Net.Server` exporta traces e métricas por OTLP e ganha rotas que acessam equipamentos direto por HTTP (`/direto/{nome}/...`).
 - **Simulador de equipamento** ([tools/ControlId.Net.Simulator](tools/ControlId.Net.Simulator/README.md)): a API `*.fcgi` da linha de acesso com estado em memória (sessão, objetos com filtro e paginação, fotos, configuração, portas) e notificações do Monitor, mais rotas `/simulator/*` para provocar identificações e reinícios. Reproduz as divergências do firmware de que a biblioteca depende. Imagem Docker publicada no GitHub Container Registry a cada versão ([ADR 0011](docs/adr/0011-simulador-de-equipamento.md)).
 - Testes de integração (`tests/ControlId.Net.IntegrationTests`): a biblioteca contra o simulador com HTTP de verdade, inclusive re-login, paginação, exclusão em lotes, configuração tolerante e o Monitor de ponta a ponta até as rotas do `ControlId.Net.AspNetCore`. Rodam na CI, junto com um teste de fumaça da imagem.
 

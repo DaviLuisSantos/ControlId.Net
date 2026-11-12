@@ -32,6 +32,8 @@ dependency-injection-friendly library, verified against real devices.
 - **Safe by default.** Destructive operations require an explicit `DataLossConfirmation.Confirmed`; optional SHA-256
   certificate pinning for self-signed device certificates; per-device concurrency limits sized from measurements on real
   devices.
+- **Observable.** OpenTelemetry traces and metrics per command: latency, re-logins and requests queued per device,
+  without forcing an OpenTelemetry dependency on you.
 - **Runs anywhere .NET runs.** `net8.0` and `netstandard2.0` targets, tested on .NET 8, .NET 10 and .NET Framework 4.8.
 
 ## Architecture
@@ -154,7 +156,8 @@ and trigger a person at the device with `POST /simulator/identify`.
 - [x] Push, Monitor and Online mode on ASP.NET Core
 - [x] AFD parser (Portaria 671 and 1510)
 - [x] Device simulator in a Docker image, with integration tests that run in CI
-- [ ] OpenTelemetry instrumentation (traces, metrics and structured logs)
+- [x] OpenTelemetry traces and metrics, with an Aspire dashboard demo
+- [ ] Structured logs (`ILogger` with source-generated `LoggerMessage`)
 - [ ] Resilience pipeline and health checks per device
 - [ ] Native AOT and trimming support
 - [ ] Real-time dashboard sample (Blazor + SignalR)

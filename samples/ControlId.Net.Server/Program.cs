@@ -10,6 +10,12 @@
 // Depois, com o equipamento consultando o /push:
 //   curl -X POST http://localhost:5000/equipamentos/{deviceId}/abrir-porta
 //   curl http://localhost:5000/equipamentos/{deviceId}/usuarios
+//
+// Equipamentos acessados direto por HTTP (ex.: o simulador), com traces e métricas no dashboard do Aspire:
+//   docker compose -f samples/docker-compose.yml up -d
+//   dotnet run --project samples/ControlId.Net.Server -- --urls http://0.0.0.0:5000 \
+//     --ControlId:Access:simulador:BaseAddress=http://localhost:8080 --OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+//   curl http://localhost:5000/direto/simulador/usuarios      (traces em http://localhost:18888)
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,11 +24,36 @@ using ControlId.Access;
 using ControlId.Access.Monitoring;
 using ControlId.Access.Online;
 using ControlId.Access.Push;
+using ControlId.DependencyInjection;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Traces e métricas do ControlId.Net (e do ASP.NET Core e do HttpClient) via OTLP, se houver para onde mandar.
+if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
+{
+    builder.Services.AddOpenTelemetry()
+        .ConfigureResource(r => r.AddService("ControlId.Net.Server"))
+        .WithTracing(t => t
+            .AddSource(ControlIdTelemetry.ActivitySourceName)
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation())
+        .WithMetrics(m => m
+            .AddMeter(ControlIdTelemetry.MeterName)
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation())
+        .UseOtlpExporter();
+}
+
+// Equipamentos acessados direto por HTTP, de ControlId:Access:{nome} (ex.: --ControlId:Access:simulador:BaseAddress=...).
+builder.Services.AddControlIdAccessDevices(builder.Configuration.GetSection("ControlId:Access"));
+
 builder.Services.AddControlIdPush();
 builder.Services.AddControlIdMonitor((notification, _) =>
 {
@@ -98,6 +129,19 @@ equipamentos.MapPost("/usuarios/{userId:long}/cartao", async (long deviceId, lon
 
 equipamentos.MapGet("/status", (long deviceId, PushServer push) =>
     Results.Ok(new { ultimaConsulta = push.GetLastSeen(deviceId), pendentes = push.GetPendingCount(deviceId) }));
+
+// Os mesmos comandos direto por HTTP, nos equipamentos configurados em ControlId:Access.
+var direto = app.MapGroup("/direto/{nome}");
+
+direto.MapGet("/usuarios", async (string nome, IControlIdClientFactory devices, CancellationToken ct) =>
+    await RunAsync(ct, async token => Results.Ok(await devices.GetAccessClient(nome).GetUsersAsync(token))));
+
+direto.MapPost("/abrir-porta", async (string nome, IControlIdClientFactory devices, CancellationToken ct) =>
+    await RunAsync(ct, async token =>
+    {
+        await devices.GetAccessClient(nome).OpenDoorAsync(1, token);
+        return Results.Ok();
+    }));
 
 app.Run();
 

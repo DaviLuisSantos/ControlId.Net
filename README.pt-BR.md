@@ -33,6 +33,8 @@ API numa biblioteca tipada, assíncrona e pronta para injeção de dependência,
 - **Seguro por padrão.** Operações destrutivas exigem `DataLossConfirmation.Confirmed`; certificado fixado por SHA-256
   opcional para os certificados autoassinados dos equipamentos; limite de requisições simultâneas por equipamento,
   dimensionado com medições em equipamento real.
+- **Observável.** Traces e métricas do OpenTelemetry por comando: latência, re-logins e requisições na fila por
+  equipamento, sem impor uma dependência do OpenTelemetry.
 - **Roda onde o .NET roda.** Alvos `net8.0` e `netstandard2.0`, testados no .NET 8, no .NET 10 e no .NET Framework 4.8.
 
 ## Arquitetura
@@ -155,7 +157,8 @@ as notificações do Monitor, reproduzindo as divergências do firmware que o SD
 - [x] Push, Monitor e modo online no ASP.NET Core
 - [x] Parser de AFD (Portaria 671 e 1510)
 - [x] Simulador de equipamento em imagem Docker, com testes de integração na CI
-- [ ] Instrumentação com OpenTelemetry (traces, métricas e logs estruturados)
+- [x] Traces e métricas com OpenTelemetry, com demonstração no dashboard do Aspire
+- [ ] Logs estruturados (`ILogger` com `LoggerMessage` gerado)
 - [ ] Pipeline de resiliência e health checks por equipamento
 - [ ] Suporte a Native AOT e trimming
 - [ ] Sample de dashboard em tempo real (Blazor + SignalR)

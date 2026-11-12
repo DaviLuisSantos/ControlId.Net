@@ -16,3 +16,4 @@ muda; ela ganha o status "Substituída" e aponta para a nova.
 | [0009](0009-ci-em-push-e-pull-request.md) | CI a cada push e pull request | Aceita |
 | [0010](0010-dependencias-no-lts-suportado.md) | Dependências de runtime no LTS mais antigo ainda suportado | Aceita |
 | [0011](0011-simulador-de-equipamento.md) | Simulador de equipamento e testes de integração | Aceita |
+| [0012](0012-telemetria-sem-dependencia-do-opentelemetry.md) | Telemetria pelas APIs do .NET, sem depender do OpenTelemetry | Aceita |
