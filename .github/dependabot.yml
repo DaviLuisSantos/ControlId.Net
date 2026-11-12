@@ -1,11 +1,24 @@
-# Atualizações de dependências: um PR por mês para cada ecossistema, com tudo agrupado.
-# Os PRs não disparam Actions (a CI é manual, para poupar minutos); rode dotnet test antes de aceitar.
+# Atualizações de dependências: um PR por mês para cada ecossistema, com tudo agrupado. A CI roda em cada PR (ADR 0009).
+#
+# Dependências de runtime das bibliotecas (System.Text.Json, Microsoft.Bcl.AsyncInterfaces, Microsoft.Extensions.*) ficam
+# na major do LTS mais antigo ainda suportado (ADR 0010): uma major nova arrastaria quem usa o pacote. Patches e minors
+# (correções de segurança) continuam vindo; a major sobe à mão, quando o LTS de referência sair de suporte.
 version: 2
 updates:
   - package-ecosystem: nuget
     directory: /
     schedule:
       interval: monthly
+    ignore:
+      - dependency-name: "System.Text.Json"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.Bcl.AsyncInterfaces"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.Extensions.*"
+        update-types: ["version-update:semver-major"]
+      # Os testes usam o TestHost de cada versão do ASP.NET Core (8 e 10), um por alvo.
+      - dependency-name: "Microsoft.AspNetCore.TestHost"
+        update-types: ["version-update:semver-major"]
     groups:
       nuget:
         patterns: ["*"]

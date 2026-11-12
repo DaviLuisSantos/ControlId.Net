@@ -27,7 +27,7 @@
         (ThrowIfNull, ThrowIf, sobrecargas com Span, HashData, Contains/EndsWith(char)); atender exigiria #if em cada ponto.
       - CA1716, CA1720: parâmetros como "object" seguem os nomes da API do equipamento; renomear quebraria quem usa
         argumentos nomeados.
-      - CA1848: LoggerMessage entra junto com a instrumentação (fase 3 do docs/PLANO.md).
+      - CA1848: LoggerMessage entra junto com a instrumentação (logs, traces e métricas), prevista no roadmap.
     -->
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <NoWarn>$(NoWarn);CA1510;CA1513;CA1845;CA1846;CA1847;CA1850;CA1865;CA2249;CA1716;CA1720;CA1848</NoWarn>
@@ -42,7 +42,7 @@
     próxima versão). Mudar a API sem atualizar os arquivos é aviso no build (RS0016/RS0017).
   -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="4.14.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="5.6.0" PrivateAssets="all" />
     <AdditionalFiles Include="PublicAPI.Shipped.txt" />
     <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
   </ItemGroup>

@@ -61,7 +61,7 @@ jobs:
           ~/.dotnet/tools/dotnet-CycloneDX ControlId.Net.sln --exclude-test-projects -o artifacts/sbom -fn controlid-net.cdx.json -F Json -sn ControlId.Net -sv $VERSION
 
       - name: Provenance attestation
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: artifacts/*.nupkg
 
