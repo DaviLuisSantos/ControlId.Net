@@ -1,0 +1,22 @@
+# Ambiente de demonstração sem hardware: o simulador de equipamento e o dashboard do Aspire (traces, métricas e logs).
+#
+#   docker compose -f samples/docker-compose.yml up -d
+#
+# Simulador: http://localhost:8080 (estado em /simulator/state). Dashboard: http://localhost:18888. OTLP: localhost:4317.
+# O samples/ControlId.Net.Server mostra como ligar o ControlId.Net aos dois (veja o comentário no topo do Program.cs).
+services:
+  simulator:
+    build:
+      context: ..
+      dockerfile: tools/ControlId.Net.Simulator/Dockerfile
+    ports:
+      - "8080:8080"
+
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:9.1
+    environment:
+      # Só para demonstração local: sem login no dashboard.
+      DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
+    ports:
+      - "18888:18888"
+      - "4317:18889"

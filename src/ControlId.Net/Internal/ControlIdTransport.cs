@@ -24,7 +24,10 @@ internal sealed class ControlIdTransport : IDisposable
 
     // Limita as requisições em voo a este equipamento. Só envolve o envio HTTP e nunca é segurado enquanto se espera
     // o _loginLock, então não há espera circular entre os dois.
-    private readonly SemaphoreSlim _throttle;
+    private readonly RequestSlots _throttle;
+
+    // server.address e server.port do equipamento, nos spans e nas métricas.
+    private readonly System.Collections.Generic.KeyValuePair<string, object?>[] _deviceTags;
     private string? _session;
 
     // Cópia própria: change_login atualiza estas credenciais sem alterar o objeto de opções do chamador.
@@ -35,7 +38,8 @@ internal sealed class ControlIdTransport : IDisposable
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _options.Validate();
         _credentials = new Credentials(options.Login, options.Password);
-        _throttle = new SemaphoreSlim(options.MaxConcurrentRequests, options.MaxConcurrentRequests);
+        _deviceTags = Telemetry.DeviceTags(options.BaseAddress);
+        _throttle = new RequestSlots(options.MaxConcurrentRequests, _deviceTags);
 
         if (httpClient is null)
         {
@@ -128,6 +132,22 @@ internal sealed class ControlIdTransport : IDisposable
     /// </summary>
     public async Task<(Stream Stream, string? CharSet)> PostForStreamAsync(string endpoint, object? body, CancellationToken cancellationToken, string? extraQuery = null)
     {
+        // O span cobre até os cabeçalhos da resposta; a leitura do corpo fica com quem consome o stream.
+        using var scope = new CommandScope(endpoint, _deviceTags);
+        try
+        {
+            return await PostForStreamCoreAsync(endpoint, body, extraQuery, scope, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            scope.Fail(ex);
+            throw;
+        }
+    }
+
+    private async Task<(Stream Stream, string? CharSet)> PostForStreamCoreAsync(
+        string endpoint, object? body, string? extraQuery, CommandScope scope, CancellationToken cancellationToken)
+    {
         for (var attempt = 0; ; attempt++)
         {
             var session = await EnsureSessionAsync(cancellationToken).ConfigureAwait(false);
@@ -160,6 +180,7 @@ internal sealed class ControlIdTransport : IDisposable
                 response.Dispose();
                 _throttle.Release();
                 Interlocked.CompareExchange(ref _session, null, session);
+                scope.Relogin();
                 continue;
             }
 
@@ -227,31 +248,41 @@ internal sealed class ControlIdTransport : IDisposable
     private async Task<HttpResponseMessage> SendCommandAsync(
         HttpMethod method, string endpoint, Func<HttpContent?> createContent, string? extraQuery, bool requiresSession, CancellationToken cancellationToken)
     {
-        for (var attempt = 0; ; attempt++)
+        using var scope = new CommandScope(endpoint, _deviceTags);
+        try
         {
-            var session = requiresSession ? await EnsureSessionAsync(cancellationToken).ConfigureAwait(false) : null;
-
-            using var request = BuildRequest(method, endpoint, createContent(), session, extraQuery);
-            var response = await SendAsync(request, endpoint, cancellationToken).ConfigureAwait(false);
-
-            if (response.StatusCode == HttpStatusCode.Unauthorized && requiresSession && attempt == 0)
+            for (var attempt = 0; ; attempt++)
             {
-                // Sessão expirou ou o equipamento reiniciou: descarta e tenta de novo com login novo.
-                response.Dispose();
-                Interlocked.CompareExchange(ref _session, null, session);
-                continue;
-            }
+                var session = requiresSession ? await EnsureSessionAsync(cancellationToken).ConfigureAwait(false) : null;
 
-            if (!response.IsSuccessStatusCode)
-            {
-                using (response)
+                using var request = BuildRequest(method, endpoint, createContent(), session, extraQuery);
+                var response = await SendAsync(request, endpoint, cancellationToken).ConfigureAwait(false);
+
+                if (response.StatusCode == HttpStatusCode.Unauthorized && requiresSession && attempt == 0)
                 {
-                    var text = await ReadAsStringAsync(response, cancellationToken).ConfigureAwait(false);
-                    EnsureSuccess(response, endpoint, text);
+                    // Sessão expirou ou o equipamento reiniciou: descarta e tenta de novo com login novo.
+                    response.Dispose();
+                    Interlocked.CompareExchange(ref _session, null, session);
+                    scope.Relogin();
+                    continue;
                 }
-            }
 
-            return response;
+                if (!response.IsSuccessStatusCode)
+                {
+                    using (response)
+                    {
+                        var text = await ReadAsStringAsync(response, cancellationToken).ConfigureAwait(false);
+                        EnsureSuccess(response, endpoint, text);
+                    }
+                }
+
+                return response;
+            }
+        }
+        catch (Exception ex)
+        {
+            scope.Fail(ex);
+            throw;
         }
     }
 
@@ -282,6 +313,20 @@ internal sealed class ControlIdTransport : IDisposable
     }
 
     private async Task<string> RequestSessionAsync(CancellationToken cancellationToken)
+    {
+        using var scope = new CommandScope("login.fcgi", _deviceTags);
+        try
+        {
+            return await RequestSessionCoreAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            scope.Fail(ex);
+            throw;
+        }
+    }
+
+    private async Task<string> RequestSessionCoreAsync(CancellationToken cancellationToken)
     {
         var credentials = _credentials;
         var body = new LoginRequest { Login = credentials.Login, Password = credentials.Password };

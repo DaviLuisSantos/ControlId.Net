@@ -1,1 +1,4 @@
 #nullable enable
+ControlId.ControlIdTelemetry
+const ControlId.ControlIdTelemetry.ActivitySourceName = "ControlId.Net" -> string!
+const ControlId.ControlIdTelemetry.MeterName = "ControlId.Net" -> string!
