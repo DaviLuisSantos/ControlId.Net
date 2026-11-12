@@ -1,6 +1,6 @@
 # 0002. GitHub Actions só ao lançar versão
 
-Status: Aceita (2026-10-14)
+Status: Substituída pela [0009](0009-ci-em-push-e-pull-request.md) (2026-11-12). Aceita em 2026-10-14.
 
 ## Contexto
 

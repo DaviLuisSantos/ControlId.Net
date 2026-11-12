@@ -8,8 +8,8 @@ Obrigado pelo interesse. O escopo do pacote é: **o que o equipamento Control iD
 - SDK do .NET 10 (compila todos os alvos) e, no Windows, o .NET Framework 4.8 para os testes `net48`.
 - `dotnet build` e `dotnet test` na raiz. Em Linux ou macOS: `dotnet test -f net8.0` (e `-f net10.0`).
 
-O GitHub Actions só roda ao lançar versão (a cota de minutos é da conta inteira), então **pull requests não são testados
-automaticamente**: rode `dotnet test` antes de enviar e diga no PR em quais alvos rodou.
+A CI roda em todo pull request: build sem avisos, testes em `net8.0`, `net10.0` e `net48` e validação da API pública
+([ADR 0009](docs/adr/0009-ci-em-push-e-pull-request.md)). Rode `dotnet test` antes de enviar para não depender dela.
 
 ## O que um PR precisa ter
 

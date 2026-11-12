@@ -1,9 +1,22 @@
 name: CI
 
-# GitHub Actions so ao lancar versao (decisao do usuario, 14/10/2026): a cota de minutos e da conta inteira.
-# Sem push nem pull_request: roda a mao (workflow_dispatch). Quem testa ao lancar e o publish.yml (tag v*.*.*).
+# Roda a cada push na main e em cada pull request (ADR 0009). Em repositório público os runners padrão do GitHub não
+# consomem a cota de minutos da conta. Mudanças só de documentação não disparam a CI.
 on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', 'docs/**']
+  pull_request:
+    paths-ignore: ['**.md', 'docs/**']
   workflow_dispatch:
+
+# Um push novo no mesmo PR ou branch cancela a execução anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -17,11 +30,20 @@ jobs:
             8.0.x
             10.0.x
       - run: dotnet restore
-      - run: dotnet build --no-restore -c Release
+      # Avisos viram erro: o build fica sem nenhum aviso (CONTRIBUTING.md).
+      - run: dotnet build --no-restore -c Release -warnaserror
       # net48 não executa no Linux; ele roda no job netfx.
-      - run: dotnet test tests/ControlId.Net.Tests --no-build -c Release -f net8.0 --verbosity normal
-      - run: dotnet test tests/ControlId.Net.Tests --no-build -c Release -f net10.0 --verbosity normal
+      - run: dotnet test tests/ControlId.Net.Tests --no-build -c Release -f net8.0 --collect:"XPlat Code Coverage" --results-directory coverage
+      - run: dotnet test tests/ControlId.Net.Tests --no-build -c Release -f net10.0
+      # O pack valida a API contra a versão publicada (EnablePackageValidation): uma quebra não declarada falha aqui.
       - run: dotnet pack -c Release --no-build -o artifacts
+
+      - name: Coverage summary
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.5.12
+          ~/.dotnet/tools/reportgenerator "-reports:coverage/**/coverage.cobertura.xml" -targetdir:coverage/report -reporttypes:MarkdownSummaryGithub "-assemblyfilters:+ControlId.Net*"
+          cat coverage/report/SummaryGithub.md >> $GITHUB_STEP_SUMMARY
+
       - uses: actions/upload-artifact@v7
         with:
           name: nupkg
@@ -32,10 +54,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
-      # SDK 10 para compilar o alvo net10.0 dos testes; runtime 8 para executar o alvo net8.0.
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: |
             8.0.x
             10.0.x
-      - run: dotnet test tests/ControlId.Net.Tests -c Release -f net48 --verbosity normal
+      - run: dotnet test tests/ControlId.Net.Tests -c Release -f net48
