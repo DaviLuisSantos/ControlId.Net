@@ -5,6 +5,7 @@ using ControlId.Rep;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http;
+using Microsoft.Extensions.Logging;
 
 namespace ControlId.Tests;
 
@@ -21,6 +22,65 @@ public class DependencyInjectionTests
 
     private static IConfiguration Config(Dictionary<string, string?> values) =>
         new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+
+    [Fact]
+    public async Task Clients_log_through_the_container_logger_factory()
+    {
+        var logs = new CapturingLoggerFactory();
+        var services = new ServiceCollection();
+        services.AddSingleton<ILoggerFactory>(logs);
+        services.AddControlIdAccess(o =>
+        {
+            o.BaseAddress = new Uri("http://10.0.0.5:8080");
+            o.Password = "secret";
+        });
+        UseFakeDevice(services, Device());
+
+        await using var provider = services.BuildServiceProvider();
+        await provider.GetRequiredService<IAccessClient>().GetUsersAsync();
+
+        Assert.Contains(logs.Entries, e => e.Category == ControlIdTelemetry.LoggerCategory && e.EventId == 1001 && e.Message.Contains("10.0.0.5:8080"));
+    }
+
+    private sealed class CapturingLoggerFactory : ILoggerFactory
+    {
+        public List<(string Category, int EventId, string Message)> Entries { get; } = new();
+
+        public ILogger CreateLogger(string categoryName) => new CapturingLogger(this, categoryName);
+
+        public void AddProvider(ILoggerProvider provider)
+        {
+        }
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class CapturingLogger : ILogger
+        {
+            private readonly CapturingLoggerFactory _owner;
+            private readonly string _category;
+
+            public CapturingLogger(CapturingLoggerFactory owner, string category)
+            {
+                _owner = owner;
+                _category = category;
+            }
+
+            public IDisposable? BeginScope<TState>(TState state)
+                where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                lock (_owner.Entries)
+                {
+                    _owner.Entries.Add((_category, eventId.Id, formatter(state, exception)));
+                }
+            }
+        }
+    }
 
     [Fact]
     public async Task Default_access_device_is_injectable_and_reused()

@@ -115,7 +115,7 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
         }
         catch (ControlId.ControlIdException ex)
         {
-            GetLogger(context).LogWarning(ex, "Resultado de cadastro remoto inválido em {Endpoint}.", endpoint);
+            Log.InvalidEnrollResult(GetLogger(context), ex, endpoint);
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
             return;
         }
@@ -136,7 +136,7 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
         }
         catch (JsonException ex)
         {
-            GetLogger(context).LogWarning(ex, "new_rex_log inválido.");
+            Log.InvalidExitButton(GetLogger(context), ex);
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
             return;
         }
