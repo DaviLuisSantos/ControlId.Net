@@ -98,6 +98,50 @@ public static class AccessApi
         }
     }
 
+    /// <summary>Resposta de um comando executado fora de uma requisição HTTP do cliente (pelo Push).</summary>
+    internal sealed record CommandOutcome(int Status, byte[] Body, string? ContentType)
+    {
+        public bool Success => Status is >= 200 and < 300;
+    }
+
+    /// <summary>
+    /// Executa um comando como o equipamento faz com o que recebe do Push: pelos mesmos handlers da API HTTP, mas sem
+    /// sessão (o Push já é autenticado pelo próprio equipamento). <c>login</c>, <c>logout</c> e <c>session_is_valid</c>
+    /// não existem por esse caminho.
+    /// </summary>
+    internal static async Task<CommandOutcome> ExecuteAsync(string command, byte[] body, string? queryString, IServiceProvider services)
+    {
+        var state = services.GetRequiredService<DeviceState>();
+        var monitor = services.GetRequiredService<MonitorDispatcher>();
+        var context = new DefaultHttpContext { RequestServices = services };
+        if (!string.IsNullOrEmpty(queryString))
+        {
+            context.Request.QueryString = new QueryString("?" + queryString.TrimStart('?'));
+        }
+
+        using var buffer = new MemoryStream();
+        context.Response.Body = buffer;
+
+        IResult result;
+        try
+        {
+            result = Commands.TryGetValue(command, out var handler)
+                ? await handler(new Request(context, state, monitor, body))
+                : Error("Invalid command", StatusCodes.Status400BadRequest);
+        }
+        catch (DeviceException ex)
+        {
+            result = Error(ex.Message, StatusCodes.Status400BadRequest);
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
+        {
+            result = Error("Invalid request: " + ex.Message, StatusCodes.Status400BadRequest);
+        }
+
+        await result.ExecuteAsync(context);
+        return new CommandOutcome(context.Response.StatusCode, buffer.ToArray(), context.Response.ContentType);
+    }
+
     private static IResult Login(DeviceState state, byte[] body)
     {
         var json = ParseObject(body);
@@ -272,9 +316,11 @@ public static class AccessApi
         var now = DateTimeOffset.UtcNow;
         var options = r.State.Options;
         TimeSpan uptime;
+        bool online;
         lock (r.State.Lock)
         {
             uptime = r.State.Uptime(now);
+            online = r.State.GetConfiguration("general", "online") == "1";
         }
 
         var local = r.Context.Connection.LocalIpAddress?.MapToIPv4().ToString() ?? "127.0.0.1";
@@ -284,7 +330,7 @@ public static class AccessApi
             ["version"] = options.Firmware,
             ["device_id"] = options.DeviceId.ToString(CultureInfo.InvariantCulture), // texto, como no firmware
             ["time"] = now.ToUnixTimeSeconds(),
-            ["online"] = false,
+            ["online"] = online,
             ["uptime"] = new JsonObject { ["days"] = uptime.Days, ["hours"] = uptime.Hours, ["minutes"] = uptime.Minutes, ["seconds"] = uptime.Seconds },
             ["network"] = new JsonObject
             {
@@ -486,7 +532,7 @@ public static class AccessApi
     private static long? QueryLong(HttpContext context, string name) =>
         long.TryParse(context.Request.Query[name].FirstOrDefault(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value : null;
 
-    private static Dictionary<string, string> Parameters(string? text) =>
+    internal static Dictionary<string, string> Parameters(string? text) =>
         (text ?? string.Empty)
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(p => p.Split('=', 2))

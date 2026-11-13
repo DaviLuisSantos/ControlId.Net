@@ -33,6 +33,14 @@ public static class SimulatorApp
             builder.Services.AddSingleton<MonitorDispatcher>();
             builder.Services.AddHostedService(sp => sp.GetRequiredService<MonitorDispatcher>());
             builder.Services.AddHttpClient(nameof(MonitorDispatcher), c => c.Timeout = TimeSpan.FromSeconds(5));
+
+            // Push e modo online: ficam parados até o cliente configurar o servidor (set_configuration).
+            builder.Services.AddSingleton<PushClient>();
+            builder.Services.AddHostedService(sp => sp.GetRequiredService<PushClient>());
+            builder.Services.AddHttpClient(nameof(PushClient), c => c.Timeout = Timeout.InfiniteTimeSpan);
+            builder.Services.AddSingleton<OnlineClient>();
+            builder.Services.AddHostedService(sp => sp.GetRequiredService<OnlineClient>());
+            builder.Services.AddHttpClient(nameof(OnlineClient), c => c.Timeout = Timeout.InfiniteTimeSpan);
         }
 
         builder.Services.AddHealthChecks();

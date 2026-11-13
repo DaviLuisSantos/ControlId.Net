@@ -126,6 +126,17 @@ public sealed class DeviceState
         SetConfiguration("monitor", "port", string.Empty);
         SetConfiguration("monitor", "path", "api/notifications");
         SetConfiguration("monitor", "request_timeout", "5000");
+        SetConfiguration("general", "online", "0");
+        SetConfiguration("general", "local_identification", "1");
+        SetConfiguration("push_server", "push_remote_address", string.Empty);
+        SetConfiguration("push_server", "push_request_timeout", "5000");
+        SetConfiguration("push_server", "push_request_period", "5");
+        SetConfiguration("online_client", "server_id", "-1");
+        SetConfiguration("online_client", "extract_template", "0");
+        SetConfiguration("online_client", "contingency_enabled", "1");
+        SetConfiguration("online_client", "max_request_attempts", "3");
+        SetConfiguration("online_client", "request_timeout", "5000");
+        SetConfiguration("online_client", "alive_interval", "5000");
 
         for (var door = 1; door <= _doorOpenUntil.Length; door++)
         {
