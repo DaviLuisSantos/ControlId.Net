@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+## [0.6.0-alpha.1] - 2026-11-12
+
+Simulador de equipamento com testes de integração, traces e métricas (OpenTelemetry), health checks, novas tentativas em leituras e parser de AFD até 6,5× mais rápido. Mantém o alvo `net8.0` ([ADR 0014](docs/adr/0014-manter-alvo-net8.md)).
+
 ### Added
 - Benchmarks com BenchmarkDotNet ([benchmarks/](benchmarks/README.md)): o parser de AFD com 10 mil e 100 mil marcações, lendo o arquivo inteiro e registro a registro.
 - **Novas tentativas em leituras**: `ReadRetries` e `RetryDelay` em `ControlIdDeviceOptions` (e `ControlIdRepOptions`) repetem comandos de leitura após falha de rede, timeout ou HTTP 5xx/408/429, com espera exponencial e variação aleatória. Comandos que alteram o equipamento nunca são repetidos. Desligado por padrão ([ADR 0013](docs/adr/0013-novas-tentativas-so-em-leituras.md), [guia](docs/guia.md#novas-tentativas-em-leituras)). Nova métrica `controlid.client.retries` e evento `controlid.retry` no span.
@@ -15,7 +19,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ### Changed
 - Parser de AFD até 6,5× mais rápido e com 59% menos alocação (100 mil marcações em streaming: de 133 ms para 21 ms). Os campos são lidos por índice, sem substrings; data e hora são validadas dígito a dígito com as regras do `DateTime.TryParseExact`; o CRC-16/KERMIT usa tabela. O comportamento, inclusive as mensagens de erro, não muda: 30 testes de casos de borda e testes diferenciais passam no parser antigo e no novo ([resultados](benchmarks/README.md)).
-- Dependências de runtime na 10.x (`System.Text.Json`, `Microsoft.Bcl.AsyncInterfaces`, `Microsoft.Extensions.Http`, `Microsoft.Extensions.Options.ConfigurationExtensions`): o .NET 8 saiu de suporte em 2026-11-10, e a 10.x continua com alvos `net8.0` e `netstandard2.0` ([ADR 0010](docs/adr/0010-dependencias-no-lts-suportado.md)). Quem usa o .NET Framework passa a receber as correções de segurança da `System.Text.Json`.
+- Dependências de runtime na 10.x (10.0.15: `System.Text.Json`, `Microsoft.Bcl.AsyncInterfaces`, `Microsoft.Extensions.Http`, `Microsoft.Extensions.Options.ConfigurationExtensions`): o .NET 8 saiu de suporte em 2026-11-10, e a 10.x continua com alvos `net8.0` e `netstandard2.0` ([ADR 0010](docs/adr/0010-dependencias-no-lts-suportado.md)). Quem usa o .NET Framework passa a receber as correções de segurança da `System.Text.Json`.
 - README reorganizado: página de apresentação em inglês (`README.md`) e em português (`README.pt-BR.md`), com diagrama de arquitetura e roadmap; o guia de uso completo foi para [docs/guia.md](docs/guia.md). A página do NuGet usa uma versão curta, com links absolutos (`src/PACKAGE.md`).
 - A CI roda em todo push na `main` e em cada pull request, com build sem avisos, os três alvos de teste, validação da API pública e resumo de cobertura ([ADR 0009](docs/adr/0009-ci-em-push-e-pull-request.md)).
 
@@ -172,7 +176,8 @@ Cobertura completa da documentação pública da API de acesso (veja [docs/COBER
 - `RepClient.GetAfdFileFromNsrAsync`/`GetAfdFileFromDateAsync`/`GetAfdFileAsync` devolvem o AFD interpretado.
 - `RepClient` (REP iDClass): about, informações do sistema, data/hora, usuários (PIS/CPF) e download de AFD (incluindo modo Portaria 671).
 
-[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.5.0-alpha.1...HEAD
+[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.6.0-alpha.1...HEAD
+[0.6.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.5.0-alpha.1...v0.6.0-alpha.1
 [0.5.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.3-alpha.1...v0.5.0-alpha.1
 [0.4.3-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.2-alpha.1...v0.4.3-alpha.1
 [0.4.2-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.1-alpha.1...v0.4.2-alpha.1
