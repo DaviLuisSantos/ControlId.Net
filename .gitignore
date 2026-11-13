@@ -9,3 +9,6 @@ artifacts/
 TestResults/
 *.nupkg
 *.snupkg
+
+# Resultados do BenchmarkDotNet
+BenchmarkDotNet.Artifacts/
