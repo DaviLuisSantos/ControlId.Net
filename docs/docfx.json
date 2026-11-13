@@ -1,0 +1,30 @@
+{
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "../src",
+          "files": [
+            "ControlId.Net/ControlId.Net.csproj",
+            "ControlId.Net.DependencyInjection/ControlId.Net.DependencyInjection.csproj",
+            "ControlId.Net.AspNetCore/ControlId.Net.AspNetCore.csproj"
+          ]
+        }
+      ],
+      "dest": "api",
+      "properties": { "TargetFramework": "net8.0" }
+    }
+  ],
+  "build": {
+    "content": [
+      { "files": ["api/**.yml", "api/toc.yml"] },
+      { "files": ["index.md", "guia.md", "COBERTURA.md", "toc.yml", "adr/**.md"] }
+    ],
+    "dest": "_site",
+    "globalMetadata": {
+      "_appTitle": "ControlId.Net",
+      "_enableSearch": true
+    },
+    "template": ["default", "modern"]
+  }
+}
