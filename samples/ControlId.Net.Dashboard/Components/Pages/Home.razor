@@ -1,0 +1,167 @@
+@page "/"
+@implements IDisposable
+@inject DashboardState State
+@inject DeviceService Device
+
+<PageTitle>ControlId.Net Dashboard</PageTitle>
+
+@{
+    var snapshot = State.Snapshot();
+}
+
+<section class="status">
+    <div class="status-main">
+        <span class="badge @(snapshot.Online ? "badge-ok" : "badge-off")">
+            <span class="dot"></span>@(snapshot.Online ? "Equipamento online" : "Equipamento offline")
+        </span>
+        <span class="muted">
+            @if (snapshot.Online && snapshot.DeviceInfo is not null)
+            {
+                @snapshot.DeviceInfo
+            }
+            else if (snapshot.Problem is not null)
+            {
+                @snapshot.Problem
+            }
+            else
+            {
+                @:Conectando...
+            }
+        </span>
+    </div>
+    <div class="muted small">
+        @snapshot.NotificationCount notificações recebidas
+        @if (snapshot.LastSeen is { } seen)
+        {
+            @: · última resposta às @seen.ToLocalTime().ToString("HH:mm:ss")
+        }
+    </div>
+</section>
+
+<div class="grid">
+    <section class="card">
+        <h2>Portas</h2>
+        @foreach (var door in snapshot.Doors)
+        {
+            <div class="door @(door.Open ? "door-open" : "door-closed")">
+                <div>
+                    <div class="door-name">Porta @door.Id</div>
+                    <div class="muted small">desde @door.Since.ToLocalTime().ToString("HH:mm:ss")</div>
+                </div>
+                <div class="door-state">@(door.Open ? "Aberta" : "Fechada")</div>
+            </div>
+        }
+        <button class="btn btn-primary" disabled="@_busy" @onclick="() => RunAsync(OpenDoorAsync)">Abrir porta 1</button>
+    </section>
+
+    <section class="card">
+        <h2>Identificar usuário</h2>
+        <p class="muted small">Simula alguém diante do equipamento (só no simulador). O acesso aparece na lista ao lado.</p>
+        <label class="field">
+            <span>Usuário</span>
+            <select @bind="_selectedUser" disabled="@(snapshot.Users.Count == 0)">
+                <option value="0">Escolha...</option>
+                @foreach (var (id, name) in snapshot.Users)
+                {
+                    <option value="@id">@name</option>
+                }
+            </select>
+        </label>
+        <div class="actions">
+            <button class="btn btn-primary" disabled="@(_busy || _selectedUser == 0)" @onclick="() => RunAsync(IdentifyUserAsync)">Identificar</button>
+            <button class="btn" disabled="@_busy" @onclick="() => RunAsync(IdentifyUnknownAsync)">Cartão desconhecido</button>
+        </div>
+        @if (_message is not null)
+        {
+            <p class="message @(_failed ? "message-error" : "message-ok")">@_message</p>
+        }
+    </section>
+
+    <section class="card card-wide">
+        <h2>Últimos acessos <span class="muted small">(@snapshot.Events.Count)</span></h2>
+        @if (snapshot.Events.Count == 0)
+        {
+            <p class="empty">Nenhum acesso ainda. Use "Identificar" ou aproxime-se do equipamento.</p>
+        }
+        else
+        {
+            <table class="events">
+                <thead>
+                    <tr><th>Hora</th><th>Usuário</th><th>Resultado</th><th>Portal</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in snapshot.Events)
+                    {
+                        <tr>
+                            <td class="mono">@entry.Time.ToString("HH:mm:ss")</td>
+                            <td>@entry.UserName</td>
+                            <td><span class="pill @(entry.Granted ? "pill-ok" : "pill-deny")">@Describe(entry.Event)</span></td>
+                            <td>@(entry.PortalId?.ToString() ?? "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+</div>
+
+@code {
+    private long _selectedUser;
+    private bool _busy;
+    private bool _failed;
+    private string? _message;
+
+    protected override void OnInitialized() => State.Changed += OnStateChanged;
+
+    public void Dispose() => State.Changed -= OnStateChanged;
+
+    // O estado muda em threads do ASP.NET Core (Monitor, timer); a página se redesenha no contexto do circuito.
+    private void OnStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private static string Describe(AccessEventType type) => type switch
+    {
+        AccessEventType.AccessGranted => "Liberado",
+        AccessEventType.AccessDenied => "Negado",
+        AccessEventType.NotIdentified => "Não identificado",
+        _ => type.ToString(),
+    };
+
+    private async Task OpenDoorAsync()
+    {
+        await Device.OpenDoorAsync(1, CancellationToken.None);
+        _message = "Comando de abertura enviado.";
+    }
+
+    private async Task IdentifyUserAsync()
+    {
+        await Device.IdentifyAsync(_selectedUser, null, CancellationToken.None);
+        _message = "Identificação enviada ao equipamento.";
+    }
+
+    private async Task IdentifyUnknownAsync()
+    {
+        // Número de cartão que nenhum usuário tem: o simulador registra "não identificado".
+        await Device.IdentifyAsync(null, 99999999, CancellationToken.None);
+        _message = "Cartão desconhecido apresentado.";
+    }
+
+    private async Task RunAsync(Func<Task> action)
+    {
+        _busy = true;
+        _failed = false;
+        _message = null;
+        try
+        {
+            await action();
+        }
+        catch (Exception ex) when (ex is ControlIdException or HttpRequestException or InvalidOperationException or TaskCanceledException)
+        {
+            _failed = true;
+            _message = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}
