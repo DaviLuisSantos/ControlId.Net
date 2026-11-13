@@ -2,7 +2,10 @@
 const ControlId.Access.AccessClient.DefaultPageSize = 500 -> int
 const ControlId.Access.AccessClient.DestroyPageSize = 200 -> int
 const ControlId.ControlIdDeviceOptions.DefaultMaxConcurrentRequests = 4 -> int
+const ControlId.ControlIdDeviceOptions.MaxReadRetries = 5 -> int
 const ControlId.ControlIdDevices.DefaultMaxParallelism = 8 -> int
+const ControlId.ControlIdTelemetry.ActivitySourceName = "ControlId.Net" -> string!
+const ControlId.ControlIdTelemetry.MeterName = "ControlId.Net" -> string!
 ControlId.Access.AccessArea
 ControlId.Access.AccessArea.AccessArea() -> void
 ControlId.Access.AccessArea.Id.get -> long?
@@ -2075,6 +2078,10 @@ ControlId.ControlIdDeviceOptions.MaxConcurrentRequests.get -> int
 ControlId.ControlIdDeviceOptions.MaxConcurrentRequests.set -> void
 ControlId.ControlIdDeviceOptions.Password.get -> string!
 ControlId.ControlIdDeviceOptions.Password.set -> void
+ControlId.ControlIdDeviceOptions.ReadRetries.get -> int
+ControlId.ControlIdDeviceOptions.ReadRetries.set -> void
+ControlId.ControlIdDeviceOptions.RetryDelay.get -> System.TimeSpan
+ControlId.ControlIdDeviceOptions.RetryDelay.set -> void
 ControlId.ControlIdDeviceOptions.ServerCertificateSha256.get -> string?
 ControlId.ControlIdDeviceOptions.ServerCertificateSha256.set -> void
 ControlId.ControlIdDeviceOptions.Timeout.get -> System.TimeSpan
@@ -2085,6 +2092,7 @@ ControlId.ControlIdException.ControlIdException(string! message, System.Net.Http
 ControlId.ControlIdException.DeviceErrorCode.get -> int?
 ControlId.ControlIdException.ResponseBody.get -> string?
 ControlId.ControlIdException.StatusCode.get -> System.Net.HttpStatusCode?
+ControlId.ControlIdTelemetry
 ControlId.DataLossConfirmation
 ControlId.DataLossConfirmation.Confirmed = 1 -> ControlId.DataLossConfirmation
 ControlId.DataLossConfirmation.None = 0 -> ControlId.DataLossConfirmation

@@ -1,15 +1,1 @@
 #nullable enable
-ControlId.DependencyInjection.ControlIdHealthCheckOptions
-ControlId.DependencyInjection.ControlIdHealthCheckOptions.ControlIdHealthCheckOptions() -> void
-ControlId.DependencyInjection.ControlIdHealthCheckOptions.MaxParallelism.get -> int
-ControlId.DependencyInjection.ControlIdHealthCheckOptions.MaxParallelism.set -> void
-ControlId.DependencyInjection.ControlIdHealthCheckOptions.SlowThreshold.get -> System.TimeSpan
-ControlId.DependencyInjection.ControlIdHealthCheckOptions.SlowThreshold.set -> void
-ControlId.DependencyInjection.ControlIdHealthCheckOptions.Timeout.get -> System.TimeSpan
-ControlId.DependencyInjection.ControlIdHealthCheckOptions.Timeout.set -> void
-Microsoft.Extensions.DependencyInjection.ControlIdHealthChecksBuilderExtensions
-static Microsoft.Extensions.DependencyInjection.ControlIdHealthChecksBuilderExtensions.AddControlIdDevices(this Microsoft.Extensions.DependencyInjection.IHealthChecksBuilder! builder, System.Action<ControlId.DependencyInjection.ControlIdHealthCheckOptions!>? configure = null, string! name = "controlid", Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus? failureStatus = null, System.Collections.Generic.IEnumerable<string!>? tags = null) -> Microsoft.Extensions.DependencyInjection.IHealthChecksBuilder!
-ControlId.DependencyInjection.ControlIdRepOptions.ReadRetries.get -> int
-ControlId.DependencyInjection.ControlIdRepOptions.ReadRetries.set -> void
-ControlId.DependencyInjection.ControlIdRepOptions.RetryDelay.get -> System.TimeSpan
-ControlId.DependencyInjection.ControlIdRepOptions.RetryDelay.set -> void
