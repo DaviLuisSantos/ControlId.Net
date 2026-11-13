@@ -17,6 +17,7 @@
 //     --ControlId:Access:simulador:BaseAddress=http://localhost:8080 --OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 //   curl http://localhost:5000/direto/simulador/usuarios      (traces em http://localhost:18888)
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ControlId;
@@ -54,6 +55,7 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOIN
 
 // Equipamentos acessados direto por HTTP, de ControlId:Access:{nome} (ex.: --ControlId:Access:simulador:BaseAddress=...).
 builder.Services.AddControlIdAccessDevices(builder.Configuration.GetSection("ControlId:Access"));
+builder.Services.AddHealthChecks().AddControlIdDevices();   // GET /health: cada equipamento responde?
 
 builder.Services.AddControlIdPush();
 builder.Services.AddControlIdMonitor((notification, _) =>
@@ -102,6 +104,15 @@ builder.Services.AddControlIdOnline((identification, _) =>
 
 var app = builder.Build();
 
+// Resposta em JSON com o resultado de cada equipamento (o padrão devolve só "Healthy"/"Unhealthy").
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResponseWriter = (context, report) => context.Response.WriteAsJsonAsync(new
+    {
+        status = report.Status.ToString(),
+        checks = report.Entries.ToDictionary(e => e.Key, e => new { status = e.Value.Status.ToString(), e.Value.Description, e.Value.Data }),
+    }),
+});
 app.MapControlIdPush();
 app.MapControlIdMonitor();
 app.MapControlIdOnline("/api");

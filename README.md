@@ -158,7 +158,8 @@ and trigger a person at the device with `POST /simulator/identify`.
 - [x] Device simulator in a Docker image, with integration tests that run in CI
 - [x] OpenTelemetry traces and metrics, with an Aspire dashboard demo
 - [ ] Structured logs (`ILogger` with source-generated `LoggerMessage`)
-- [ ] Resilience pipeline and health checks per device
+- [x] Health checks for every registered device
+- [ ] Retries for read-only commands and a circuit breaker per device
 - [ ] Native AOT and trimming support
 - [ ] Real-time dashboard sample (Blazor + SignalR)
 
