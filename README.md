@@ -28,7 +28,8 @@ dependency-injection-friendly library, verified against real devices.
 - **Real-time integrations.** Monitor (webhooks), Push (command queue for devices behind NAT) and Online mode (your server
   authorizes each access) as ASP.NET Core endpoints in one line.
 - **Brazilian labor law compliance.** A streaming parser for the AFD file of Portaria 671/2021 and 1510/2009, with
-  CRC-16/KERMIT validation, that survives corrupt lines.
+  CRC-16/KERMIT validation, that survives corrupt lines and reads 100,000 punches in about 20 ms
+  ([benchmarks](benchmarks/README.md)).
 - **Safe by default.** Destructive operations require an explicit `DataLossConfirmation.Confirmed`; optional SHA-256
   certificate pinning for self-signed device certificates; per-device concurrency limits sized from measurements on real
   devices.
@@ -146,6 +147,7 @@ and trigger a person at the device with `POST /simulator/identify`.
 | CI | Every push and pull request: warning-free build, three target frameworks on Linux and Windows, coverage summary |
 | API governance | Public API tracked in `PublicAPI.*.txt`; `dotnet pack` fails on undeclared breaking changes against the last release |
 | Supply chain | NuGet Trusted Publishing (OIDC, no stored keys), CycloneDX SBOM, build provenance attestation, deterministic builds, SourceLink |
+| Performance | [BenchmarkDotNet](benchmarks/README.md): the AFD parser got 6.5x faster with 59% less allocation, guarded by edge-case and differential tests |
 | Static analysis | .NET `latest-recommended` rule set with zero warnings, nullable reference types everywhere |
 | Decisions | [Architecture Decision Records](docs/adr/README.md) for the key design choices |
 | Security | [Private vulnerability reporting](SECURITY.md) and safe-usage notes |
@@ -161,6 +163,7 @@ and trigger a person at the device with `POST /simulator/identify`.
 - [x] Health checks for every registered device
 - [x] Retries for read-only commands (never for commands that change the device)
 - [ ] Circuit breaker per device
+- [x] Benchmarks for the AFD parser
 - [ ] Native AOT and trimming support
 - [ ] Real-time dashboard sample (Blazor + SignalR)
 
