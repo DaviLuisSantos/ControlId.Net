@@ -72,16 +72,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # O simulador é net10.0.
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
       - run: dotnet build tools/ControlId.Net.Simulator -c Release
       - name: Smoke test
         run: |
           dotnet run --project tools/ControlId.Net.Simulator -c Release --no-build -- --Simulator:Kind=Rep --urls http://localhost:8082 &
           for i in $(seq 1 30); do curl -sf http://localhost:8082/health && break; sleep 1; done
           curl -sf http://localhost:8082/simulator/state | jq -e .
-          curl -sf -X POST http://localhost:8082/simulator/punch -H 'Content-Type: application/json' -d '{"cpf":12345678901}'
+          # Marcação de um dos CPFs de exemplo e leitura do AFD com ela.
+          curl -sf -X POST http://localhost:8082/simulator/punch -H 'Content-Type: application/json' -d '{"cpf":11144477735}'
+          session=$(curl -sf -X POST http://localhost:8082/login.fcgi -H 'Content-Type: application/json' \
+            -d '{"login":"admin","password":"admin"}' | jq -r .session)
+          curl -sf -X POST "http://localhost:8082/get_afd.fcgi?session=$session&mode=671" -H 'Content-Type: application/json' \
+            -d '{}' | grep -q '11144477735'
 
   # Testa o build netstandard2.0 das bibliotecas no .NET Framework 4.8.
   netfx:

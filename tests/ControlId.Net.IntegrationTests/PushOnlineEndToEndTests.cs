@@ -86,14 +86,25 @@ public sealed class PushOnlineEndToEndTests
         await device.ConfigurePushAsync(new PushConfiguration { RemoteAddress = address.ToString().TrimEnd('/'), RequestPeriod = TimeSpan.FromSeconds(1) });
         var push = server.Services.GetRequiredService<PushServer>();
 
-        var results = await push.SendBatchAsync(
-            SimulatorDeviceId,
-            [
-                PushCommand.CreateObjects("users", [new { id = 50, name = "Dora" }, new { id = 51, name = "Edu" }]),
-                PushCommand.ShowMessage("Lote"),
-                new PushCommand("comando_inexistente"),
-                PushCommand.LoadObjects(new LoadObjectsRequest("users")),
-            ]).WaitAsync(TimeSpan.FromSeconds(15));
+        IReadOnlyList<PushResult> results;
+        try
+        {
+            results = await push.SendBatchAsync(
+                SimulatorDeviceId,
+                [
+                    PushCommand.CreateObjects("users", [new { id = 50, name = "Dora" }, new { id = 51, name = "Edu" }]),
+                    PushCommand.ShowMessage("Lote"),
+                    new PushCommand("comando_inexistente"),
+                    PushCommand.LoadObjects(new LoadObjectsRequest("users")),
+                ]).WaitAsync(TimeSpan.FromSeconds(15));
+        }
+        catch (TimeoutException)
+        {
+            // Diagnóstico: o que o simulador e o servidor viram até aqui.
+            var pushState = (await StateAsync(sim)).GetProperty("push");
+            throw new TimeoutException(
+                $"O lote não voltou em 15 s. Simulador: {pushState}. Servidor: pendentes={push.GetPendingCount(SimulatorDeviceId)}, última consulta={push.GetLastSeen(SimulatorDeviceId)}.");
+        }
 
         Assert.Equal(4, results.Count);
         Assert.True(results[0].Success);

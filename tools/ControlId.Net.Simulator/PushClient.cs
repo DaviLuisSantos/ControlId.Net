@@ -23,6 +23,15 @@ public sealed class PushClient(DeviceState state, IServiceProvider services, IHt
     /// <summary>Comandos executados por Push desde o início (para inspeção em <c>/simulator/state</c>).</summary>
     public int CommandsExecuted => Volatile.Read(ref _executed);
 
+    private int _failures;
+    private volatile string? _lastError;
+
+    /// <summary>Consultas ao servidor que falharam (para inspeção em <c>/simulator/state</c>).</summary>
+    public int Failures => Volatile.Read(ref _failures);
+
+    /// <summary>Última falha ao falar com o servidor de Push, ou <c>null</c>.</summary>
+    public string? LastError => _lastError;
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var http = httpClientFactory.CreateClient(nameof(PushClient));
@@ -40,9 +49,14 @@ public sealed class PushClient(DeviceState state, IServiceProvider services, IHt
             {
                 executed = await PollAsync(http, settings, stoppingToken);
             }
-            catch (Exception ex) when ((ex is HttpRequestException or TaskCanceledException or JsonException) && !stoppingToken.IsCancellationRequested)
+            catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
             {
-                logger.LogWarning("Push: falha ao falar com {Server}: {Error}", settings.BaseUrl, ex.Message);
+                // Qualquer erro (rede, resposta inesperada, comando malformado) só vira aviso: como o equipamento, o
+                // simulador continua consultando. Sem isso, uma exceção não prevista encerraria o BackgroundService
+                // em silêncio e o Push pararia de vez.
+                Interlocked.Increment(ref _failures);
+                _lastError = $"{ex.GetType().Name}: {ex.Message}";
+                logger.LogWarning(ex, "Push: falha ao falar com {Server}: {Error}", settings.BaseUrl, ex.Message);
             }
 
             // Depois de um comando o equipamento volta a consultar na hora; sem comando, espera o período.
