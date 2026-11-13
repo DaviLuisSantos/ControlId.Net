@@ -38,6 +38,8 @@ public static class SimulatorControlApi
                     {
                         address = state.GetConfiguration("push_server", "push_remote_address"),
                         commandsExecuted = push.CommandsExecuted,
+                        failures = push.Failures,
+                        lastError = push.LastError,
                     },
                     commands = AccessApi.SupportedCommands,
                 });
