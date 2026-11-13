@@ -18,3 +18,4 @@ muda; ela ganha o status "Substituída" e aponta para a nova.
 | [0011](0011-simulador-de-equipamento.md) | Simulador de equipamento e testes de integração | Aceita |
 | [0012](0012-telemetria-sem-dependencia-do-opentelemetry.md) | Telemetria pelas APIs do .NET, sem depender do OpenTelemetry | Aceita |
 | [0013](0013-novas-tentativas-so-em-leituras.md) | Novas tentativas só em comandos de leitura, desligadas por padrão | Aceita |
+| [0014](0014-manter-alvo-net8.md) | Manter o alvo net8.0 depois do fim do suporte ao .NET 8 | Aceita |
