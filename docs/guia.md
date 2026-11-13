@@ -667,6 +667,39 @@ re-logins indicam um equipamento reiniciando.
 Para ver tudo sem hardware, o `samples/docker-compose.yml` sobe o simulador e o dashboard do Aspire, e o
 `samples/ControlId.Net.Server` já vem ligado aos dois (instruções no topo do `Program.cs`).
 
+## Logs
+
+Os clientes escrevem logs estruturados pelo `ILogger` (categoria `ControlId.Net`, `ControlIdTelemetry.LoggerCategory`), com `LoggerMessage` gerado em tempo de compilação. Sem configuração, nada é escrito. Com injeção de dependência, o `ILoggerFactory` do container é usado sozinho; sem ela, informe-o nas options:
+
+```csharp
+var client = new AccessClient(new ControlIdDeviceOptions
+{
+    BaseAddress = new Uri("http://192.168.0.129"),
+    LoggerFactory = loggerFactory,
+});
+```
+
+Um `LoggerFactory` explícito nas options vale mais que o do container ([ADR 0016](adr/0016-logs-por-options.md)). Eventos do núcleo (`device` é o endereço do equipamento; sessão, login, senha e corpo nunca são registrados):
+
+| EventId | Nível | Evento |
+| --- | --- | --- |
+| 1001 | Debug | Login feito |
+| 1002 | Warning | Login recusado (com o status) |
+| 1003 | Information | Sessão expirada; novo login |
+| 1004 | Warning | Nova tentativa (comando, tentativa e motivo) |
+| 1005 | Warning | Erro devolvido pelo equipamento (status, código e mensagem) |
+| 1006 | Warning | Falha de comunicação |
+
+O pacote `ControlId.Net.AspNetCore` registra os seus próprios eventos, de 2001 a 2004 (rotas de Push, Monitor e modo online).
+
+## Simulador para desenvolvimento e testes
+
+O [simulador](../tools/ControlId.Net.Simulator/README.md) dispensa o equipamento real:
+
+- **REP iDClass**: `--Simulator:Kind=Rep` (padrão `Access`). A API fala HTTP puro, com os mesmos formatos de erro; `POST /simulator/punch` com `{"cpf":12345678901}` grava uma marcação que aparece no AFD, com NSR crescente e CRC-16/KERMIT válido.
+- **Push**: com `push_server.push_remote_address` configurado, o simulador consulta `/push` do seu servidor a cada `push_request_period` segundos, executa o comando (simples ou `transactions`) e devolve o resultado em `/result`.
+- **Modo online**: com `general.online=1`, `POST /simulator/identify` consulta o seu servidor (`new_user_identified.fcgi` ou `new_card.fcgi`), aplica o `result.event` devolvido e cai na decisão local se o servidor falhar.
+
 ## Novas tentativas em leituras
 
 Equipamentos em rede local falham de forma passageira (Wi-Fi, um reinício). Com `ReadRetries`, os comandos de **leitura**
