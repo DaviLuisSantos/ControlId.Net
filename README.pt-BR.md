@@ -159,7 +159,8 @@ as notificações do Monitor, reproduzindo as divergências do firmware que o SD
 - [x] Simulador de equipamento em imagem Docker, com testes de integração na CI
 - [x] Traces e métricas com OpenTelemetry, com demonstração no dashboard do Aspire
 - [ ] Logs estruturados (`ILogger` com `LoggerMessage` gerado)
-- [ ] Pipeline de resiliência e health checks por equipamento
+- [x] Health checks de todos os equipamentos registrados
+- [ ] Novas tentativas em comandos de leitura e circuit breaker por equipamento
 - [ ] Suporte a Native AOT e trimming
 - [ ] Sample de dashboard em tempo real (Blazor + SignalR)
 

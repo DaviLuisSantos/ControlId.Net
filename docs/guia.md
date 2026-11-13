@@ -666,6 +666,32 @@ re-logins indicam um equipamento reiniciando.
 Para ver tudo sem hardware, o `samples/docker-compose.yml` sobe o simulador e o dashboard do Aspire, e o
 `samples/ControlId.Net.Server` já vem ligado aos dois (instruções no topo do `Program.cs`).
 
+## Health checks
+
+Com o pacote de DI, um health check verifica todos os equipamentos registrados em paralelo, com uma leitura que não altera
+nada (`system_information` no acesso, `get_about` no REP):
+
+```csharp
+builder.Services.AddControlIdAccessDevices(builder.Configuration.GetSection("ControlId:Access"));
+builder.Services.AddHealthChecks().AddControlIdDevices(o =>
+{
+    o.Timeout = TimeSpan.FromSeconds(3);        // prazo de cada equipamento (padrão 5 s)
+    o.SlowThreshold = TimeSpan.FromSeconds(1);  // acima disso, conta como lento (padrão 2 s)
+}, tags: new[] { "ready" });
+
+app.MapHealthChecks("/health");
+```
+
+| Situação | Status |
+| --- | --- |
+| Todos responderam, abaixo do limite de lentidão | `Healthy` |
+| Algum falhou, passou do prazo ou está lento | `Degraded` |
+| Nenhum respondeu | `failureStatus` do registro (padrão `Unhealthy`) |
+
+O resultado de cada equipamento vai nos dados do health check (`access:portaria` → `ok: 45 ms`, `falhou em 2082 ms: ...`).
+Um equipamento travado não segura os outros: o prazo vale para cada um. O `samples/ControlId.Net.Server` mostra uma
+resposta em JSON com esses dados.
+
 ## Erros
 
 | Exceção | Quando |
