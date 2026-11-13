@@ -129,7 +129,8 @@ docker run --rm -p 8080:8080 ghcr.io/daviluissantos/controlid-simulator
 
 The [device simulator](tools/ControlId.Net.Simulator/README.md) speaks the access API with in-memory state and sends
 Monitor notifications, reproducing the firmware quirks the SDK handles. Point `AccessClient` at `http://localhost:8080`
-and trigger a person at the device with `POST /simulator/identify`.
+and trigger a person at the device with `POST /simulator/identify`. It also simulates the iDClass REP
+(`--Simulator:Kind=Rep`, punches with `POST /simulator/punch`), Push and Online mode.
 
 ## Packages
 
@@ -143,12 +144,15 @@ and trigger a person at the device with `POST /simulator/identify`.
 
 | Practice | How |
 | --- | --- |
-| Tests | 427 unit tests on .NET 8 and .NET 10, 414 on .NET Framework 4.8; end-to-end tests over real HTTP against the [device simulator](tools/ControlId.Net.Simulator/README.md) |
+| Tests | 494 unit tests on .NET 8 and .NET 10, 481 on .NET Framework 4.8, 32 integration tests; end-to-end tests over real HTTP against the [device simulator](tools/ControlId.Net.Simulator/README.md) |
+| Mutation testing | Stryker.NET: 68.08% mutation score on `src/ControlId.Net` (1,216 killed, 23 timeout, 425 survived) |
+| Docs site | [API reference and guide](https://daviluissantos.github.io/ControlId.Net/), published by the `docs.yml` workflow (DocFX) |
 | CI | Every push and pull request: warning-free build, three target frameworks on Linux and Windows, coverage summary |
 | API governance | Public API tracked in `PublicAPI.*.txt`; `dotnet pack` fails on undeclared breaking changes against the last release |
 | Supply chain | NuGet Trusted Publishing (OIDC, no stored keys), CycloneDX SBOM, build provenance attestation, deterministic builds, SourceLink |
 | Performance | [BenchmarkDotNet](benchmarks/README.md): the AFD parser got 6.5x faster with 59% less allocation, guarded by edge-case and differential tests |
 | Static analysis | .NET `latest-recommended` rule set with zero warnings, nullable reference types everywhere |
+| Native AOT | Evaluated, not claimed: [ADR 0015](docs/adr/0015-native-aot.md) and the probe in `tools/ControlId.Net.AotProbe` (3 IL2026, 3 IL3050, 1 IL2070) |
 | Decisions | [Architecture Decision Records](docs/adr/README.md) for the key design choices |
 | Security | [Private vulnerability reporting](SECURITY.md) and safe-usage notes |
 
@@ -159,13 +163,14 @@ and trigger a person at the device with `POST /simulator/identify`.
 - [x] AFD parser (Portaria 671 and 1510)
 - [x] Device simulator in a Docker image, with integration tests that run in CI
 - [x] OpenTelemetry traces and metrics, with an Aspire dashboard demo
-- [ ] Structured logs (`ILogger` with source-generated `LoggerMessage`)
+- [x] Structured logs (`ILogger` with source-generated `LoggerMessage`)
 - [x] Health checks for every registered device
 - [x] Retries for read-only commands (never for commands that change the device)
 - [ ] Circuit breaker per device
 - [x] Benchmarks for the AFD parser
-- [ ] Native AOT and trimming support
-- [ ] Real-time dashboard sample (Blazor + SignalR)
+- [x] Native AOT evaluation ([ADR 0015](docs/adr/0015-native-aot.md))
+- [ ] Native AOT and trimming support (source-generated JSON, typed request bodies)
+- [x] Real-time dashboard sample (Blazor Server, [samples/ControlId.Net.Dashboard](samples/ControlId.Net.Dashboard), `http://localhost:8081` in the compose file)
 
 ## Contributing
 

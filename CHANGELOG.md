@@ -4,6 +4,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+### Added
+- **Logs estruturados**: `ControlIdDeviceOptions.LoggerFactory` (e no REP) e o `ILoggerFactory` do container de DI alimentam o `ILogger` com categoria `ControlId.Net` e `LoggerMessage` gerado. EventIds 1001-1006 no núcleo e 2001-2004 no ASP.NET Core; sessão, login, senha e corpo nunca são registrados ([ADR 0016](docs/adr/0016-logs-por-options.md), [guia](docs/guia.md#logs)).
+- **Simulador**: modo REP iDClass (`--Simulator:Kind=Rep`, `POST /simulator/punch`), Push (o simulador consulta `/push` e responde em `/result`) e modo online (consulta `new_user_identified.fcgi` e `new_card.fcgi`).
+- **Dashboard em tempo real** ([samples/ControlId.Net.Dashboard](samples/ControlId.Net.Dashboard)): Blazor Server com o Monitor ao vivo; sobe em `http://localhost:8081` no `samples/docker-compose.yml`.
+- **Avaliação de Native AOT**: sonda `tools/ControlId.Net.AotProbe` (3 IL2026, 3 IL3050, 1 IL2070) e [ADR 0015](docs/adr/0015-native-aot.md). A biblioteca não declara `IsAotCompatible`.
+- **Teste de mutação** com Stryker.NET: nota de 68,08% em `src/ControlId.Net`.
+- **Site de documentação** (DocFX), publicado pelo workflow `docs.yml` em https://daviluissantos.github.io/ControlId.Net/.
+- Dashboard na solution e teste de fumaça do simulador REP na CI.
+
 ## [0.6.0-alpha.1] - 2026-11-12
 
 Simulador de equipamento com testes de integração, traces e métricas (OpenTelemetry), health checks, novas tentativas em leituras e parser de AFD até 6,5× mais rápido. Mantém o alvo `net8.0` ([ADR 0014](docs/adr/0014-manter-alvo-net8.md)).

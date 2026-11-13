@@ -130,7 +130,8 @@ docker run --rm -p 8080:8080 ghcr.io/daviluissantos/controlid-simulator
 
 O [simulador de equipamento](tools/ControlId.Net.Simulator/README.md) fala a API de acesso com estado em memória e envia
 as notificações do Monitor, reproduzindo as divergências do firmware que o SDK trata. Aponte o `AccessClient` para
-`http://localhost:8080` e simule uma pessoa no equipamento com `POST /simulator/identify`.
+`http://localhost:8080` e simule uma pessoa no equipamento com `POST /simulator/identify`. Ele também simula o REP iDClass
+(`--Simulator:Kind=Rep`, marcações com `POST /simulator/punch`), o Push e o modo online.
 
 ## Pacotes
 
@@ -144,12 +145,15 @@ as notificações do Monitor, reproduzindo as divergências do firmware que o SD
 
 | Prática | Como |
 | --- | --- |
-| Testes | 427 testes unitários no .NET 8 e no .NET 10 e 414 no .NET Framework 4.8; testes de ponta a ponta com HTTP de verdade contra o [simulador de equipamento](tools/ControlId.Net.Simulator/README.md) |
+| Testes | 494 testes unitários no .NET 8 e no .NET 10, 481 no .NET Framework 4.8 e 32 de integração; testes de ponta a ponta com HTTP de verdade contra o [simulador de equipamento](tools/ControlId.Net.Simulator/README.md) |
+| Teste de mutação | Stryker.NET: nota de mutação de 68,08% em `src/ControlId.Net` (1.216 mortos, 23 timeout, 425 sobreviventes) |
+| Site de documentação | [Referência da API e guia](https://daviluissantos.github.io/ControlId.Net/), publicado pelo workflow `docs.yml` (DocFX) |
 | CI | A cada push e pull request: build sem avisos, três alvos no Linux e no Windows, resumo de cobertura |
 | Governança da API | API pública registrada em `PublicAPI.*.txt`; o `dotnet pack` falha numa quebra não declarada em relação à última versão |
 | Cadeia de suprimentos | Trusted Publishing no NuGet (OIDC, sem chave guardada), SBOM CycloneDX, atestação de proveniência, builds determinísticos, SourceLink |
 | Desempenho | [BenchmarkDotNet](benchmarks/README.md): o parser de AFD ficou 6,5× mais rápido e aloca 59% menos, protegido por testes de borda e diferenciais |
 | Análise estática | Regras `latest-recommended` do .NET sem nenhum aviso, nullable em todo o código |
+| Native AOT | Avaliado, sem declarar compatibilidade: [ADR 0015](docs/adr/0015-native-aot.md) e a sonda em `tools/ControlId.Net.AotProbe` (3 IL2026, 3 IL3050, 1 IL2070) |
 | Decisões | [Registros de decisão de arquitetura](docs/adr/README.md) para as escolhas de projeto importantes |
 | Segurança | [Relato privado de vulnerabilidades](SECURITY.md) e orientações de uso seguro |
 
@@ -160,13 +164,14 @@ as notificações do Monitor, reproduzindo as divergências do firmware que o SD
 - [x] Parser de AFD (Portaria 671 e 1510)
 - [x] Simulador de equipamento em imagem Docker, com testes de integração na CI
 - [x] Traces e métricas com OpenTelemetry, com demonstração no dashboard do Aspire
-- [ ] Logs estruturados (`ILogger` com `LoggerMessage` gerado)
+- [x] Logs estruturados (`ILogger` com `LoggerMessage` gerado)
 - [x] Health checks de todos os equipamentos registrados
 - [x] Novas tentativas em comandos de leitura (nunca em comandos que alteram o equipamento)
 - [ ] Circuit breaker por equipamento
 - [x] Benchmarks do parser de AFD
-- [ ] Suporte a Native AOT e trimming
-- [ ] Sample de dashboard em tempo real (Blazor + SignalR)
+- [x] Avaliação de Native AOT ([ADR 0015](docs/adr/0015-native-aot.md))
+- [ ] Suporte a Native AOT e trimming (JSON com source generation, corpos tipados)
+- [x] Sample de dashboard em tempo real (Blazor Server, [samples/ControlId.Net.Dashboard](samples/ControlId.Net.Dashboard), `http://localhost:8081` no compose)
 
 ## Contribuindo
 

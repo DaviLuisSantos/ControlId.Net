@@ -48,6 +48,12 @@ Rotas que não existem no equipamento e provocam o que, no mundo real, vem de um
 | `GET /simulator/state` | Tabelas, portas, fotos, destino do Monitor e as últimas entregas |
 | `GET /health` | Health check |
 
+## REP, Push e modo online
+
+- `--Simulator:Kind=Rep` simula o REP iDClass em HTTP puro (`/health` e `/simulator/state` continuam). `POST /simulator/punch` `{"cpf":N}` grava uma marcação (tipo 3, leiaute 671, NSR crescente, CRC-16/KERMIT).
+- Push (tipo `Access`): com `push_server.push_remote_address`, o simulador consulta `GET /push?deviceId&uuid` a cada `push_request_period` s, executa o comando pelos mesmos tratadores da API e responde em `POST /result`.
+- Modo online (tipo `Access`): com `general.online=1`, `/simulator/identify` consulta o servidor em `new_user_identified.fcgi` ou `new_card.fcgi`, aplica `result.event` (7 abre a porta) e usa a decisão local se o servidor falhar.
+
 ## Configuração
 
 Seção `Simulator` do `appsettings.json`, argumentos (`--Simulator:Password=...`) ou variáveis de ambiente
@@ -56,6 +62,7 @@ Seção `Simulator` do `appsettings.json`, argumentos (`--Simulator:Password=...
 | Opção | Padrão |
 | --- | --- |
 | `Login` / `Password` | `admin` / `admin` |
+| `Kind` | `Access` (ou `Rep`) |
 | `DeviceId` | `935107` |
 | `Serial` / `Firmware` | `SIM0000001` / `6.13.1-sim` |
 | `Doors` | `1` (até 4) |

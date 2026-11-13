@@ -31,6 +31,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmarks", "benchmarks", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ControlId.Net.Benchmarks", "benchmarks\ControlId.Net.Benchmarks\ControlId.Net.Benchmarks.csproj", "{27AE2486-364C-4218-A39C-8883FA132406}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ControlId.Net.Dashboard", "samples\ControlId.Net.Dashboard\ControlId.Net.Dashboard.csproj", "{35CDFE70-C24D-4B28-88C1-73D04C83BF0D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -149,6 +151,18 @@ Global
 		{27AE2486-364C-4218-A39C-8883FA132406}.Release|x64.Build.0 = Release|Any CPU
 		{27AE2486-364C-4218-A39C-8883FA132406}.Release|x86.ActiveCfg = Release|Any CPU
 		{27AE2486-364C-4218-A39C-8883FA132406}.Release|x86.Build.0 = Release|Any CPU
+		{35CDFE70-C24D-4B28-88C1-73D04C83BF0D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{35CDFE70-C24D-4B28-88C1-73D04C83BF0D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{35CDFE70-C24D-4B28-88C1-73D04C83BF0D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{35CDFE70-C24D-4B28-88C1-73D04C83BF0D}.Debug|x64.Build.0 = Debug|Any CPU
+		{35CDFE70-C24D-4B28-88C1-73D04C83BF0D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{35CDFE70-C24D-4B28-88C1-73D04C83BF0D}.Debug|x86.Build.0 = Debug|Any CPU
+		{35CDFE70-C24D-4B28-88C1-73D04C83BF0D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{35CDFE70-C24D-4B28-88C1-73D04C83BF0D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{35CDFE70-C24D-4B28-88C1-73D04C83BF0D}.Release|x64.ActiveCfg = Release|Any CPU
+		{35CDFE70-C24D-4B28-88C1-73D04C83BF0D}.Release|x64.Build.0 = Release|Any CPU
+		{35CDFE70-C24D-4B28-88C1-73D04C83BF0D}.Release|x86.ActiveCfg = Release|Any CPU
+		{35CDFE70-C24D-4B28-88C1-73D04C83BF0D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -163,5 +177,6 @@ Global
 		{3F3C3232-4D6D-40CC-A92B-C75E760B5E3B} = {07C2787E-EAC7-C090-1BA3-A61EC2A24D84}
 		{FCEA920F-EBAE-4B6F-905D-FE402AE739D9} = {403DAE74-2589-435A-91C1-DB2139FBB842}
 		{27AE2486-364C-4218-A39C-8883FA132406} = {66320409-64EC-F7C5-3DEF-65E7510DAAD1}
+		{35CDFE70-C24D-4B28-88C1-73D04C83BF0D} = {F644A4A0-FCA0-43BF-BD1D-64F2426AF8F0}
 	EndGlobalSection
 EndGlobal
