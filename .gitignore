@@ -12,3 +12,6 @@ TestResults/
 
 # Resultados do BenchmarkDotNet
 BenchmarkDotNet.Artifacts/
+
+# Configuração pessoal do Claude Code
+.claude/settings.local.json
