@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using ControlId.Access;
+using ControlId.Rep;
 using ControlId.Simulator;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -32,6 +33,17 @@ internal sealed class RunningSimulator : IAsyncDisposable
         var address = app.Services.GetRequiredService<IServer>().Features.GetRequiredFeature<IServerAddressesFeature>().Addresses.First();
         return new RunningSimulator(app, new Uri(address));
     }
+
+    /// <summary>Sobe um simulador do REP iDClass (<c>Simulator:Kind=Rep</c>).</summary>
+    public static Task<RunningSimulator> StartRepAsync(Action<SimulatorOptions>? configure = null) =>
+        StartAsync(o =>
+        {
+            o.Kind = SimulatorOptions.KindRep;
+            configure?.Invoke(o);
+        });
+
+    public RepClient CreateRepClient(RepMode mode = RepMode.Portaria671, string login = "admin", string password = "admin") =>
+        new(new ControlIdDeviceOptions { BaseAddress = BaseAddress, Login = login, Password = password, Timeout = TimeSpan.FromSeconds(10) }, mode);
 
     public AccessClient CreateClient(string login = "admin", string password = "admin") =>
         new(new ControlIdDeviceOptions { BaseAddress = BaseAddress, Login = login, Password = password, Timeout = TimeSpan.FromSeconds(10) });

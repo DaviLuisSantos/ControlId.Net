@@ -3,6 +3,15 @@ namespace ControlId.Simulator;
 /// <summary>Configuração do simulador (seção <c>Simulator</c> do appsettings ou variáveis <c>Simulator__*</c>).</summary>
 public sealed class SimulatorOptions
 {
+    /// <summary>Valor de <see cref="Kind"/> para a linha de acesso.</summary>
+    public const string KindAccess = "Access";
+
+    /// <summary>Valor de <see cref="Kind"/> para o REP iDClass.</summary>
+    public const string KindRep = "Rep";
+
+    /// <summary>Tipo de equipamento simulado: <c>Access</c> (iDAccess, iDFlex, iDBlock...; padrão) ou <c>Rep</c> (REP iDClass).</summary>
+    public string Kind { get; set; } = KindAccess;
+
     /// <summary>Usuário da interface web do equipamento.</summary>
     public string Login { get; set; } = "admin";
 
@@ -26,4 +35,20 @@ public sealed class SimulatorOptions
 
     /// <summary>Cria alguns usuários e cartões de exemplo ao iniciar.</summary>
     public bool SeedSampleData { get; set; } = true;
+
+    /// <summary>Se o tipo configurado é o REP. Lança <see cref="InvalidOperationException"/> para um tipo desconhecido.</summary>
+    public bool IsRep()
+    {
+        if (string.Equals(Kind, KindRep, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (string.Equals(Kind, KindAccess, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        throw new InvalidOperationException($"Simulator:Kind inválido: '{Kind}'. Use '{KindAccess}' ou '{KindRep}'.");
+    }
 }
