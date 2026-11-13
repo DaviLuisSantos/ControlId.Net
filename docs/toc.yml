@@ -1,0 +1,10 @@
+- name: Início
+  href: index.md
+- name: Guia
+  href: guia.md
+- name: Cobertura
+  href: COBERTURA.md
+- name: Decisões (ADRs)
+  href: adr/README.md
+- name: API
+  href: api/toc.yml
