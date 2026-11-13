@@ -95,7 +95,7 @@ public static class ControlIdEndpointRouteBuilderExtensions
         var body = await ReadBodyAsync(context).ConfigureAwait(false);
         if (!GetPushServer(context).HandleResult(deviceId, GetUuid(context), body))
         {
-            GetLogger(context).LogWarning("Resultado de Push do equipamento {DeviceId} sem comando pendente; ignorado.", deviceId);
+            Log.PushResultIgnored(GetLogger(context), deviceId);
         }
 
         // O equipamento espera resposta vazia, mesmo quando o resultado é descartado.
@@ -114,7 +114,7 @@ public static class ControlIdEndpointRouteBuilderExtensions
         }
         catch (ControlIdException ex)
         {
-            GetLogger(context).LogWarning(ex, "Notificação '{Endpoint}' do Monitor inválida.", endpoint);
+            Log.InvalidMonitorNotification(GetLogger(context), ex, endpoint);
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
             return;
         }

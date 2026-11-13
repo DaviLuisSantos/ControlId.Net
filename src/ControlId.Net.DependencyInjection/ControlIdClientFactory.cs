@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Http;
 using ControlId.Access;
 using ControlId.Rep;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace ControlId.DependencyInjection;
@@ -27,6 +28,7 @@ internal sealed class ControlIdClientFactory : IControlIdClientFactory, IDisposa
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IOptionsMonitor<ControlIdDeviceOptions> _accessOptions;
     private readonly IOptionsMonitor<ControlIdRepOptions> _repOptions;
+    private readonly ILoggerFactory? _loggerFactory;
     private readonly ConcurrentDictionary<string, Lazy<AccessClient>> _accessClients = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, Lazy<RepClient>> _repClients = new(StringComparer.Ordinal);
     private bool _disposed;
@@ -35,12 +37,14 @@ internal sealed class ControlIdClientFactory : IControlIdClientFactory, IDisposa
         ControlIdRegistry registry,
         IHttpClientFactory httpClientFactory,
         IOptionsMonitor<ControlIdDeviceOptions> accessOptions,
-        IOptionsMonitor<ControlIdRepOptions> repOptions)
+        IOptionsMonitor<ControlIdRepOptions> repOptions,
+        ILoggerFactory? loggerFactory = null)
     {
         _registry = registry;
         _httpClientFactory = httpClientFactory;
         _accessOptions = accessOptions;
         _repOptions = repOptions;
+        _loggerFactory = loggerFactory;
     }
 
     public IReadOnlyCollection<string> AccessDeviceNames => _registry.AccessDevices.ToList();
@@ -54,7 +58,7 @@ internal sealed class ControlIdClientFactory : IControlIdClientFactory, IDisposa
         {
             var options = _accessOptions.Get(name);
             var http = CreateHttpClient(ControlIdRegistry.AccessHttpClientName(name), options.Timeout);
-            return Create(() => new AccessClient(options, http), "de acesso", name);
+            return Create(() => new AccessClient(options, _loggerFactory, http), "de acesso", name);
         });
     }
 
@@ -65,7 +69,7 @@ internal sealed class ControlIdClientFactory : IControlIdClientFactory, IDisposa
         {
             var options = _repOptions.Get(name);
             var http = CreateHttpClient(ControlIdRegistry.RepHttpClientName(name), options.Timeout);
-            return Create(() => new RepClient(options.ToDeviceOptions(), options.Mode, http), "REP", name);
+            return Create(() => new RepClient(options.ToDeviceOptions(), options.Mode, _loggerFactory, http), "REP", name);
         });
     }
 

@@ -27,10 +27,9 @@
         (ThrowIfNull, ThrowIf, sobrecargas com Span, HashData, Contains/EndsWith(char)); atender exigiria #if em cada ponto.
       - CA1716, CA1720: parâmetros como "object" seguem os nomes da API do equipamento; renomear quebraria quem usa
         argumentos nomeados.
-      - CA1848: LoggerMessage entra junto com a instrumentação (logs, traces e métricas), prevista no roadmap.
     -->
     <AnalysisLevel>latest-recommended</AnalysisLevel>
-    <NoWarn>$(NoWarn);CA1510;CA1513;CA1845;CA1846;CA1847;CA1850;CA1865;CA2249;CA1716;CA1720;CA1848</NoWarn>
+    <NoWarn>$(NoWarn);CA1510;CA1513;CA1845;CA1846;CA1847;CA1850;CA1865;CA2249;CA1716;CA1720</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
