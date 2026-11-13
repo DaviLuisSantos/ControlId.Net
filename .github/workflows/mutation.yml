@@ -1,0 +1,49 @@
+name: Mutation testing
+
+# Manual: o Stryker.NET leva muitos minutos e não precisa rodar a cada push.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Instala o Stryker.NET
+        run: dotnet tool install -g dotnet-stryker --version 5.1.0
+      - name: Roda o Stryker
+        working-directory: tests/ControlId.Net.Tests
+        run: dotnet stryker --config-file ../../stryker-config.json
+      - name: Resumo da nota
+        if: always()
+        run: |
+          f=$(ls tests/ControlId.Net.Tests/StrykerOutput/*/reports/mutation-report.json 2>/dev/null | tail -1)
+          if [ -n "$f" ]; then
+            python3 - "$f" >> "$GITHUB_STEP_SUMMARY" <<'P'
+          import json, sys
+          d = json.load(open(sys.argv[1]))
+          c = {}
+          for f in d["files"].values():
+              for m in f["mutants"]:
+                  c[m["status"]] = c.get(m["status"], 0) + 1
+          k = c.get("Killed", 0) + c.get("Timeout", 0)
+          t = k + c.get("Survived", 0) + c.get("NoCoverage", 0)
+          print("## Mutation score\n")
+          print(f"**{100*k/t:.2f}%**" if t else "sem mutantes")
+          print("\n" + ", ".join(f"{a}: {b}" for a, b in sorted(c.items())))
+          P
+          fi
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: stryker-report
+          path: tests/ControlId.Net.Tests/StrykerOutput/**/reports/
