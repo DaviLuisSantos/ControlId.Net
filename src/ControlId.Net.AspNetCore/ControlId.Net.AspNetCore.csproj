@@ -14,6 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.15" />
     <ProjectReference Include="..\ControlId.Net.DependencyInjection\ControlId.Net.DependencyInjection.csproj" />
   </ItemGroup>
 
