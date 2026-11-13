@@ -160,7 +160,8 @@ as notificações do Monitor, reproduzindo as divergências do firmware que o SD
 - [x] Traces e métricas com OpenTelemetry, com demonstração no dashboard do Aspire
 - [ ] Logs estruturados (`ILogger` com `LoggerMessage` gerado)
 - [x] Health checks de todos os equipamentos registrados
-- [ ] Novas tentativas em comandos de leitura e circuit breaker por equipamento
+- [x] Novas tentativas em comandos de leitura (nunca em comandos que alteram o equipamento)
+- [ ] Circuit breaker por equipamento
 - [ ] Suporte a Native AOT e trimming
 - [ ] Sample de dashboard em tempo real (Blazor + SignalR)
 

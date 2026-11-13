@@ -96,6 +96,28 @@ public class TelemetryTests
     }
 
     [Fact]
+    public async Task Records_each_retry_of_a_read()
+    {
+        using var telemetry = new TelemetryCapture("10.77.0.6");
+        var device = new FakeDeviceHandler()
+            .OnJson("login.fcgi", """{"session":"s"}""")
+            .On("load_objects.fcgi", HttpStatusCode.ServiceUnavailable)
+            .On("load_objects.fcgi", HttpStatusCode.ServiceUnavailable)
+            .OnJson("load_objects.fcgi", """{"users":[]}""");
+        var options = telemetry.Options();
+        options.ReadRetries = 2;
+        options.RetryDelay = TimeSpan.Zero;
+        using var client = new AccessClient(options, device.CreateClient());
+
+        await client.GetUsersAsync();
+
+        var span = Assert.Single(telemetry.Activities, a => a.DisplayName == "load_objects");
+        Assert.Equal(ActivityStatusCode.Unset, span.Status);
+        Assert.Equal(new object[] { 1, 2 }, span.Events.Where(e => e.Name == "controlid.retry").Select(e => e.Tags.Single(t => t.Key == "controlid.retry.attempt").Value!));
+        Assert.Equal(2, telemetry.Sum("controlid.client.retries"));
+    }
+
+    [Fact]
     public async Task A_canceled_call_does_not_take_a_slot_nor_reach_the_device()
     {
         using var telemetry = new TelemetryCapture("10.77.0.5");

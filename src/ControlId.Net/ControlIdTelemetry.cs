@@ -15,7 +15,7 @@ namespace ControlId;
 /// os atributos.
 /// </para>
 /// <para>
-/// Métricas: <c>controlid.client.operation.duration</c> (s), <c>controlid.client.relogins</c>,
+/// Métricas: <c>controlid.client.operation.duration</c> (s), <c>controlid.client.relogins</c>, <c>controlid.client.retries</c>,
 /// <c>controlid.client.requests.queued</c> e <c>controlid.client.requests.active</c>, com <c>server.address</c> e
 /// <c>server.port</c> identificando o equipamento.
 /// </para>

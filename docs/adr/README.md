@@ -17,3 +17,4 @@ muda; ela ganha o status "Substituída" e aponta para a nova.
 | [0010](0010-dependencias-no-lts-suportado.md) | Dependências de runtime no LTS mais antigo ainda suportado | Aceita |
 | [0011](0011-simulador-de-equipamento.md) | Simulador de equipamento e testes de integração | Aceita |
 | [0012](0012-telemetria-sem-dependencia-do-opentelemetry.md) | Telemetria pelas APIs do .NET, sem depender do OpenTelemetry | Aceita |
+| [0013](0013-novas-tentativas-so-em-leituras.md) | Novas tentativas só em comandos de leitura, desligadas por padrão | Aceita |

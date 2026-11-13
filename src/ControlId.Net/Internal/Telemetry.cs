@@ -21,6 +21,9 @@ internal static class Telemetry
     public static readonly Counter<long> Relogins = Meter.CreateCounter<long>(
         "controlid.client.relogins", "{relogin}", "Logins refeitos porque a sessão expirou (ex.: o equipamento reiniciou).");
 
+    public static readonly Counter<long> Retries = Meter.CreateCounter<long>(
+        "controlid.client.retries", "{retry}", "Novas tentativas de comandos de leitura após falha passageira (ReadRetries).");
+
     public static readonly UpDownCounter<long> QueuedRequests = Meter.CreateUpDownCounter<long>(
         "controlid.client.requests.queued", "{request}", "Requisições esperando vaga no limite por equipamento (MaxConcurrentRequests).");
 
@@ -76,6 +79,26 @@ internal sealed class CommandScope : IDisposable
     }
 
     public Activity? Activity { get; }
+
+    /// <summary>Nome do comando, sem <c>.fcgi</c>.</summary>
+    public string Command => _command;
+
+    /// <summary>Uma leitura falhou por motivo passageiro e vai ser repetida (<paramref name="retry"/>: 1, 2, ...).</summary>
+    public void Retry(int retry, string reason)
+    {
+        var tags = new TagList { { "controlid.command", _command }, { "error.type", reason } };
+        foreach (var tag in _deviceTags)
+        {
+            tags.Add(tag.Key, tag.Value);
+        }
+
+        Telemetry.Retries.Add(1, tags);
+        Activity?.AddEvent(new ActivityEvent("controlid.retry", tags: new ActivityTagsCollection
+        {
+            { "controlid.retry.attempt", retry },
+            { "error.type", reason },
+        }));
+    }
 
     /// <summary>A sessão expirou e o login foi refeito durante este comando.</summary>
     public void Relogin()

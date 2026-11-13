@@ -657,6 +657,7 @@ A sessão, o login e a senha nunca vão para os atributos.
 | --- | --- | --- |
 | `controlid.client.operation.duration` | Histograma (s) | Duração por comando (`controlid.command`, `error.type`) |
 | `controlid.client.relogins` | Contador | Sessões expiradas, ex.: o equipamento reiniciou |
+| `controlid.client.retries` | Contador | Novas tentativas de leituras (`ReadRetries`), com `controlid.command` e `error.type` |
 | `controlid.client.requests.queued` | UpDownCounter | Requisições esperando vaga no `MaxConcurrentRequests` |
 | `controlid.client.requests.active` | UpDownCounter | Requisições em andamento no equipamento |
 
@@ -665,6 +666,27 @@ re-logins indicam um equipamento reiniciando.
 
 Para ver tudo sem hardware, o `samples/docker-compose.yml` sobe o simulador e o dashboard do Aspire, e o
 `samples/ControlId.Net.Server` já vem ligado aos dois (instruções no topo do `Program.cs`).
+
+## Novas tentativas em leituras
+
+Equipamentos em rede local falham de forma passageira (Wi-Fi, um reinício). Com `ReadRetries`, os comandos de **leitura**
+são repetidos depois de uma falha de rede, de um timeout ou de um HTTP 5xx, 408 ou 429:
+
+```csharp
+var device = new AccessClient(new ControlIdDeviceOptions
+{
+    BaseAddress = new Uri("http://192.168.0.129"),
+    ReadRetries = 2,                               // até 2 novas tentativas (padrão 0, máximo 5)
+    RetryDelay = TimeSpan.FromMilliseconds(300),   // 300 ms, depois 600 ms, ±20% (padrão 200 ms)
+});
+```
+
+- Só leituras (`load_objects`, `system_information`, `get_configuration`, `get_afd`, `load_users`...). Comandos que alteram o
+  equipamento, como `execute_actions` e `create_objects`, **nunca** são repetidos: um timeout não diz se a porta já abriu.
+  Na API da Control iD tudo é POST, então a lista é por comando ([ADR 0013](adr/0013-novas-tentativas-so-em-leituras.md)).
+- Um 4xx não é repetido (daria o mesmo erro), e cancelar o token interrompe a espera na hora.
+- No `appsettings.json` (pacote de DI): `"portaria": { "BaseAddress": "...", "ReadRetries": 2 }`, também no REP.
+- Cada nova tentativa aparece no trace (evento `controlid.retry`) e na métrica `controlid.client.retries`.
 
 ## Health checks
 

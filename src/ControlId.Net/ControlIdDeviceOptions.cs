@@ -52,11 +52,42 @@ public sealed class ControlIdDeviceOptions
     /// </summary>
     public int MaxConcurrentRequests { get; set; } = DefaultMaxConcurrentRequests;
 
+    /// <summary>Maior valor aceito em <see cref="ReadRetries"/>.</summary>
+    public const int MaxReadRetries = 5;
+
+    /// <summary>
+    /// Novas tentativas de um comando de <b>leitura</b> que falhou por um motivo passageiro: falha de rede, timeout ou
+    /// HTTP 5xx, 408 ou 429. Padrão: 0 (desligado). Máximo: <see cref="MaxReadRetries"/>.
+    /// <para>
+    /// Só valem para comandos que não alteram o equipamento (<c>load_objects</c>, <c>system_information</c>,
+    /// <c>get_configuration</c>, <c>get_afd</c>...). Na API da Control iD tudo é POST, então o método HTTP não diz o que é
+    /// seguro repetir: um <c>execute_actions</c> repetido abriria a porta duas vezes, e um <c>create_objects</c> criaria o
+    /// registro duas vezes. Esses comandos nunca são repetidos (ADR 0013).
+    /// </para>
+    /// </summary>
+    public int ReadRetries { get; set; }
+
+    /// <summary>
+    /// Espera antes da primeira nova tentativa; dobra a cada uma, com variação aleatória de 20% para equipamentos que voltam
+    /// juntos não receberem as tentativas ao mesmo tempo. Padrão: 200 ms.
+    /// </summary>
+    public TimeSpan RetryDelay { get; set; } = TimeSpan.FromMilliseconds(200);
+
     internal void Validate()
     {
         if (MaxConcurrentRequests < 1)
         {
             throw new ArgumentOutOfRangeException(nameof(MaxConcurrentRequests), MaxConcurrentRequests, $"{nameof(MaxConcurrentRequests)} precisa ser pelo menos 1.");
+        }
+
+        if (ReadRetries < 0 || ReadRetries > MaxReadRetries)
+        {
+            throw new ArgumentOutOfRangeException(nameof(ReadRetries), ReadRetries, $"{nameof(ReadRetries)} precisa estar entre 0 e {MaxReadRetries}.");
+        }
+
+        if (RetryDelay < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(RetryDelay), RetryDelay, $"{nameof(RetryDelay)} não pode ser negativo.");
         }
 
         if (BaseAddress is null)

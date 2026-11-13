@@ -148,13 +148,18 @@ internal sealed class ControlIdTransport : IDisposable
     private async Task<(Stream Stream, string? CharSet)> PostForStreamCoreAsync(
         string endpoint, object? body, string? extraQuery, CommandScope scope, CancellationToken cancellationToken)
     {
-        for (var attempt = 0; ; attempt++)
+        // Só repete antes de os cabeçalhos chegarem: depois disso o corpo já está com quem consome o stream.
+        var maxRetries = ReadRetry.IsReadOnly(scope.Command) ? _options.ReadRetries : 0;
+        var retries = 0;
+        var relogged = false;
+        while (true)
         {
             var session = await EnsureSessionAsync(cancellationToken).ConfigureAwait(false);
             using var request = BuildRequest(HttpMethod.Post, endpoint, JsonContent(body), session, extraQuery);
 
             await _throttle.WaitAsync(cancellationToken).ConfigureAwait(false);
             HttpResponseMessage response;
+            ControlIdException? failure = null;
             try
             {
                 response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
@@ -162,12 +167,14 @@ internal sealed class ControlIdTransport : IDisposable
             catch (HttpRequestException ex)
             {
                 _throttle.Release();
-                throw new ControlIdException($"Falha de comunicação com {_options.BaseAddress} ao chamar '{endpoint}'.", innerException: ex);
+                failure = new ControlIdException($"Falha de comunicação com {_options.BaseAddress} ao chamar '{endpoint}'.", innerException: ex);
+                response = null!;
             }
             catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
             {
                 _throttle.Release();
-                throw new ControlIdException($"Timeout ao chamar '{endpoint}' em {_options.BaseAddress}.", innerException: ex);
+                failure = new ControlIdException($"Timeout ao chamar '{endpoint}' em {_options.BaseAddress}.", innerException: ex);
+                response = null!;
             }
             catch
             {
@@ -175,12 +182,37 @@ internal sealed class ControlIdTransport : IDisposable
                 throw;
             }
 
-            if (response.StatusCode == HttpStatusCode.Unauthorized && attempt == 0)
+            if (failure is not null)
+            {
+                if (retries < maxRetries)
+                {
+                    retries++;
+                    scope.Retry(retries, failure.InnerException!.GetType().Name);
+                    await ReadRetry.WaitAsync(_options.RetryDelay, retries, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
+                throw failure;
+            }
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized && !relogged)
             {
                 response.Dispose();
                 _throttle.Release();
                 Interlocked.CompareExchange(ref _session, null, session);
+                relogged = true;
                 scope.Relogin();
+                continue;
+            }
+
+            if (!response.IsSuccessStatusCode && retries < maxRetries && ReadRetry.IsTransient(response.StatusCode))
+            {
+                var status = ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                response.Dispose();
+                _throttle.Release();
+                retries++;
+                scope.Retry(retries, status);
+                await ReadRetry.WaitAsync(_options.RetryDelay, retries, cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
@@ -249,26 +281,52 @@ internal sealed class ControlIdTransport : IDisposable
         HttpMethod method, string endpoint, Func<HttpContent?> createContent, string? extraQuery, bool requiresSession, CancellationToken cancellationToken)
     {
         using var scope = new CommandScope(endpoint, _deviceTags);
+        var maxRetries = ReadRetry.IsReadOnly(scope.Command) ? _options.ReadRetries : 0;
+        var retries = 0;
+        var relogged = false;
         try
         {
-            for (var attempt = 0; ; attempt++)
+            while (true)
             {
                 var session = requiresSession ? await EnsureSessionAsync(cancellationToken).ConfigureAwait(false) : null;
 
                 using var request = BuildRequest(method, endpoint, createContent(), session, extraQuery);
-                var response = await SendAsync(request, endpoint, cancellationToken).ConfigureAwait(false);
+                HttpResponseMessage response;
+                try
+                {
+                    response = await SendAsync(request, endpoint, cancellationToken).ConfigureAwait(false);
+                }
+                catch (ControlIdException ex) when (retries < maxRetries && ReadRetry.IsTransient(ex))
+                {
+                    // Leitura que falhou na rede ou estourou o prazo: espera e repete (ADR 0013).
+                    retries++;
+                    scope.Retry(retries, ex.InnerException?.GetType().Name ?? "network");
+                    await ReadRetry.WaitAsync(_options.RetryDelay, retries, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
 
-                if (response.StatusCode == HttpStatusCode.Unauthorized && requiresSession && attempt == 0)
+                if (response.StatusCode == HttpStatusCode.Unauthorized && requiresSession && !relogged)
                 {
                     // Sessão expirou ou o equipamento reiniciou: descarta e tenta de novo com login novo.
                     response.Dispose();
                     Interlocked.CompareExchange(ref _session, null, session);
+                    relogged = true;
                     scope.Relogin();
                     continue;
                 }
 
                 if (!response.IsSuccessStatusCode)
                 {
+                    if (retries < maxRetries && ReadRetry.IsTransient(response.StatusCode))
+                    {
+                        var status = ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                        response.Dispose();
+                        retries++;
+                        scope.Retry(retries, status);
+                        await ReadRetry.WaitAsync(_options.RetryDelay, retries, cancellationToken).ConfigureAwait(false);
+                        continue;
+                    }
+
                     using (response)
                     {
                         var text = await ReadAsStringAsync(response, cancellationToken).ConfigureAwait(false);
