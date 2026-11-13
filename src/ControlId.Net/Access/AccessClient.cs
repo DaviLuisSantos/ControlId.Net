@@ -42,8 +42,14 @@ public sealed class AccessClient : IAccessClient
 
     /// <summary>Cria o cliente. Se <paramref name="httpClient"/> for informado (ex.: via IHttpClientFactory), ele não é descartado por este cliente.</summary>
     public AccessClient(ControlIdDeviceOptions options, HttpClient? httpClient = null)
+        : this(options, null, httpClient)
     {
-        _transport = new ControlIdTransport(options, httpClient);
+    }
+
+    // Usado pelo pacote de DI: o ILoggerFactory do contêiner vale só se as opções não trouxerem o seu.
+    internal AccessClient(ControlIdDeviceOptions options, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory, HttpClient? httpClient)
+    {
+        _transport = new ControlIdTransport(options, httpClient, loggerFactory);
         _baseAddress = options.BaseAddress;
     }
 
