@@ -36,6 +36,12 @@ public sealed class ControlIdRepOptions
     /// <summary>Portaria usada nas chamadas que suportam modo. Padrão: <see cref="RepMode.Portaria671"/>.</summary>
     public RepMode Mode { get; set; } = RepMode.Portaria671;
 
+    /// <inheritdoc cref="ControlIdDeviceOptions.ReadRetries"/>
+    public int ReadRetries { get; set; }
+
+    /// <inheritdoc cref="ControlIdDeviceOptions.RetryDelay"/>
+    public TimeSpan RetryDelay { get; set; } = TimeSpan.FromMilliseconds(200);
+
     internal ControlIdDeviceOptions ToDeviceOptions() => new()
     {
         BaseAddress = BaseAddress,
@@ -45,5 +51,7 @@ public sealed class ControlIdRepOptions
         AcceptAnyServerCertificate = AcceptAnyServerCertificate,
         ServerCertificateSha256 = ServerCertificateSha256,
         MaxConcurrentRequests = MaxConcurrentRequests,
+        ReadRetries = ReadRetries,
+        RetryDelay = RetryDelay,
     };
 }
