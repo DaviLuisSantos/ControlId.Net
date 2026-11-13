@@ -151,6 +151,91 @@ public class AfdParserEdgeCaseTests
     }
 
     [Fact]
+    public void Matches_DateTime_TryParseExact_on_random_dates()
+    {
+        // Oráculo: as regras que o parser seguia com DateTime.TryParseExact, comparadas em datas e horas aleatórias, quase
+        // todas no limite (dia 28 a 31, hora 23 a 24, minuto 59 a 60...) ou com um caractere trocado.
+        var random = new Random(671);
+        const string Chars = "0123456789-T:+ x";
+        for (var i = 0; i < 20_000; i++)
+        {
+            var dateTime =
+                $"{random.Next(0, 10000):D4}-{random.Next(0, 14):D2}-{random.Next(26, 33):D2}T" +
+                $"{random.Next(21, 25):D2}:{random.Next(57, 61):D2}:{random.Next(57, 61):D2}" +
+                $"{(random.Next(3) == 0 ? '+' : '-')}{random.Next(0, 15):D2}{random.Next(0, 60):D2}";
+            if (random.Next(4) == 0)
+            {
+                var position = random.Next(dateTime.Length);
+                dateTime = dateTime.Substring(0, position) + Chars[random.Next(Chars.Length)] + dateTime.Substring(position + 1);
+            }
+
+            var record = AfdParser.ParseLine(Punch671(dateTime));
+
+            // Sem os separadores do 671, a linha é lida no leiaute 1510 (ddMMyyyy), que recusa os 8 primeiros caracteres.
+            if (dateTime[4] != '-' || dateTime[7] != '-' || dateTime[10] != 'T')
+            {
+                Assert.Equal($"Data/hora inválida na posição 11: '{dateTime.Substring(0, 8)}'.", Assert.IsType<AfdInvalidRecord>(record).Error);
+                continue;
+            }
+
+            var expectedValid = DateTime.TryParseExact(
+                dateTime.Substring(0, 19), "yyyy-MM-dd'T'HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var expectedTime);
+            var offsetValid = dateTime[19] is '+' or '-' && dateTime.Substring(20, 4).All(char.IsDigit);
+
+            if (expectedValid && offsetValid)
+            {
+                var punch = Assert.IsType<AfdPunch>(record);
+                Assert.Equal(expectedTime, punch.Time);
+                var offset = new TimeSpan(int.Parse(dateTime.Substring(20, 2)), int.Parse(dateTime.Substring(22, 2)), 0);
+                Assert.Equal(dateTime[19] == '-' ? offset.Negate() : offset, punch.UtcOffset);
+            }
+            else
+            {
+                var invalid = Assert.IsType<AfdInvalidRecord>(record);
+                Assert.Equal(
+                    expectedValid
+                        ? $"Fuso horário inválido na posição 30: '{dateTime.Substring(19)}'."
+                        : $"Data/hora inválida na posição 11: '{dateTime.Substring(0, 19)}'.",
+                    invalid.Error);
+            }
+        }
+    }
+
+    [Fact]
+    public void Table_crc_matches_the_bitwise_definition()
+    {
+        // A definição do CRC-16/KERMIT, bit a bit, como referência para a versão com tabela.
+        static ushort Reference(string text)
+        {
+            ushort crc = 0;
+            foreach (var c in text)
+            {
+                crc ^= c <= 0xFF ? c : '?';
+                for (var bit = 0; bit < 8; bit++)
+                {
+                    crc = (crc & 1) != 0 ? (ushort)((crc >> 1) ^ 0x8408) : (ushort)(crc >> 1);
+                }
+            }
+
+            return crc;
+        }
+
+        var random = new Random(16);
+        for (var i = 0; i < 5_000; i++)
+        {
+            var chars = new char[random.Next(0, 120)];
+            for (var j = 0; j < chars.Length; j++)
+            {
+                chars[j] = random.Next(10) == 0 ? (char)random.Next(0x100, 0x3000) : (char)random.Next(0, 0x100);
+            }
+
+            var text = new string(chars);
+            Assert.Equal(Reference(text), AfdCrc16.Compute(text));
+        }
+    }
+
+    [Fact]
     public void Treats_a_line_without_a_numeric_nsr_as_the_signature()
     {
         var signature = Assert.IsType<AfdSignature>(AfdParser.ParseLine("MIIBASSINATURA    "));

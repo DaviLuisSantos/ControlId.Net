@@ -17,18 +17,43 @@ public static class AfdCrc16
             throw new ArgumentNullException(nameof(text));
         }
 
+        return Compute(text, 0, text.Length);
+    }
+
+    /// <summary>CRC de um trecho de <paramref name="text"/>, sem copiá-lo (o parser calcula sobre a linha inteira).</summary>
+    internal static ushort Compute(string text, int start, int length)
+    {
         ushort crc = 0;
-        foreach (var c in text)
+        var end = start + length;
+        for (var i = start; i < end; i++)
         {
             // ISO-8859-1: cada caractere é um byte com o mesmo código. Fora dessa faixa, usa '?' como o encoder faria.
-            crc ^= c <= 0xFF ? c : '?';
+            var c = text[i];
+            var b = c <= 0xFF ? c : '?';
+            crc = (ushort)((crc >> 8) ^ Table[(crc ^ b) & 0xFF]);
+        }
+
+        return crc;
+    }
+
+    // CRC-16/KERMIT (polinômio 0x1021 refletido = 0x8408): a tabela troca os 8 passos por bit de cada byte por uma consulta.
+    private static readonly ushort[] Table = BuildTable();
+
+    private static ushort[] BuildTable()
+    {
+        var table = new ushort[256];
+        for (var i = 0; i < 256; i++)
+        {
+            var crc = (ushort)i;
             for (var bit = 0; bit < 8; bit++)
             {
                 crc = (crc & 1) != 0 ? (ushort)((crc >> 1) ^ 0x8408) : (ushort)(crc >> 1);
             }
+
+            table[i] = crc;
         }
 
-        return crc;
+        return table;
     }
 
     /// <summary>CRC em 4 dígitos hexadecimais maiúsculos, como gravado no AFD.</summary>

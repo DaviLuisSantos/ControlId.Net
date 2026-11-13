@@ -29,7 +29,8 @@ API numa biblioteca tipada, assíncrona e pronta para injeção de dependência,
 - **Integrações em tempo real.** Monitor (webhooks), Push (fila de comandos para equipamentos atrás de NAT) e modo online
   (o seu servidor autoriza cada acesso) como rotas do ASP.NET Core numa linha.
 - **Conformidade com a legislação.** Parser em streaming do AFD da Portaria 671/2021 e da 1510/2009, com validação de
-  CRC-16/KERMIT, que não para numa linha corrompida.
+  CRC-16/KERMIT, que não para numa linha corrompida e lê 100 mil marcações em cerca de 20 ms
+  ([benchmarks](benchmarks/README.md)).
 - **Seguro por padrão.** Operações destrutivas exigem `DataLossConfirmation.Confirmed`; certificado fixado por SHA-256
   opcional para os certificados autoassinados dos equipamentos; limite de requisições simultâneas por equipamento,
   dimensionado com medições em equipamento real.
@@ -147,6 +148,7 @@ as notificações do Monitor, reproduzindo as divergências do firmware que o SD
 | CI | A cada push e pull request: build sem avisos, três alvos no Linux e no Windows, resumo de cobertura |
 | Governança da API | API pública registrada em `PublicAPI.*.txt`; o `dotnet pack` falha numa quebra não declarada em relação à última versão |
 | Cadeia de suprimentos | Trusted Publishing no NuGet (OIDC, sem chave guardada), SBOM CycloneDX, atestação de proveniência, builds determinísticos, SourceLink |
+| Desempenho | [BenchmarkDotNet](benchmarks/README.md): o parser de AFD ficou 6,5× mais rápido e aloca 59% menos, protegido por testes de borda e diferenciais |
 | Análise estática | Regras `latest-recommended` do .NET sem nenhum aviso, nullable em todo o código |
 | Decisões | [Registros de decisão de arquitetura](docs/adr/README.md) para as escolhas de projeto importantes |
 | Segurança | [Relato privado de vulnerabilidades](SECURITY.md) e orientações de uso seguro |
@@ -162,6 +164,7 @@ as notificações do Monitor, reproduzindo as divergências do firmware que o SD
 - [x] Health checks de todos os equipamentos registrados
 - [x] Novas tentativas em comandos de leitura (nunca em comandos que alteram o equipamento)
 - [ ] Circuit breaker por equipamento
+- [x] Benchmarks do parser de AFD
 - [ ] Suporte a Native AOT e trimming
 - [ ] Sample de dashboard em tempo real (Blazor + SignalR)
 
