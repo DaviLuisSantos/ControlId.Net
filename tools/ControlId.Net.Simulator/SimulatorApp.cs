@@ -17,16 +17,38 @@ public static class SimulatorApp
             builder.Services.PostConfigure(configure);
         }
 
-        builder.Services.AddSingleton<DeviceState>();
-        builder.Services.AddSingleton<MonitorDispatcher>();
-        builder.Services.AddHostedService(sp => sp.GetRequiredService<MonitorDispatcher>());
-        builder.Services.AddHttpClient(nameof(MonitorDispatcher), c => c.Timeout = TimeSpan.FromSeconds(5));
+        // O tipo decide quais serviços e rotas existem; por isso as opções são lidas já aqui.
+        var options = new SimulatorOptions();
+        builder.Configuration.GetSection("Simulator").Bind(options);
+        configure?.Invoke(options);
+        var rep = options.IsRep();
+
+        if (rep)
+        {
+            builder.Services.AddSingleton<RepState>();
+        }
+        else
+        {
+            builder.Services.AddSingleton<DeviceState>();
+            builder.Services.AddSingleton<MonitorDispatcher>();
+            builder.Services.AddHostedService(sp => sp.GetRequiredService<MonitorDispatcher>());
+            builder.Services.AddHttpClient(nameof(MonitorDispatcher), c => c.Timeout = TimeSpan.FromSeconds(5));
+        }
+
         builder.Services.AddHealthChecks();
 
         var app = builder.Build();
 
-        app.MapAccessApi();
-        app.MapSimulatorControl();
+        if (rep)
+        {
+            app.MapRepApi();
+        }
+        else
+        {
+            app.MapAccessApi();
+            app.MapSimulatorControl();
+        }
+
         app.MapHealthChecks("/health");
         app.MapGet("/", () => Results.Redirect("/simulator/state"));
 
