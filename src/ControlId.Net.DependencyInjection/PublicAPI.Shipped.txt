@@ -1,5 +1,13 @@
 #nullable enable
 ControlId.DependencyInjection.ControlIdClientFactoryExtensions
+ControlId.DependencyInjection.ControlIdHealthCheckOptions
+ControlId.DependencyInjection.ControlIdHealthCheckOptions.ControlIdHealthCheckOptions() -> void
+ControlId.DependencyInjection.ControlIdHealthCheckOptions.MaxParallelism.get -> int
+ControlId.DependencyInjection.ControlIdHealthCheckOptions.MaxParallelism.set -> void
+ControlId.DependencyInjection.ControlIdHealthCheckOptions.SlowThreshold.get -> System.TimeSpan
+ControlId.DependencyInjection.ControlIdHealthCheckOptions.SlowThreshold.set -> void
+ControlId.DependencyInjection.ControlIdHealthCheckOptions.Timeout.get -> System.TimeSpan
+ControlId.DependencyInjection.ControlIdHealthCheckOptions.Timeout.set -> void
 ControlId.DependencyInjection.ControlIdRepOptions
 ControlId.DependencyInjection.ControlIdRepOptions.AcceptAnyServerCertificate.get -> bool
 ControlId.DependencyInjection.ControlIdRepOptions.AcceptAnyServerCertificate.set -> void
@@ -14,6 +22,10 @@ ControlId.DependencyInjection.ControlIdRepOptions.Mode.get -> ControlId.Rep.RepM
 ControlId.DependencyInjection.ControlIdRepOptions.Mode.set -> void
 ControlId.DependencyInjection.ControlIdRepOptions.Password.get -> string!
 ControlId.DependencyInjection.ControlIdRepOptions.Password.set -> void
+ControlId.DependencyInjection.ControlIdRepOptions.ReadRetries.get -> int
+ControlId.DependencyInjection.ControlIdRepOptions.ReadRetries.set -> void
+ControlId.DependencyInjection.ControlIdRepOptions.RetryDelay.get -> System.TimeSpan
+ControlId.DependencyInjection.ControlIdRepOptions.RetryDelay.set -> void
 ControlId.DependencyInjection.ControlIdRepOptions.ServerCertificateSha256.get -> string?
 ControlId.DependencyInjection.ControlIdRepOptions.ServerCertificateSha256.set -> void
 ControlId.DependencyInjection.ControlIdRepOptions.Timeout.get -> System.TimeSpan
@@ -24,6 +36,7 @@ ControlId.DependencyInjection.IControlIdClientFactory.GetAccessClient(string! na
 ControlId.DependencyInjection.IControlIdClientFactory.GetRepClient(string! name = "") -> ControlId.Rep.IRepClient!
 ControlId.DependencyInjection.IControlIdClientFactory.RepDeviceNames.get -> System.Collections.Generic.IReadOnlyCollection<string!>!
 Microsoft.Extensions.DependencyInjection.ControlIdDeviceServiceCollectionExtensions
+Microsoft.Extensions.DependencyInjection.ControlIdHealthChecksBuilderExtensions
 static ControlId.DependencyInjection.ControlIdClientFactoryExtensions.RunOnAccessDevicesAsync(this ControlId.DependencyInjection.IControlIdClientFactory! factory, System.Collections.Generic.IEnumerable<string!>! names, System.Func<ControlId.Access.IAccessClient!, System.Threading.CancellationToken, System.Threading.Tasks.Task!>! operation, int maxParallelism = 8, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<ControlId.DeviceResult!>!>!
 static ControlId.DependencyInjection.ControlIdClientFactoryExtensions.RunOnAccessDevicesAsync(this ControlId.DependencyInjection.IControlIdClientFactory! factory, System.Func<ControlId.Access.IAccessClient!, System.Threading.CancellationToken, System.Threading.Tasks.Task!>! operation, int maxParallelism = 8, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<ControlId.DeviceResult!>!>!
 static ControlId.DependencyInjection.ControlIdClientFactoryExtensions.RunOnAccessDevicesAsync<TResult>(this ControlId.DependencyInjection.IControlIdClientFactory! factory, System.Collections.Generic.IEnumerable<string!>! names, System.Func<ControlId.Access.IAccessClient!, System.Threading.CancellationToken, System.Threading.Tasks.Task<TResult>!>! operation, int maxParallelism = 8, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<ControlId.DeviceResult<TResult>!>!>!
@@ -38,3 +51,4 @@ static Microsoft.Extensions.DependencyInjection.ControlIdDeviceServiceCollection
 static Microsoft.Extensions.DependencyInjection.ControlIdDeviceServiceCollectionExtensions.AddControlIdRep(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! name, System.Action<ControlId.DependencyInjection.ControlIdRepOptions!>! configure) -> Microsoft.Extensions.DependencyInjection.IHttpClientBuilder!
 static Microsoft.Extensions.DependencyInjection.ControlIdDeviceServiceCollectionExtensions.AddControlIdRep(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<ControlId.DependencyInjection.ControlIdRepOptions!>! configure) -> Microsoft.Extensions.DependencyInjection.IHttpClientBuilder!
 static Microsoft.Extensions.DependencyInjection.ControlIdDeviceServiceCollectionExtensions.AddControlIdRepDevices(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! section) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Microsoft.Extensions.DependencyInjection.ControlIdHealthChecksBuilderExtensions.AddControlIdDevices(this Microsoft.Extensions.DependencyInjection.IHealthChecksBuilder! builder, System.Action<ControlId.DependencyInjection.ControlIdHealthCheckOptions!>? configure = null, string! name = "controlid", Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus? failureStatus = null, System.Collections.Generic.IEnumerable<string!>? tags = null) -> Microsoft.Extensions.DependencyInjection.IHealthChecksBuilder!

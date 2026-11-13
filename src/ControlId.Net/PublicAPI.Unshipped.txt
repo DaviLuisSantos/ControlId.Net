@@ -1,9 +1,1 @@
 #nullable enable
-ControlId.ControlIdTelemetry
-const ControlId.ControlIdTelemetry.ActivitySourceName = "ControlId.Net" -> string!
-const ControlId.ControlIdTelemetry.MeterName = "ControlId.Net" -> string!
-const ControlId.ControlIdDeviceOptions.MaxReadRetries = 5 -> int
-ControlId.ControlIdDeviceOptions.ReadRetries.get -> int
-ControlId.ControlIdDeviceOptions.ReadRetries.set -> void
-ControlId.ControlIdDeviceOptions.RetryDelay.get -> System.TimeSpan
-ControlId.ControlIdDeviceOptions.RetryDelay.set -> void
