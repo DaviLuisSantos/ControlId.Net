@@ -1,0 +1,102 @@
+:root {
+    --bg: #f4f6f9;
+    --surface: #ffffff;
+    --text: #1c2430;
+    --muted: #6a7585;
+    --border: #e2e7ee;
+    --accent: #1f6feb;
+    --accent-dark: #1857bd;
+    --ok: #1a7f4b;
+    --ok-bg: #e3f5ea;
+    --deny: #b42318;
+    --deny-bg: #fde8e6;
+    --off: #8a5a00;
+    --off-bg: #fff1d6;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.45;
+}
+
+.topbar { background: #14202e; color: #fff; }
+.topbar-inner { max-width: 1100px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: baseline; gap: 12px; }
+.brand { font-weight: 700; font-size: 18px; letter-spacing: .2px; }
+.brand-sub { color: #9fb0c3; font-size: 14px; }
+
+.page { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.mono { font-variant-numeric: tabular-nums; }
+
+.status {
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-bottom: 18px;
+}
+.status-main { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+
+.badge { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 999px; font-weight: 600; font-size: 14px; }
+.badge .dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
+.badge-ok { background: var(--ok-bg); color: var(--ok); }
+.badge-off { background: var(--off-bg); color: var(--off); }
+
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+.card-wide { grid-column: 1 / -1; }
+.card h2 { margin: 0 0 12px; font-size: 16px; }
+
+.door {
+    display: flex; justify-content: space-between; align-items: center;
+    border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; border: 1px solid transparent;
+}
+.door-name { font-weight: 600; }
+.door-state { font-weight: 700; font-size: 18px; }
+.door-closed { background: #eef1f5; border-color: var(--border); color: #43505f; }
+.door-open { background: var(--ok-bg); border-color: #b9e4c9; color: var(--ok); }
+
+.field { display: block; margin-bottom: 12px; }
+.field span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+select {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+    background: #fff; font: inherit; color: inherit;
+}
+
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn {
+    padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: #fff;
+    font: inherit; font-weight: 600; color: var(--text); cursor: pointer;
+}
+.btn:hover:not(:disabled) { background: #f0f3f7; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--accent-dark); }
+
+.message { margin: 12px 0 0; padding: 8px 12px; border-radius: 8px; font-size: 14px; }
+.message-ok { background: var(--ok-bg); color: var(--ok); }
+.message-error { background: var(--deny-bg); color: var(--deny); }
+
+.events { width: 100%; border-collapse: collapse; }
+.events th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--border); }
+.events td { padding: 9px 10px; border-bottom: 1px solid var(--border); }
+.events tbody tr:last-child td { border-bottom: 0; }
+.events tbody tr:first-child { background: #f7faff; }
+
+.pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+.pill-ok { background: var(--ok-bg); color: var(--ok); }
+.pill-deny { background: var(--deny-bg); color: var(--deny); }
+
+.empty { color: var(--muted); padding: 12px 0; margin: 0; }
+
+#blazor-error-ui { display: none; }
+
+@media (max-width: 760px) {
+    .grid { grid-template-columns: minmax(0, 1fr); }
+    .page { padding: 14px; }
+}
