@@ -27,4 +27,11 @@ public static class ControlIdTelemetry
 
     /// <summary>Nome do <see cref="System.Diagnostics.Metrics.Meter"/> (métricas).</summary>
     public const string MeterName = "ControlId.Net";
+
+    /// <summary>
+    /// Categoria dos logs do pacote (<see cref="ControlIdDeviceOptions.LoggerFactory"/>). Serve para filtrar o nível, por
+    /// exemplo <c>"Logging:LogLevel:ControlId.Net": "Warning"</c>. Os logs nunca incluem sessão, login, senha nem o corpo
+    /// das mensagens.
+    /// </summary>
+    public const string LoggerCategory = "ControlId.Net";
 }

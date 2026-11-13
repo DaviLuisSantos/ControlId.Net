@@ -20,8 +20,14 @@ public sealed class RepClient : IRepClient
 
     /// <summary>Cria o cliente. Se <paramref name="httpClient"/> for informado, ele não é descartado por este cliente.</summary>
     public RepClient(ControlIdDeviceOptions options, RepMode mode = RepMode.Portaria671, HttpClient? httpClient = null)
+        : this(options, mode, null, httpClient)
     {
-        _transport = new ControlIdTransport(options, httpClient);
+    }
+
+    // Usado pelo pacote de DI: o ILoggerFactory do contêiner vale só se as opções não trouxerem o seu.
+    internal RepClient(ControlIdDeviceOptions options, RepMode mode, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory, HttpClient? httpClient)
+    {
+        _transport = new ControlIdTransport(options, httpClient, loggerFactory);
         Mode = mode;
     }
 

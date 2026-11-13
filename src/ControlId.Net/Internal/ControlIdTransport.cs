@@ -8,6 +8,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ControlId.Internal;
 
@@ -28,15 +30,22 @@ internal sealed class ControlIdTransport : IDisposable
 
     // server.address e server.port do equipamento, nos spans e nas métricas.
     private readonly System.Collections.Generic.KeyValuePair<string, object?>[] _deviceTags;
+    private readonly ILogger _logger;
+    private readonly string _device;
     private string? _session;
 
     // Cópia própria: change_login atualiza estas credenciais sem alterar o objeto de opções do chamador.
     private volatile Credentials _credentials;
 
-    public ControlIdTransport(ControlIdDeviceOptions options, HttpClient? httpClient = null)
+    public ControlIdTransport(ControlIdDeviceOptions options, HttpClient? httpClient = null, ILoggerFactory? fallbackLoggerFactory = null)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _options.Validate();
+
+        // A fábrica das opções vence a do contêiner (DI); sem nenhuma, não há log.
+        var loggerFactory = options.LoggerFactory ?? fallbackLoggerFactory;
+        _logger = loggerFactory?.CreateLogger(ControlIdTelemetry.LoggerCategory) ?? NullLogger.Instance;
+        _device = options.BaseAddress.Authority;
         _credentials = new Credentials(options.Login, options.Password);
         _deviceTags = Telemetry.DeviceTags(options.BaseAddress);
         _throttle = new RequestSlots(options.MaxConcurrentRequests, _deviceTags);
@@ -167,12 +176,14 @@ internal sealed class ControlIdTransport : IDisposable
             catch (HttpRequestException ex)
             {
                 _throttle.Release();
+                Log.CommunicationFailed(_logger, _device, scope.Command, ex);
                 failure = new ControlIdException($"Falha de comunicação com {_options.BaseAddress} ao chamar '{endpoint}'.", innerException: ex);
                 response = null!;
             }
             catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
             {
                 _throttle.Release();
+                Log.CommunicationFailed(_logger, _device, scope.Command, ex);
                 failure = new ControlIdException($"Timeout ao chamar '{endpoint}' em {_options.BaseAddress}.", innerException: ex);
                 response = null!;
             }
@@ -188,6 +199,7 @@ internal sealed class ControlIdTransport : IDisposable
                 {
                     retries++;
                     scope.Retry(retries, failure.InnerException!.GetType().Name);
+                    Log.Retrying(_logger, _device, scope.Command, retries, failure.InnerException!.GetType().Name);
                     await ReadRetry.WaitAsync(_options.RetryDelay, retries, cancellationToken).ConfigureAwait(false);
                     continue;
                 }
@@ -202,6 +214,7 @@ internal sealed class ControlIdTransport : IDisposable
                 Interlocked.CompareExchange(ref _session, null, session);
                 relogged = true;
                 scope.Relogin();
+                Log.SessionExpired(_logger, _device, scope.Command);
                 continue;
             }
 
@@ -212,6 +225,7 @@ internal sealed class ControlIdTransport : IDisposable
                 _throttle.Release();
                 retries++;
                 scope.Retry(retries, status);
+                Log.Retrying(_logger, _device, scope.Command, retries, status);
                 await ReadRetry.WaitAsync(_options.RetryDelay, retries, cancellationToken).ConfigureAwait(false);
                 continue;
             }
@@ -300,7 +314,9 @@ internal sealed class ControlIdTransport : IDisposable
                 {
                     // Leitura que falhou na rede ou estourou o prazo: espera e repete (ADR 0013).
                     retries++;
-                    scope.Retry(retries, ex.InnerException?.GetType().Name ?? "network");
+                    var reason = ex.InnerException?.GetType().Name ?? "network";
+                    scope.Retry(retries, reason);
+                    Log.Retrying(_logger, _device, scope.Command, retries, reason);
                     await ReadRetry.WaitAsync(_options.RetryDelay, retries, cancellationToken).ConfigureAwait(false);
                     continue;
                 }
@@ -312,6 +328,7 @@ internal sealed class ControlIdTransport : IDisposable
                     Interlocked.CompareExchange(ref _session, null, session);
                     relogged = true;
                     scope.Relogin();
+                    Log.SessionExpired(_logger, _device, scope.Command);
                     continue;
                 }
 
@@ -323,6 +340,7 @@ internal sealed class ControlIdTransport : IDisposable
                         response.Dispose();
                         retries++;
                         scope.Retry(retries, status);
+                        Log.Retrying(_logger, _device, scope.Command, retries, status);
                         await ReadRetry.WaitAsync(_options.RetryDelay, retries, cancellationToken).ConfigureAwait(false);
                         continue;
                     }
@@ -394,6 +412,7 @@ internal sealed class ControlIdTransport : IDisposable
 
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
         {
+            Log.LoginRefused(_logger, _device, (int)response.StatusCode);
             throw new ControlIdAuthenticationException("Login recusado pelo equipamento. Verifique usuário e senha.", response.StatusCode, text);
         }
 
@@ -414,6 +433,7 @@ internal sealed class ControlIdTransport : IDisposable
             throw new ControlIdAuthenticationException("O equipamento não retornou uma sessão.", response.StatusCode, text);
         }
 
+        Log.LoginSucceeded(_logger, _device);
         return parsed!.Session!;
     }
 
@@ -454,10 +474,12 @@ internal sealed class ControlIdTransport : IDisposable
         }
         catch (HttpRequestException ex)
         {
+            Log.CommunicationFailed(_logger, _device, Telemetry.CommandName(endpoint), ex);
             throw new ControlIdException($"Falha de comunicação com {_options.BaseAddress} ao chamar '{endpoint}'.", innerException: ex);
         }
         catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
+            Log.CommunicationFailed(_logger, _device, Telemetry.CommandName(endpoint), ex);
             throw new ControlIdException($"Timeout ao chamar '{endpoint}' em {_options.BaseAddress}.", innerException: ex);
         }
         finally
@@ -486,7 +508,7 @@ internal sealed class ControlIdTransport : IDisposable
 #endif
     }
 
-    private static void EnsureSuccess(HttpResponseMessage response, string endpoint, string body)
+    private void EnsureSuccess(HttpResponseMessage response, string endpoint, string body)
     {
         if (response.IsSuccessStatusCode)
         {
@@ -510,6 +532,7 @@ internal sealed class ControlIdTransport : IDisposable
             ? $"'{endpoint}' falhou com HTTP {(int)response.StatusCode}."
             : $"'{endpoint}' falhou com HTTP {(int)response.StatusCode}: {deviceMessage}";
 
+        Log.DeviceError(_logger, _device, Telemetry.CommandName(endpoint), (int)response.StatusCode, deviceCode, deviceMessage);
         throw new ControlIdException(message, response.StatusCode, deviceCode, body);
     }
 

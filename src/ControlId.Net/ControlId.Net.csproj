@@ -18,6 +18,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- ILogger: logs estruturados via ControlIdDeviceOptions.LoggerFactory. Traz também o gerador de LoggerMessage. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.15" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="ControlId.Net.Tests" />
     <InternalsVisibleTo Include="ControlId.Net.DependencyInjection" />
   </ItemGroup>

@@ -1,1 +1,4 @@
 #nullable enable
+const ControlId.ControlIdTelemetry.LoggerCategory = "ControlId.Net" -> string!
+ControlId.ControlIdDeviceOptions.LoggerFactory.get -> Microsoft.Extensions.Logging.ILoggerFactory?
+ControlId.ControlIdDeviceOptions.LoggerFactory.set -> void

@@ -73,6 +73,14 @@ public sealed class ControlIdDeviceOptions
     /// </summary>
     public TimeSpan RetryDelay { get; set; } = TimeSpan.FromMilliseconds(200);
 
+    /// <summary>
+    /// Fábrica de logs do <c>Microsoft.Extensions.Logging</c>. Padrão: <c>null</c> (nenhum log). O cliente cria um logger com
+    /// a categoria <see cref="ControlIdTelemetry.LoggerCategory"/> e registra login, sessão expirada, novas tentativas e
+    /// erros do equipamento, sem expor sessão, login, senha nem o corpo das mensagens. No pacote de DI, se não for
+    /// informada aqui, vale a <c>ILoggerFactory</c> do contêiner.
+    /// </summary>
+    public Microsoft.Extensions.Logging.ILoggerFactory? LoggerFactory { get; set; }
+
     internal void Validate()
     {
         if (MaxConcurrentRequests < 1)
