@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker-net/master/src/Stryker.Core/Stryker.Core/stryker-config.schema.json",
+  "stryker-config": {
+    "project": "ControlId.Net.csproj",
+    "target-framework": "net8.0",
+    "reporters": ["html", "json", "progress"],
+    "thresholds": { "high": 80, "low": 60, "break": 0 },
+    "ignore-mutations": ["string"]
+  }
+}

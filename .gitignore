@@ -15,3 +15,7 @@ BenchmarkDotNet.Artifacts/
 
 # Configuração pessoal do Claude Code
 .claude/settings.local.json
+
+# Stryker.NET e cobertura
+StrykerOutput/
+coverage/
