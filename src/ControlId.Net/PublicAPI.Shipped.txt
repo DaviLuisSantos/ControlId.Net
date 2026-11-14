@@ -2667,3 +2667,6 @@ static ControlId.Rep.Afd.AfdParser.Parse(string! text) -> ControlId.Rep.Afd.AfdF
 static ControlId.Rep.Afd.AfdParser.Parse(System.IO.Stream! stream, System.Text.Encoding? encoding = null) -> ControlId.Rep.Afd.AfdFile!
 static ControlId.Rep.Afd.AfdParser.ParseLine(string! line, int lineNumber = 1) -> ControlId.Rep.Afd.AfdRecord!
 static ControlId.Rep.Afd.AfdParser.ReadRecords(System.IO.TextReader! reader) -> System.Collections.Generic.IEnumerable<ControlId.Rep.Afd.AfdRecord!>!
+const ControlId.ControlIdTelemetry.LoggerCategory = "ControlId.Net" -> string!
+ControlId.ControlIdDeviceOptions.LoggerFactory.get -> Microsoft.Extensions.Logging.ILoggerFactory?
+ControlId.ControlIdDeviceOptions.LoggerFactory.set -> void
