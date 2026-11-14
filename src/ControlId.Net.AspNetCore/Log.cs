@@ -17,4 +17,7 @@ internal static partial class Log
 
     [LoggerMessage(EventId = 2004, Level = LogLevel.Warning, Message = "new_rex_log inválido.")]
     public static partial void InvalidExitButton(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 2005, Level = LogLevel.Warning, Message = "Callback {Route} recusado por token Bearer ausente ou inválido (equipamento {DeviceId}).")]
+    public static partial void CallbackUnauthorized(ILogger logger, string route, long? deviceId);
 }

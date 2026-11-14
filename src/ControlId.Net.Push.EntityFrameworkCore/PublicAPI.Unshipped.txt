@@ -1,0 +1,5 @@
+#nullable enable
+ControlId.Push.EntityFrameworkCore.ModelBuilderExtensions
+ControlId.Push.EntityFrameworkCore.ServiceCollectionExtensions
+static ControlId.Push.EntityFrameworkCore.ModelBuilderExtensions.ApplyControlIdPush(this Microsoft.EntityFrameworkCore.ModelBuilder! modelBuilder, string! table = "controlid_push_commands", string? schema = null) -> Microsoft.EntityFrameworkCore.ModelBuilder!
+static ControlId.Push.EntityFrameworkCore.ServiceCollectionExtensions.AddControlIdPushEntityFrameworkStore<TContext>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
