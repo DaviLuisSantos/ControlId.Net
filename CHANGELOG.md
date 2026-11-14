@@ -4,6 +4,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+## [0.8.0-alpha.1] - 2026-11-14
+
 Fase 3, produção: circuit breaker, health check por equipamento, token nos callbacks e fila de Push durável.
 
 ### Added
@@ -208,7 +210,8 @@ Cobertura completa da documentação pública da API de acesso (veja [docs/COBER
 - `RepClient.GetAfdFileFromNsrAsync`/`GetAfdFileFromDateAsync`/`GetAfdFileAsync` devolvem o AFD interpretado.
 - `RepClient` (REP iDClass): about, informações do sistema, data/hora, usuários (PIS/CPF) e download de AFD (incluindo modo Portaria 671).
 
-[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.7.0-alpha.1...HEAD
+[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.8.0-alpha.1...HEAD
+[0.8.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.7.0-alpha.1...v0.8.0-alpha.1
 [0.7.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.6.0-alpha.1...v0.7.0-alpha.1
 [0.6.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.5.0-alpha.1...v0.6.0-alpha.1
 [0.5.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.3-alpha.1...v0.5.0-alpha.1
