@@ -222,9 +222,16 @@ internal static class SimulatorTiming
         var slice = TimeSpan.FromMilliseconds(100);
         try
         {
-            while (watch.Elapsed < total && !cancellationToken.IsCancellationRequested)
+            while (!cancellationToken.IsCancellationRequested)
             {
+                // Lê o relógio uma vez só: entre duas leituras o prazo pode vencer, e um atraso negativo faz o
+                // Task.Delay lançar ArgumentOutOfRangeException, o que derrubava o BackgroundService e o host inteiro.
                 var remaining = total - watch.Elapsed;
+                if (remaining <= TimeSpan.Zero)
+                {
+                    return;
+                }
+
                 await Task.Delay(remaining < slice ? remaining : slice, cancellationToken);
                 if (changed())
                 {
