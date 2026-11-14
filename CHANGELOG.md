@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+## [0.7.0-alpha.1] - 2026-11-13
+
+Logs estruturados, simulador do REP iDClass com Push e modo online, dashboard em tempo real, site de documentação, teste de mutação e avaliação de Native AOT.
+
 ### Added
 - **Logs estruturados**: `ControlIdDeviceOptions.LoggerFactory` (e no REP) e o `ILoggerFactory` do container de DI alimentam o `ILogger` com categoria `ControlId.Net` e `LoggerMessage` gerado. EventIds 1001-1006 no núcleo e 2001-2004 no ASP.NET Core; sessão, login, senha e corpo nunca são registrados ([ADR 0016](docs/adr/0016-logs-por-options.md), [guia](docs/guia.md#logs)).
 - **Simulador**: modo REP iDClass (`--Simulator:Kind=Rep`, `POST /simulator/punch`), Push (o simulador consulta `/push` e responde em `/result`) e modo online (consulta `new_user_identified.fcgi` e `new_card.fcgi`).
@@ -188,7 +192,8 @@ Cobertura completa da documentação pública da API de acesso (veja [docs/COBER
 - `RepClient.GetAfdFileFromNsrAsync`/`GetAfdFileFromDateAsync`/`GetAfdFileAsync` devolvem o AFD interpretado.
 - `RepClient` (REP iDClass): about, informações do sistema, data/hora, usuários (PIS/CPF) e download de AFD (incluindo modo Portaria 671).
 
-[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.6.0-alpha.1...HEAD
+[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.7.0-alpha.1...HEAD
+[0.7.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.6.0-alpha.1...v0.7.0-alpha.1
 [0.6.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.5.0-alpha.1...v0.6.0-alpha.1
 [0.5.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.3-alpha.1...v0.5.0-alpha.1
 [0.4.3-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.4.2-alpha.1...v0.4.3-alpha.1
