@@ -26,7 +26,9 @@ O pacote só faz o que a API do equipamento permite, então a segurança depende
 - **A sessão vai na URL** (`?session=...`), porque é assim que a API do equipamento funciona. Não registre URLs de
   requisição em logs que outras pessoas leiam.
 - **Proteja as rotas do servidor.** `MapControlIdPush`, `MapControlIdMonitor` e `MapControlIdOnline` não exigem
-  autenticação por padrão; restrinja por rede ou encadeie `RequireAuthorization`/`RequireHost` no grupo devolvido.
+  autenticação por padrão; encadeie `RequireControlIdToken` (token Bearer, gravado no equipamento com
+  `ConfigureCallbackSecurityAsync`; seção e formato no equipamento a validar), e restrinja por rede ou com
+  `RequireAuthorization`/`RequireHost` no grupo devolvido.
 - **Operações destrutivas** (reset de fábrica, apagar administradores, apagar todas as fotos ou templates) exigem
   `DataLossConfirmation.Confirmed`.
 - **Biometria e fotos são dados pessoais sensíveis** (LGPD, art. 11). Evite guardar templates e fotos fora do

@@ -747,6 +747,63 @@ O resultado de cada equipamento vai nos dados do health check (`access:portaria`
 Um equipamento travado não segura os outros: o prazo vale para cada um. O `samples/ControlId.Net.Server` mostra uma
 resposta em JSON com esses dados.
 
+### Um check por equipamento e último contato
+
+`AddControlIdDeviceChecks` registra um health check por equipamento (`controlid:access:portaria`), então dá para ver qual
+caiu. Com Push, Monitor ou modo online, as rotas do `ControlId.Net.AspNetCore` registram o último contato de cada
+equipamento (`DeviceContactTracker`), e `MaxContactAge` degrada o equipamento cujo último contato passou da idade
+máxima. Só degrada quem tem contato registrado e vencido; sem contato registrado vale a leitura ativa.
+
+```csharp
+builder.Services.AddHealthChecks().AddControlIdDeviceChecks(o => o.MaxContactAge = TimeSpan.FromMinutes(5));
+```
+
+## Circuit breaker
+
+Um equipamento fora do ar faz cada chamada esperar o timeout. Com o circuit breaker, depois de N falhas seguidas (rede,
+timeout ou HTTP 5xx) as chamadas seguintes falham na hora com `ControlIdCircuitOpenException` (`RetryAfter` diz quando
+tentar de novo), sem tocar na rede. Passado o tempo, uma chamada de teste decide se fecha. Desligado por padrão ([ADR 0017](adr/0017-circuit-breaker-proprio.md)).
+
+```csharp
+var opcoes = new ControlIdDeviceOptions
+{
+    CircuitBreakerFailureThreshold = 5,                       // 0 desliga (padrão); máximo 100
+    CircuitBreakerBreakDuration = TimeSpan.FromSeconds(30),
+};
+// client.CircuitState: Closed, Open ou HalfOpen
+```
+
+## Token nas rotas de callback
+
+Para que só o equipamento poste em Push, Monitor e modo online, exija um token Bearer e grave o mesmo token no equipamento
+([ADR 0019](adr/0019-token-bearer-nos-callbacks.md)):
+
+```csharp
+app.MapControlIdPush().RequireControlIdToken("segredo-longo");
+app.MapControlIdMonitor().RequireControlIdToken(o => o.DeviceToken = id => tokens.Get(id));   // um token por equipamento
+
+await device.ConfigureCallbackSecurityAsync("segredo-longo");   // grava o token (e, se informado, o certificado fixado)
+```
+
+Sem token ou com token errado a rota responde 401. O nome da seção e o formato do token e do certificado no equipamento
+ainda estão **a validar** em hardware; o parâmetro `section` (padrão `general`) permite ajustar.
+
+## Fila de Push durável
+
+Por padrão a fila fica em memória e some se o servidor reiniciar. O pacote `ControlId.Net.Push.EntityFrameworkCore`
+(`net10.0`) guarda a fila no seu `DbContext` ([ADR 0020](adr/0020-fila-de-push-duravel.md)):
+
+```csharp
+protected override void OnModelCreating(ModelBuilder mb) => mb.ApplyControlIdPush();   // tabela controlid_push_commands
+
+builder.Services.AddControlIdPushEntityFrameworkStore<MeuDbContext>();
+builder.Services.AddControlIdPushResultHandler<MeuHandler>();   // IPushResultHandler: resultados sem tarefa esperando
+```
+
+O comando é serializado ao enfileirar: alterar o `Body` depois de enfileirar não tem mais efeito. Um comando órfão
+(resultado que não voltou) sem tarefa esperando é reportado ao `IPushResultHandler` com `Error` e nunca reenviado.
+Dá para implementar o seu `IPushCommandStore` para outro banco.
+
 ## Erros
 
 | Exceção | Quando |

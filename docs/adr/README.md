@@ -21,3 +21,7 @@ muda; ela ganha o status "Substituída" e aponta para a nova.
 | [0014](0014-manter-alvo-net8.md) | Manter o alvo net8.0 depois do fim do suporte ao .NET 8 | Aceita |
 | [0015](0015-native-aot.md) | Avaliar Native AOT sem declarar compatibilidade | Aceita |
 | [0016](0016-logs-por-options.md) | Logs pelo ILoggerFactory, escolhido nas options ou no container | Aceita |
+| [0017](0017-circuit-breaker-proprio.md) | Circuit breaker próprio por equipamento | Aceita |
+| [0018](0018-health-check-por-equipamento.md) | Health check por equipamento, com último contato | Aceita |
+| [0019](0019-token-bearer-nos-callbacks.md) | Token Bearer nas rotas de callback | Aceita |
+| [0020](0020-fila-de-push-duravel.md) | Fila de Push durável (`IPushCommandStore`) | Aceita |
