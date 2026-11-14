@@ -168,5 +168,5 @@ Uma branch por onda (`roadmap/onda-<n>`), PR com a CI verde e merge (rebase) ant
 - [x] Gravar um GIF do dashboard e colocar no README (`docs/images/dashboard.gif`).
 - [x] Opcional: instalar a carga de trabalho C++ do Visual Studio e gerar o binário nativo da sonda `tools/ControlId.Net.AotProbe` (gerado: 5,7 MB; o AFD roda e o JSON falha por reflexão, como previsto; ADR 0015 atualizada).
 - [x] Acompanhar o teste `PushOnlineEndToEndTests.Executes_a_batch_of_commands_and_reports_each_result`: causa encontrada e corrigida (`SimulatorTiming.WaitAsync` calculava atraso negativo, o `Task.Delay` lançava e a exceção derrubava o simulador; o mesmo erro quebrou o smoke da imagem Docker).
-- [ ] Rodar o workflow `mutation.yml` uma vez na CI (só rodou localmente: 68,08%).
-- [ ] Lançar a 0.7.0-alpha.1 (versão, CHANGELOG, tag, depois base da API), como na 0.6.
+- [x] Rodar o workflow `mutation.yml` uma vez na CI (na CI: 68,13%; localmente: 68,08%).
+- [x] Lançar a 0.7.0-alpha.1 (versão, CHANGELOG, tag, depois base da API), como na 0.6: NuGet, GHCR e release no GitHub publicados; base da API na 0.7.0-alpha.1.
