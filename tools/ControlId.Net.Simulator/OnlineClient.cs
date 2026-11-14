@@ -53,7 +53,9 @@ public sealed class OnlineClient(DeviceState state, IHttpClientFactory httpClien
                 using var content = new FormUrlEncodedContent(fields);
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 timeout.CancelAfter(settings.Timeout);
-                using var response = await http.PostAsync($"{settings.BaseUrl}/{endpoint}.fcgi", content, timeout.Token);
+                using var request = new HttpRequestMessage(HttpMethod.Post, $"{settings.BaseUrl}/{endpoint}.fcgi") { Content = content };
+                CallbackAuth.Apply(request, state);
+                using var response = await http.SendAsync(request, timeout.Token);
                 response.EnsureSuccessStatusCode();
                 var body = await response.Content.ReadAsStringAsync(timeout.Token);
                 if (JsonNode.Parse(body) is JsonObject { } root && root["result"] is JsonObject result)
@@ -94,7 +96,9 @@ public sealed class OnlineClient(DeviceState state, IHttpClientFactory httpClien
                 using var content = new FormUrlEncodedContent([new KeyValuePair<string, string>("device_id", settings.DeviceId.ToString(CultureInfo.InvariantCulture))]);
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
                 timeout.CancelAfter(settings.Timeout);
-                using var response = await http.PostAsync($"{settings.BaseUrl}/device_is_alive.fcgi", content, timeout.Token);
+                using var request = new HttpRequestMessage(HttpMethod.Post, $"{settings.BaseUrl}/device_is_alive.fcgi") { Content = content };
+                CallbackAuth.Apply(request, state);
+                using var response = await http.SendAsync(request, timeout.Token);
             }
             catch (Exception ex) when ((ex is HttpRequestException or TaskCanceledException) && !stoppingToken.IsCancellationRequested)
             {

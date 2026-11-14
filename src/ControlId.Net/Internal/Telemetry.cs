@@ -30,6 +30,15 @@ internal static class Telemetry
     public static readonly UpDownCounter<long> ActiveRequests = Meter.CreateUpDownCounter<long>(
         "controlid.client.requests.active", "{request}", "Requisições em andamento no equipamento.");
 
+    public static readonly Histogram<double> RequestWaitDuration = Meter.CreateHistogram<double>(
+        "controlid.client.request.wait.duration", "s", "Espera de cada requisição por uma vaga no limite por equipamento (MaxConcurrentRequests).");
+
+    public static readonly Counter<long> CircuitTransitions = Meter.CreateCounter<long>(
+        "controlid.client.circuit.transitions", "{transition}", "Mudanças de estado do circuit breaker do equipamento (tag controlid.circuit.state: o novo estado).");
+
+    public static readonly Counter<long> CircuitRejected = Meter.CreateCounter<long>(
+        "controlid.client.circuit.rejected", "{request}", "Requisições recusadas porque o circuit breaker do equipamento está aberto.");
+
     /// <summary>Nome do comando para spans e métricas: sem <c>.fcgi</c> nem query string (baixa cardinalidade).</summary>
     public static string CommandName(string endpoint)
     {
@@ -112,6 +121,7 @@ internal sealed class CommandScope : IDisposable
         _errorType = exception switch
         {
             ControlIdException { StatusCode: { } status } => ((int)status).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ControlIdCircuitOpenException => "circuit_open",
             OperationCanceledException => "canceled",
             _ => exception.GetType().FullName,
         };

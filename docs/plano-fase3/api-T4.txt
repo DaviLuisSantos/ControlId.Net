@@ -1,0 +1,12 @@
+ControlId.Access.DeviceContactSource
+ControlId.Access.DeviceContactSource.Push = 0 -> ControlId.Access.DeviceContactSource
+ControlId.Access.DeviceContactSource.Monitor = 1 -> ControlId.Access.DeviceContactSource
+ControlId.Access.DeviceContactSource.Online = 2 -> ControlId.Access.DeviceContactSource
+ControlId.Access.DeviceContact
+ControlId.Access.DeviceContact.At.get -> System.DateTimeOffset
+ControlId.Access.DeviceContact.Source.get -> ControlId.Access.DeviceContactSource
+ControlId.Access.DeviceContactTracker
+ControlId.Access.DeviceContactTracker.DeviceContactTracker() -> void
+ControlId.Access.DeviceContactTracker.GetAll() -> System.Collections.Generic.IReadOnlyDictionary<long, ControlId.Access.DeviceContact!>!
+ControlId.Access.DeviceContactTracker.GetLastContact(long deviceId) -> ControlId.Access.DeviceContact?
+ControlId.Access.DeviceContactTracker.Record(long deviceId, ControlId.Access.DeviceContactSource source) -> void

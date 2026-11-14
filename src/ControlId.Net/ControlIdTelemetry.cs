@@ -16,8 +16,11 @@ namespace ControlId;
 /// </para>
 /// <para>
 /// Métricas: <c>controlid.client.operation.duration</c> (s), <c>controlid.client.relogins</c>, <c>controlid.client.retries</c>,
-/// <c>controlid.client.requests.queued</c> e <c>controlid.client.requests.active</c>, com <c>server.address</c> e
-/// <c>server.port</c> identificando o equipamento.
+/// <c>controlid.client.requests.queued</c>, <c>controlid.client.requests.active</c>,
+/// <c>controlid.client.request.wait.duration</c> (s, espera por uma vaga do limite por equipamento),
+/// <c>controlid.client.circuit.transitions</c> (tag <c>controlid.circuit.state</c>: <c>open</c>, <c>half_open</c> ou
+/// <c>closed</c>) e <c>controlid.client.circuit.rejected</c>, com <c>server.address</c> e <c>server.port</c> identificando o
+/// equipamento. Uma requisição recusada pelo circuit breaker aberto termina o span com <c>error.type=circuit_open</c>.
 /// </para>
 /// </remarks>
 public static class ControlIdTelemetry

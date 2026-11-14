@@ -28,6 +28,9 @@ internal sealed class ControlIdTransport : IDisposable
     // o _loginLock, então não há espera circular entre os dois.
     private readonly RequestSlots _throttle;
 
+    // Recusa as requisições enquanto o equipamento falha; a porta fica antes do login e antes de _throttle.
+    private readonly CircuitBreaker _circuit;
+
     // server.address e server.port do equipamento, nos spans e nas métricas.
     private readonly System.Collections.Generic.KeyValuePair<string, object?>[] _deviceTags;
     private readonly ILogger _logger;
@@ -49,6 +52,8 @@ internal sealed class ControlIdTransport : IDisposable
         _credentials = new Credentials(options.Login, options.Password);
         _deviceTags = Telemetry.DeviceTags(options.BaseAddress);
         _throttle = new RequestSlots(options.MaxConcurrentRequests, _deviceTags);
+        _circuit = new CircuitBreaker(
+            options.CircuitBreakerFailureThreshold, options.CircuitBreakerBreakDuration, _deviceTags, _logger, _device, options.CircuitClock);
 
         if (httpClient is null)
         {
@@ -67,6 +72,9 @@ internal sealed class ControlIdTransport : IDisposable
 
     /// <summary>Sessão atual, ou <c>null</c> se ainda não logou.</summary>
     public string? Session => Volatile.Read(ref _session);
+
+    /// <summary>Estado do circuit breaker deste equipamento (<c>Closed</c> se estiver desligado).</summary>
+    public ControlIdCircuitState CircuitState => _circuit.State;
 
     public async Task LoginAsync(CancellationToken cancellationToken)
     {
@@ -166,16 +174,28 @@ internal sealed class ControlIdTransport : IDisposable
             var session = await EnsureSessionAsync(cancellationToken).ConfigureAwait(false);
             using var request = BuildRequest(HttpMethod.Post, endpoint, JsonContent(body), session, extraQuery);
 
-            await _throttle.WaitAsync(cancellationToken).ConfigureAwait(false);
+            var probe = _circuit.Acquire();
+            try
+            {
+                await _throttle.WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                _circuit.Cancel(probe);
+                throw;
+            }
+
             HttpResponseMessage response;
             ControlIdException? failure = null;
             try
             {
                 response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                _circuit.Record(response.StatusCode, probe);
             }
             catch (HttpRequestException ex)
             {
                 _throttle.Release();
+                _circuit.Failure(probe);
                 Log.CommunicationFailed(_logger, _device, scope.Command, ex);
                 failure = new ControlIdException($"Falha de comunicação com {_options.BaseAddress} ao chamar '{endpoint}'.", innerException: ex);
                 response = null!;
@@ -183,6 +203,7 @@ internal sealed class ControlIdTransport : IDisposable
             catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
             {
                 _throttle.Release();
+                _circuit.Failure(probe);
                 Log.CommunicationFailed(_logger, _device, scope.Command, ex);
                 failure = new ControlIdException($"Timeout ao chamar '{endpoint}' em {_options.BaseAddress}.", innerException: ex);
                 response = null!;
@@ -190,6 +211,7 @@ internal sealed class ControlIdTransport : IDisposable
             catch
             {
                 _throttle.Release();
+                _circuit.Cancel(probe);
                 throw;
             }
 
@@ -466,21 +488,41 @@ internal sealed class ControlIdTransport : IDisposable
 
     private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, string endpoint, CancellationToken cancellationToken)
     {
-        await _throttle.WaitAsync(cancellationToken).ConfigureAwait(false);
+        // Porta do circuit breaker: comandos e login passam por aqui. Aberto, falha antes de pegar uma vaga.
+        var probe = _circuit.Acquire();
+        try
+        {
+            await _throttle.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            _circuit.Cancel(probe);
+            throw;
+        }
+
         try
         {
             // Com ResponseContentRead (padrão) o corpo já chega lido, então a vaga cobre a requisição inteira.
-            return await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            _circuit.Record(response.StatusCode, probe);
+            return response;
         }
         catch (HttpRequestException ex)
         {
+            _circuit.Failure(probe);
             Log.CommunicationFailed(_logger, _device, Telemetry.CommandName(endpoint), ex);
             throw new ControlIdException($"Falha de comunicação com {_options.BaseAddress} ao chamar '{endpoint}'.", innerException: ex);
         }
         catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
+            _circuit.Failure(probe);
             Log.CommunicationFailed(_logger, _device, Telemetry.CommandName(endpoint), ex);
             throw new ControlIdException($"Timeout ao chamar '{endpoint}' em {_options.BaseAddress}.", innerException: ex);
+        }
+        catch
+        {
+            _circuit.Cancel(probe);
+            throw;
         }
         finally
         {

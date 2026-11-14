@@ -26,4 +26,13 @@ internal static partial class Log
 
     [LoggerMessage(EventId = 1006, Level = LogLevel.Warning, Message = "Falha de comunicação com {Device} em '{Command}'.")]
     public static partial void CommunicationFailed(ILogger logger, string device, string command, Exception exception);
+
+    [LoggerMessage(EventId = 1007, Level = LogLevel.Warning, Message = "Circuito aberto para {Device} após {Failures} falhas seguidas; as requisições são recusadas por {BreakSeconds}s.")]
+    public static partial void CircuitOpened(ILogger logger, string device, int failures, double breakSeconds);
+
+    [LoggerMessage(EventId = 1008, Level = LogLevel.Debug, Message = "Circuito de {Device} meio aberto; a próxima requisição testa o equipamento.")]
+    public static partial void CircuitHalfOpen(ILogger logger, string device);
+
+    [LoggerMessage(EventId = 1009, Level = LogLevel.Information, Message = "Circuito de {Device} fechado; o equipamento voltou a responder.")]
+    public static partial void CircuitClosed(ILogger logger, string device);
 }

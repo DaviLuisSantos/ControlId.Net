@@ -42,6 +42,12 @@ public sealed class ControlIdRepOptions
     /// <inheritdoc cref="ControlIdDeviceOptions.RetryDelay"/>
     public TimeSpan RetryDelay { get; set; } = TimeSpan.FromMilliseconds(200);
 
+    /// <inheritdoc cref="ControlIdDeviceOptions.CircuitBreakerFailureThreshold"/>
+    public int CircuitBreakerFailureThreshold { get; set; }
+
+    /// <inheritdoc cref="ControlIdDeviceOptions.CircuitBreakerBreakDuration"/>
+    public TimeSpan CircuitBreakerBreakDuration { get; set; } = TimeSpan.FromSeconds(30);
+
     internal ControlIdDeviceOptions ToDeviceOptions() => new()
     {
         BaseAddress = BaseAddress,
@@ -53,5 +59,7 @@ public sealed class ControlIdRepOptions
         MaxConcurrentRequests = MaxConcurrentRequests,
         ReadRetries = ReadRetries,
         RetryDelay = RetryDelay,
+        CircuitBreakerFailureThreshold = CircuitBreakerFailureThreshold,
+        CircuitBreakerBreakDuration = CircuitBreakerBreakDuration,
     };
 }

@@ -1,0 +1,9 @@
+ControlId.Net.AspNetCore: ControlId.AspNetCore.ControlIdTokenOptions
+ControlId.Net.AspNetCore: ControlId.AspNetCore.ControlIdTokenOptions.ControlIdTokenOptions() -> void
+ControlId.Net.AspNetCore: ControlId.AspNetCore.ControlIdTokenOptions.Token.get -> string?
+ControlId.Net.AspNetCore: ControlId.AspNetCore.ControlIdTokenOptions.Token.set -> void
+ControlId.Net.AspNetCore: ControlId.AspNetCore.ControlIdTokenOptions.DeviceToken.get -> System.Func<long, string?>?
+ControlId.Net.AspNetCore: ControlId.AspNetCore.ControlIdTokenOptions.DeviceToken.set -> void
+ControlId.Net.AspNetCore: ControlId.AspNetCore.ControlIdEndpointConventionBuilderExtensions
+ControlId.Net.AspNetCore: static ControlId.AspNetCore.ControlIdEndpointConventionBuilderExtensions.RequireControlIdToken<TBuilder>(this TBuilder builder, string! token) -> TBuilder
+ControlId.Net.AspNetCore: static ControlId.AspNetCore.ControlIdEndpointConventionBuilderExtensions.RequireControlIdToken<TBuilder>(this TBuilder builder, System.Action<ControlId.AspNetCore.ControlIdTokenOptions!>! configure) -> TBuilder
