@@ -4,6 +4,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+Fase 3, produção: circuit breaker, health check por equipamento, token nos callbacks e fila de Push durável.
+
+### Added
+- **Circuit breaker por equipamento**: `CircuitBreakerFailureThreshold` e `CircuitBreakerBreakDuration` em `ControlIdDeviceOptions`, `CircuitState` nos clientes e `ControlIdCircuitOpenException`. Desligado por padrão ([ADR 0017](docs/adr/0017-circuit-breaker-proprio.md), [guia](docs/guia.md#circuit-breaker)).
+- **Health check por equipamento**: `AddControlIdDeviceChecks` e `ControlIdHealthCheckOptions.MaxContactAge`, com o último contato (`DeviceContactTracker`, origem Push, Monitor ou Online) registrado pelas rotas ([ADR 0018](docs/adr/0018-health-check-por-equipamento.md)). `MaxContactAge` só degrada com contato registrado e vencido.
+- **Token Bearer nas rotas**: `RequireControlIdToken` (`ControlIdTokenOptions`, token único ou por equipamento) e `ConfigureCallbackSecurityAsync` para gravar o token e o certificado no equipamento ([ADR 0019](docs/adr/0019-token-bearer-nos-callbacks.md)). A seção e o formato do token e do certificado no equipamento estão a validar em hardware.
+- **Fila de Push durável**: `IPushCommandStore` (padrão `InMemoryPushCommandStore`), `IPushResultHandler` e `AddControlIdPushResultHandler`. Novo pacote `ControlId.Net.Push.EntityFrameworkCore` (`ApplyControlIdPush`, `AddControlIdPushEntityFrameworkStore`) ([ADR 0020](docs/adr/0020-fila-de-push-duravel.md)).
+- Testes de ponta a ponta das novas funções contra o simulador.
+
+### Changed
+- O pacote `ControlId.Net.Push.EntityFrameworkCore` tem só o alvo `net10.0`, por exigência do EF Core 10 (exceção ao [ADR 0014](docs/adr/0014-manter-alvo-net8.md)).
+- **Mudança sutil no Push**: o comando é serializado ao enfileirar, então alterar o `Body` do `PushCommand` depois de enfileirar não tem mais efeito.
+- `PushServer` ganha o construtor com `IPushCommandStore` e as versões assíncronas `EnqueueAsync`, `EnqueueBatchAsync`, `GetPendingCountAsync`, `HandlePushAsync` e `HandleResultAsync`, que usam o store.
+- Um comando órfão sem tarefa esperando é reportado ao `IPushResultHandler` com `Error` e nunca reenviado.
+- O teste do store EF usa um arquivo SQLite temporário.
+
 ## [0.7.0-alpha.1] - 2026-11-13
 
 Logs estruturados, simulador do REP iDClass com Push e modo online, dashboard em tempo real, site de documentação, teste de mutação e avaliação de Native AOT.

@@ -145,7 +145,8 @@ equipamento sozinho e atualiza ao vivo:
 | --- | --- |
 | `ControlId.Net` | `AccessClient`, `RepClient`, parser de AFD, modelos de Push e Monitor |
 | `ControlId.Net.DependencyInjection` | `AddControlIdAccess` / `AddControlIdRep`, vários equipamentos pelo `appsettings.json` |
-| `ControlId.Net.AspNetCore` | Rotas de Push, Monitor e modo online no ASP.NET Core (net8.0+) |
+| `ControlId.Net.AspNetCore` | Rotas de Push, Monitor e modo online no ASP.NET Core (net8.0+), com token Bearer |
+| `ControlId.Net.Push.EntityFrameworkCore` | Fila de Push durável no EF Core (net10.0) |
 
 ## Engenharia
 
