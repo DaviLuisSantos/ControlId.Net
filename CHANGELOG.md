@@ -13,6 +13,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 - **Site de documentação** (DocFX), publicado pelo workflow `docs.yml` em https://daviluissantos.github.io/ControlId.Net/.
 - Dashboard na solution e teste de fumaça do simulador REP na CI.
 
+### Fixed
+- Simulador: a espera dos clientes de Push e do modo online podia calcular um atraso negativo quando o prazo vencia entre duas leituras do relógio. O `Task.Delay` lançava `ArgumentOutOfRangeException`, e a exceção derrubava o simulador inteiro (e explicava o teste de Push em lote que estourava o prazo na CI).
+
 ## [0.6.0-alpha.1] - 2026-11-12
 
 Simulador de equipamento com testes de integração, traces e métricas (OpenTelemetry), health checks, novas tentativas em leituras e parser de AFD até 6,5× mais rápido. Mantém o alvo `net8.0` ([ADR 0014](docs/adr/0014-manter-alvo-net8.md)).

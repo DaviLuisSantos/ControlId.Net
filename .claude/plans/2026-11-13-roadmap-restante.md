@@ -167,6 +167,6 @@ Uma branch por onda (`roadmap/onda-<n>`), PR com a CI verde e merge (rebase) ant
 - [x] Testar o dashboard no navegador (`docker compose -f samples/docker-compose.yml up`, http://localhost:8081): botões "Abrir porta", "Identificar", "Cartão desconhecido" e atualização ao vivo pelo circuito do Blazor (conferido no Chromium com Playwright: os três botões e a atualização ao vivo funcionam).
 - [x] Gravar um GIF do dashboard e colocar no README (`docs/images/dashboard.gif`).
 - [x] Opcional: instalar a carga de trabalho C++ do Visual Studio e gerar o binário nativo da sonda `tools/ControlId.Net.AotProbe` (gerado: 5,7 MB; o AFD roda e o JSON falha por reflexão, como previsto; ADR 0015 atualizada).
-- [ ] Acompanhar o teste `PushOnlineEndToEndTests.Executes_a_batch_of_commands_and_reports_each_result`: estourou o prazo uma vez na CI (causa provável corrigida, não confirmada). Se voltar, a mensagem de erro traz o estado do Push do simulador.
+- [x] Acompanhar o teste `PushOnlineEndToEndTests.Executes_a_batch_of_commands_and_reports_each_result`: causa encontrada e corrigida (`SimulatorTiming.WaitAsync` calculava atraso negativo, o `Task.Delay` lançava e a exceção derrubava o simulador; o mesmo erro quebrou o smoke da imagem Docker).
 - [ ] Rodar o workflow `mutation.yml` uma vez na CI (só rodou localmente: 68,08%).
 - [ ] Lançar a 0.7.0-alpha.1 (versão, CHANGELOG, tag, depois base da API), como na 0.6.
