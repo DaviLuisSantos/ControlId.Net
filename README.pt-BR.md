@@ -133,6 +133,12 @@ as notificações do Monitor, reproduzindo as divergências do firmware que o SD
 `http://localhost:8080` e simule uma pessoa no equipamento com `POST /simulator/identify`. Ele também simula o REP iDClass
 (`--Simulator:Kind=Rep`, marcações com `POST /simulator/punch`), o Push e o modo online.
 
+`docker compose -f samples/docker-compose.yml up --build` sobe também o
+[dashboard em tempo real](samples/ControlId.Net.Dashboard) em `http://localhost:8081`, que configura o Monitor do
+equipamento sozinho e atualiza ao vivo:
+
+![Dashboard em tempo real: abrindo a porta e identificando usuários no simulador](docs/images/dashboard.gif)
+
 ## Pacotes
 
 | Pacote | Para quê |

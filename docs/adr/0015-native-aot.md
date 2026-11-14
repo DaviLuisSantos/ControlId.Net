@@ -8,8 +8,7 @@ O pedido (#11) é saber se a biblioteca roda em Native AOT. A sonda `tools/Contr
 `PublishAot=true`, fora da solution) usa `AccessClient`, `RepClient`, `GetConfigurationSectionAsync<T>`,
 `LoadObjectsAsync<T>` e `AfdParser`. Foi publicada com `dotnet publish -c Release -r win-x64`.
 
-Resultado da análise do ILCompiler (a etapa de ligação nativa não concluiu nesta máquina, que não tem as ferramentas C++
-do Visual Studio; a análise de trim/AOT, que é o que importa aqui, roda antes e foi completa):
+Resultado da análise do ILCompiler:
 
 | Área | Aviso | Contagem | Origem |
 |---|---|---|---|
@@ -21,6 +20,11 @@ do Visual Studio; a análise de trim/AOT, que é o que importa aqui, roda antes 
 
 Total: 3 IL2026, 3 IL3050, 1 IL2070. O ILCompiler agrupa por causa raiz, então a contagem real cresce conforme mais
 tipos de modelo passam pela serialização.
+
+O binário nativo (win-x64, 5,7 MB) confirma os avisos na prática: o `AfdParser` roda normalmente, e a primeira
+chamada do `AccessClient` falha antes da rede com `InvalidOperationException: Reflection-based serialization has been
+disabled for this application`. Para ligar o binário no Windows, o `vswhere.exe` (pasta
+`Microsoft Visual Studio\Installer`) precisa estar no `PATH`, além da carga de trabalho de C++.
 
 ## Decisão
 

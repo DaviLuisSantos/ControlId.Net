@@ -132,6 +132,12 @@ Monitor notifications, reproducing the firmware quirks the SDK handles. Point `A
 and trigger a person at the device with `POST /simulator/identify`. It also simulates the iDClass REP
 (`--Simulator:Kind=Rep`, punches with `POST /simulator/punch`), Push and Online mode.
 
+`docker compose -f samples/docker-compose.yml up --build` also starts the
+[real-time dashboard](samples/ControlId.Net.Dashboard) at `http://localhost:8081`, which configures the device Monitor on
+its own and updates live:
+
+![Real-time dashboard: opening a door and identifying users against the simulator](docs/images/dashboard.gif)
+
 ## Packages
 
 | Package | Purpose |

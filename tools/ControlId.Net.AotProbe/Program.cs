@@ -18,7 +18,7 @@ try
 }
 catch (Exception ex)
 {
-    Console.WriteLine(ex.GetType().Name);
+    Console.WriteLine($"{ex.GetType().Name}: {ex.Message}");
 }
 
 var afd = AfdParser.Parse("");
