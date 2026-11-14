@@ -19,6 +19,13 @@ public sealed class ControlIdHealthCheckOptions
 
     /// <summary>Equipamentos verificados ao mesmo tempo. Padrão: 8.</summary>
     public int MaxParallelism { get; set; } = ControlIdDevices.DefaultMaxParallelism;
+
+    /// <summary>
+    /// Idade máxima do último contato (Push, Monitor ou Online) de um equipamento de acesso; além dela, o check por equipamento
+    /// (<c>AddControlIdDeviceChecks</c>) fica <see cref="HealthStatus.Degraded"/>. Exige um <c>DeviceContactTracker</c> registrado
+    /// e vale só para equipamentos que já tiveram contato. Padrão: <c>null</c> (não verifica).
+    /// </summary>
+    public TimeSpan? MaxContactAge { get; set; }
 }
 
 /// <summary>

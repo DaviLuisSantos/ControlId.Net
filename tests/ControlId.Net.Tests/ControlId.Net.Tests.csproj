@@ -41,6 +41,16 @@
     <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.0" />
   </ItemGroup>
 
+  <!-- O pacote de Push com EF Core é net10.0 (o EF Core 10 exige o .NET 10): os testes dele só existem nesse alvo. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <ProjectReference Include="..\..\src\ControlId.Net.Push.EntityFrameworkCore\ControlId.Net.Push.EntityFrameworkCore.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' != 'net10.0'">
+    <Compile Remove="EfPushStoreTests.cs" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
     <Compile Remove="AspNetCore*.cs" />
     <Reference Include="System.Net.Http" />

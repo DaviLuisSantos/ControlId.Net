@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- O EF Core 10 exige net10.0; as versões 8 e 9 estão fora de suporte, então o pacote não mira alvos anteriores. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>ControlId.Push.EntityFrameworkCore</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <PackageId>ControlId.Net.Push.EntityFrameworkCore</PackageId>
+    <Description>Fila de Push durável do ControlId.Net sobre o Entity Framework Core: guarda os comandos pendentes no banco de dados para sobreviverem a um reinício (IPushCommandStore).</Description>
+    <PackageTags>controlid;control-id;idaccess;idflex;idface;push;entityframeworkcore;efcore;access-control;controle-de-acesso</PackageTags>
+
+    <!-- Pacote novo: não há versão publicada para comparar. -->
+    <PackageValidationBaselineVersion></PackageValidationBaselineVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ControlId.Net\ControlId.Net.csproj" />
+  </ItemGroup>
+
+</Project>

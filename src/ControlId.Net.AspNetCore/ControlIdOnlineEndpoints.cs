@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using ControlId.Access;
 using ControlId.Access.Online;
 using ControlId.AspNetCore;
 using Microsoft.AspNetCore.Http;
@@ -36,6 +37,7 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
     /// <item><c>GET user_get_image</c> → <see cref="IOnlineAccessHandler.GetUserImageAsync"/>;</item>
     /// <item><c>device_is_alive</c> e <c>session_is_valid</c> → 200, para o equipamento sair da contingência.</item>
     /// </list>
+    /// Para exigir o token Bearer do equipamento, encadeie <c>RequireControlIdToken</c> no grupo devolvido.
     /// </summary>
     public static RouteGroupBuilder MapControlIdOnline(this IEndpointRouteBuilder endpoints, string prefix = "/")
     {
@@ -57,18 +59,47 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
 
         group.MapPost("new_rex_log.fcgi", HandleExitButtonAsync);
         group.MapGet("user_get_image.fcgi", HandleUserImageAsync);
-        group.MapPost("device_is_alive.fcgi", static context =>
-        {
-            context.Response.StatusCode = StatusCodes.Status200OK;
-            return Task.CompletedTask;
-        });
-        group.MapPost("session_is_valid.fcgi", static async context =>
-        {
-            // Usado pelo equipamento para testar a comunicação; a documentação não define o corpo da resposta.
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsync("""{"session_is_valid":true}""", context.RequestAborted).ConfigureAwait(false);
-        });
+        group.MapPost("device_is_alive.fcgi", HandleAliveAsync);
+        group.MapPost("session_is_valid.fcgi", HandleSessionValidAsync);
         return group;
+    }
+
+    private static Task HandleAliveAsync(HttpContext context)
+    {
+        var deviceId = QueryDeviceId(context);
+        if (CallbackGuard.Authorize(context, deviceId, LoggerCategory))
+        {
+            Touch(context, deviceId);
+            context.Response.StatusCode = StatusCodes.Status200OK;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private static async Task HandleSessionValidAsync(HttpContext context)
+    {
+        var deviceId = QueryDeviceId(context);
+        if (!CallbackGuard.Authorize(context, deviceId, LoggerCategory))
+        {
+            return;
+        }
+
+        Touch(context, deviceId);
+
+        // Usado pelo equipamento para testar a comunicação; a documentação não define o corpo da resposta.
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsync("""{"session_is_valid":true}""", context.RequestAborted).ConfigureAwait(false);
+    }
+
+    private static long? QueryDeviceId(HttpContext context) =>
+        long.TryParse(context.Request.Query["device_id"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) ? id : null;
+
+    private static void Touch(HttpContext context, long? deviceId)
+    {
+        if (deviceId is { } id)
+        {
+            CallbackGuard.RecordContact(context, id, DeviceContactSource.Online);
+        }
     }
 
     private static async Task HandleIdentificationAsync(HttpContext context)
@@ -91,6 +122,12 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
         }
 
         var identification = OnlineEvents.Parse(endpoint, values, body)!;
+        if (!CallbackGuard.Authorize(context, identification.DeviceId, LoggerCategory))
+        {
+            return;
+        }
+
+        Touch(context, identification.DeviceId);
         var authorization = await GetHandler(context).AuthorizeAsync(identification, context.RequestAborted).ConfigureAwait(false)
             ?? throw new InvalidOperationException($"{nameof(IOnlineAccessHandler)}.{nameof(IOnlineAccessHandler.AuthorizeAsync)} devolveu null.");
 
@@ -101,6 +138,13 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
 
     private static async Task HandleEnrollAsync(HttpContext context)
     {
+        var deviceId = QueryDeviceId(context);
+        if (!CallbackGuard.Authorize(context, deviceId, LoggerCategory))
+        {
+            return;
+        }
+
+        Touch(context, deviceId);
         var endpoint = context.Request.Path.Value ?? string.Empty;
         string body;
         using (var reader = new StreamReader(context.Request.Body, Encoding.UTF8))
@@ -136,10 +180,22 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
         }
         catch (JsonException ex)
         {
-            Log.InvalidExitButton(GetLogger(context), ex);
-            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            if (CallbackGuard.Authorize(context, QueryDeviceId(context), LoggerCategory))
+            {
+                Log.InvalidExitButton(GetLogger(context), ex);
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            }
+
             return;
         }
+
+        var exitDeviceId = QueryDeviceId(context) ?? exitButton?.DeviceId;
+        if (!CallbackGuard.Authorize(context, exitDeviceId, LoggerCategory))
+        {
+            return;
+        }
+
+        Touch(context, exitDeviceId);
 
         await GetHandler(context).OnExitButtonAsync(exitButton ?? new ExitButtonEvent(), context.RequestAborted).ConfigureAwait(false);
         context.Response.StatusCode = StatusCodes.Status200OK;
@@ -147,6 +203,13 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
 
     private static async Task HandleUserImageAsync(HttpContext context)
     {
+        var deviceId = QueryDeviceId(context);
+        if (!CallbackGuard.Authorize(context, deviceId, LoggerCategory))
+        {
+            return;
+        }
+
+        Touch(context, deviceId);
         if (!long.TryParse(context.Request.Query["user_id"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var userId))
         {
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
@@ -191,6 +254,7 @@ public static class ControlIdOnlineServiceCollectionExtensions
             throw new ArgumentNullException(nameof(services));
         }
 
+        services.TryAddSingleton<DeviceContactTracker>();
         services.TryAddScoped<IOnlineAccessHandler, THandler>();
         return services;
     }
@@ -209,6 +273,7 @@ public static class ControlIdOnlineServiceCollectionExtensions
             throw new ArgumentNullException(nameof(authorize));
         }
 
+        services.TryAddSingleton<DeviceContactTracker>();
         services.TryAddSingleton<IOnlineAccessHandler>(new DelegateOnlineAccessHandler(authorize));
         return services;
     }

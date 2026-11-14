@@ -4,9 +4,11 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using ControlId;
+using ControlId.Access;
 using ControlId.Access.Monitoring;
 using ControlId.Access.Push;
 using ControlId.AspNetCore;
+using ControlId.AspNetCore.Internal;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,7 +27,7 @@ public static class ControlIdEndpointRouteBuilderExtensions
     /// <c>services.AddControlIdPush()</c>. No equipamento, configure <c>push_remote_address</c> apontando para esta aplicação
     /// (o firmware chama <c>/push</c> na raiz; use <paramref name="prefix"/> só atrás de um proxy que reescreva o caminho).
     /// </summary>
-    /// <returns>O grupo das rotas, para encadear <c>RequireHost</c>, filtros etc.</returns>
+    /// <returns>O grupo das rotas, para encadear <c>RequireHost</c>, <c>RequireControlIdToken</c>, filtros etc.</returns>
     public static RouteGroupBuilder MapControlIdPush(this IEndpointRouteBuilder endpoints, string prefix = "/")
     {
         if (endpoints is null)
@@ -48,7 +50,7 @@ public static class ControlIdEndpointRouteBuilderExtensions
     /// registra que o firmware posta <c>device_is_alive</c> em <c>api/notification</c>.
     /// </para>
     /// </summary>
-    /// <returns>O grupo das rotas (as duas grafias), para encadear <c>RequireHost</c>, filtros etc.</returns>
+    /// <returns>O grupo das rotas (as duas grafias), para encadear <c>RequireHost</c>, <c>RequireControlIdToken</c>, filtros etc.</returns>
     public static RouteGroupBuilder MapControlIdMonitor(this IEndpointRouteBuilder endpoints, string path = "api/notifications")
     {
         if (endpoints is null)
@@ -69,13 +71,20 @@ public static class ControlIdEndpointRouteBuilderExtensions
 
     private static async Task HandlePushAsync(HttpContext context)
     {
-        if (!TryGetDeviceId(context, out var deviceId))
+        var hasDeviceId = TryGetDeviceId(context, out var deviceId);
+        if (!CallbackGuard.Authorize(context, hasDeviceId ? deviceId : null, LoggerCategory))
+        {
+            return;
+        }
+
+        if (!hasDeviceId)
         {
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
             return;
         }
 
-        var body = GetPushServer(context).HandlePush(deviceId, GetUuid(context));
+        CallbackGuard.RecordContact(context, deviceId, DeviceContactSource.Push);
+        var body = await GetPushServer(context).HandlePushAsync(deviceId, GetUuid(context), context.RequestAborted).ConfigureAwait(false);
         context.Response.StatusCode = StatusCodes.Status200OK;
         if (body.Length > 0)
         {
@@ -86,14 +95,21 @@ public static class ControlIdEndpointRouteBuilderExtensions
 
     private static async Task HandleResultAsync(HttpContext context)
     {
-        if (!TryGetDeviceId(context, out var deviceId))
+        var hasDeviceId = TryGetDeviceId(context, out var deviceId);
+        if (!CallbackGuard.Authorize(context, hasDeviceId ? deviceId : null, LoggerCategory))
+        {
+            return;
+        }
+
+        if (!hasDeviceId)
         {
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
             return;
         }
 
+        CallbackGuard.RecordContact(context, deviceId, DeviceContactSource.Push);
         var body = await ReadBodyAsync(context).ConfigureAwait(false);
-        if (!GetPushServer(context).HandleResult(deviceId, GetUuid(context), body))
+        if (!await GetPushServer(context).HandleResultAsync(deviceId, GetUuid(context), body, context.RequestAborted).ConfigureAwait(false))
         {
             Log.PushResultIgnored(GetLogger(context), deviceId);
         }
@@ -114,9 +130,24 @@ public static class ControlIdEndpointRouteBuilderExtensions
         }
         catch (ControlIdException ex)
         {
-            Log.InvalidMonitorNotification(GetLogger(context), ex, endpoint);
-            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            // Sem o deviceId da notificação, só vale o token único; o corpo inválido nunca vira 200.
+            if (CallbackGuard.Authorize(context, null, LoggerCategory))
+            {
+                Log.InvalidMonitorNotification(GetLogger(context), ex, endpoint);
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            }
+
             return;
+        }
+
+        if (!CallbackGuard.Authorize(context, notification.DeviceId, LoggerCategory))
+        {
+            return;
+        }
+
+        if (notification.DeviceId is { } monitored)
+        {
+            CallbackGuard.RecordContact(context, monitored, DeviceContactSource.Monitor);
         }
 
         foreach (var handler in context.RequestServices.GetServices<IMonitorNotificationHandler>())
@@ -148,4 +179,28 @@ public static class ControlIdEndpointRouteBuilderExtensions
         using var reader = new StreamReader(context.Request.Body, Encoding.UTF8);
         return await reader.ReadToEndAsync(context.RequestAborted).ConfigureAwait(false);
     }
+}
+
+/// <summary>Token e último contato compartilhados pelas rotas de Push, Monitor e Online.</summary>
+internal static class CallbackGuard
+{
+    /// <summary>
+    /// Aplica o token exigido pelo grupo (se houver). Em falha, a resposta já está em 401, com o aviso 2005 no log
+    /// (rota e equipamento; nunca o token).
+    /// </summary>
+    public static bool Authorize(HttpContext context, long? deviceId, string loggerCategory)
+    {
+        if (ControlIdTokenValidator.Authorize(context, deviceId))
+        {
+            return true;
+        }
+
+        var logger = context.RequestServices.GetService<ILoggerFactory>()?.CreateLogger(loggerCategory) ?? NullLogger.Instance;
+        Log.CallbackUnauthorized(logger, context.Request.Path.Value ?? string.Empty, deviceId);
+        return false;
+    }
+
+    /// <summary>Registra o contato no <see cref="DeviceContactTracker"/>, quando registrado no container.</summary>
+    public static void RecordContact(HttpContext context, long deviceId, DeviceContactSource source) =>
+        context.RequestServices.GetService<DeviceContactTracker>()?.Record(deviceId, source);
 }
