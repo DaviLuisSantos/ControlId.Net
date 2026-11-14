@@ -1,0 +1,18 @@
+ControlId.Net: ControlId.ControlIdCircuitState
+ControlId.Net: ControlId.ControlIdCircuitState.Closed = 0 -> ControlId.ControlIdCircuitState
+ControlId.Net: ControlId.ControlIdCircuitState.Open = 1 -> ControlId.ControlIdCircuitState
+ControlId.Net: ControlId.ControlIdCircuitState.HalfOpen = 2 -> ControlId.ControlIdCircuitState
+ControlId.Net: ControlId.ControlIdCircuitOpenException
+ControlId.Net: ControlId.ControlIdCircuitOpenException.ControlIdCircuitOpenException(string! message, System.TimeSpan retryAfter) -> void
+ControlId.Net: ControlId.ControlIdCircuitOpenException.RetryAfter.get -> System.TimeSpan
+ControlId.Net: const ControlId.ControlIdDeviceOptions.MaxCircuitBreakerFailureThreshold = 100 -> int
+ControlId.Net: ControlId.ControlIdDeviceOptions.CircuitBreakerFailureThreshold.get -> int
+ControlId.Net: ControlId.ControlIdDeviceOptions.CircuitBreakerFailureThreshold.set -> void
+ControlId.Net: ControlId.ControlIdDeviceOptions.CircuitBreakerBreakDuration.get -> System.TimeSpan
+ControlId.Net: ControlId.ControlIdDeviceOptions.CircuitBreakerBreakDuration.set -> void
+ControlId.Net: ControlId.Access.AccessClient.CircuitState.get -> ControlId.ControlIdCircuitState
+ControlId.Net: ControlId.Rep.RepClient.CircuitState.get -> ControlId.ControlIdCircuitState
+ControlId.Net.DependencyInjection: ControlId.DependencyInjection.ControlIdRepOptions.CircuitBreakerFailureThreshold.get -> int
+ControlId.Net.DependencyInjection: ControlId.DependencyInjection.ControlIdRepOptions.CircuitBreakerFailureThreshold.set -> void
+ControlId.Net.DependencyInjection: ControlId.DependencyInjection.ControlIdRepOptions.CircuitBreakerBreakDuration.get -> System.TimeSpan
+ControlId.Net.DependencyInjection: ControlId.DependencyInjection.ControlIdRepOptions.CircuitBreakerBreakDuration.set -> void

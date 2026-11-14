@@ -76,7 +76,11 @@ public sealed class PushClient(DeviceState state, IServiceProvider services, IHt
         using (var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken))
         {
             cts.CancelAfter(settings.Timeout);
-            text = await http.GetStringAsync(settings.BaseUrl + "/push" + query, cts.Token);
+            using var request = new HttpRequestMessage(HttpMethod.Get, settings.BaseUrl + "/push" + query);
+            CallbackAuth.Apply(request, state);
+            using var polled = await http.SendAsync(request, cts.Token);
+            polled.EnsureSuccessStatusCode();
+            text = await polled.Content.ReadAsStringAsync(cts.Token);
         }
 
         if (string.IsNullOrWhiteSpace(text) || JsonNode.Parse(text) is not JsonObject root)
@@ -112,7 +116,9 @@ public sealed class PushClient(DeviceState state, IServiceProvider services, IHt
         using var content = new StringContent(result.ToJsonString(AccessApi.Wire), Encoding.UTF8, "application/json");
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
         timeout.CancelAfter(settings.Timeout);
-        using var posted = await http.PostAsync(settings.BaseUrl + "/result" + query, content, timeout.Token);
+        using var post = new HttpRequestMessage(HttpMethod.Post, settings.BaseUrl + "/result" + query) { Content = content };
+        CallbackAuth.Apply(post, state);
+        using var posted = await http.SendAsync(post, timeout.Token);
         return true;
     }
 

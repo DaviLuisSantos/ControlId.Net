@@ -1,0 +1,2 @@
+ControlId.Net: ControlId.Access.AccessClientCallbackSecurityExtensions
+ControlId.Net: static ControlId.Access.AccessClientCallbackSecurityExtensions.ConfigureCallbackSecurityAsync(this ControlId.Access.IAccessClient! client, string? bearerToken, string? pinnedCertificate = null, string! section = "general", System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!

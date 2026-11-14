@@ -96,6 +96,29 @@ public class TelemetryTests
     }
 
     [Fact]
+    public async Task Records_the_wait_for_a_slot_of_every_request()
+    {
+        using var telemetry = new TelemetryCapture("10.77.0.7");
+        var gate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var http = new HttpClient(new GatedHandler(gate.Task));
+        using var client = new AccessClient(telemetry.Options(maxConcurrentRequests: 1), http);
+
+        var calls = Enumerable.Range(0, 3).Select(_ => client.GetUsersAsync()).ToList();
+        await WaitUntilAsync(() => telemetry.Current("controlid.client.requests.queued") == 2);
+        await Task.Delay(30);
+        gate.SetResult(true);
+        await Task.WhenAll(calls);
+
+        var waits = telemetry.Measurements.Where(m => m.Instrument == "controlid.client.request.wait.duration").ToList();
+
+        // Uma medição por vaga obtida (o login também conta), mesmo sem espera.
+        Assert.True(waits.Count >= 4);
+        Assert.All(waits, w => Assert.True(w.Value >= 0));
+        Assert.Contains(waits, w => w.Value >= 0.02);
+        Assert.Contains(waits, w => w.Value < 0.02);
+    }
+
+    [Fact]
     public async Task Records_each_retry_of_a_read()
     {
         using var telemetry = new TelemetryCapture("10.77.0.6");
@@ -164,7 +187,7 @@ public class TelemetryTests
     /// Escuta os spans e as métricas do ControlId.Net de um único equipamento (pelo host), porque os listeners são globais e
     /// outros testes rodam em paralelo.
     /// </summary>
-    private sealed class TelemetryCapture : IDisposable
+    internal sealed class TelemetryCapture : IDisposable
     {
         private readonly string _host;
         private readonly ActivityListener _activities;
@@ -251,7 +274,7 @@ public class TelemetryTests
         }
     }
 
-    private sealed class Measurement(string instrument, double value, Dictionary<string, object?> tags)
+    internal sealed class Measurement(string instrument, double value, Dictionary<string, object?> tags)
     {
         public string Instrument { get; } = instrument;
 

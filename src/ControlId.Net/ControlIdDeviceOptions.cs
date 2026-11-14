@@ -73,6 +73,28 @@ public sealed class ControlIdDeviceOptions
     /// </summary>
     public TimeSpan RetryDelay { get; set; } = TimeSpan.FromMilliseconds(200);
 
+    /// <summary>Maior valor aceito em <see cref="CircuitBreakerFailureThreshold"/>.</summary>
+    public const int MaxCircuitBreakerFailureThreshold = 100;
+
+    /// <summary>
+    /// Circuit breaker do equipamento: quantas falhas seguidas o abrem. Padrão: 0 (desligado). Máximo:
+    /// <see cref="MaxCircuitBreakerFailureThreshold"/>. Falha é erro de rede, timeout do cliente ou HTTP 5xx, contada por
+    /// tentativa; HTTP 4xx, sessão expirada (401), erro do equipamento no JSON, login recusado e cancelamento de quem chamou
+    /// não contam, e qualquer resposta abaixo de 500 zera a contagem.
+    /// <para>
+    /// Aberto, as chamadas falham na hora com <see cref="ControlIdCircuitOpenException"/>, sem login nem requisição ao
+    /// equipamento, durante <see cref="CircuitBreakerBreakDuration"/>. Depois, uma única requisição de sonda testa o
+    /// equipamento: se der certo o circuito fecha, se falhar reabre. O estado fica em <c>CircuitState</c> do cliente.
+    /// </para>
+    /// </summary>
+    public int CircuitBreakerFailureThreshold { get; set; }
+
+    /// <summary>Quanto tempo o circuito fica aberto antes de aceitar uma sonda. Padrão: 30 segundos. Precisa ser positivo.</summary>
+    public TimeSpan CircuitBreakerBreakDuration { get; set; } = TimeSpan.FromSeconds(30);
+
+    // Relógio do circuit breaker (ticks de Stopwatch); só os testes o trocam.
+    internal Func<long>? CircuitClock { get; set; }
+
     /// <summary>
     /// Fábrica de logs do <c>Microsoft.Extensions.Logging</c>. Padrão: <c>null</c> (nenhum log). O cliente cria um logger com
     /// a categoria <see cref="ControlIdTelemetry.LoggerCategory"/> e registra login, sessão expirada, novas tentativas e
@@ -96,6 +118,16 @@ public sealed class ControlIdDeviceOptions
         if (RetryDelay < TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(RetryDelay), RetryDelay, $"{nameof(RetryDelay)} não pode ser negativo.");
+        }
+
+        if (CircuitBreakerFailureThreshold < 0 || CircuitBreakerFailureThreshold > MaxCircuitBreakerFailureThreshold)
+        {
+            throw new ArgumentOutOfRangeException(nameof(CircuitBreakerFailureThreshold), CircuitBreakerFailureThreshold, $"{nameof(CircuitBreakerFailureThreshold)} precisa estar entre 0 e {MaxCircuitBreakerFailureThreshold}.");
+        }
+
+        if (CircuitBreakerBreakDuration <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(CircuitBreakerBreakDuration), CircuitBreakerBreakDuration, $"{nameof(CircuitBreakerBreakDuration)} precisa ser positivo.");
         }
 
         if (BaseAddress is null)

@@ -45,7 +45,9 @@ internal static class ReadRetry
 
     /// <summary>Falha de rede ou timeout do cliente (não um cancelamento pedido por quem chamou).</summary>
     public static bool IsTransient(ControlIdException exception) =>
-        exception.StatusCode is null && exception.InnerException is HttpRequestException or TaskCanceledException;
+        exception is not ControlIdCircuitOpenException
+        && exception.StatusCode is null
+        && exception.InnerException is HttpRequestException or TaskCanceledException;
 
     /// <summary>Espera antes da tentativa <paramref name="retry"/> (1, 2, ...): o dobro da anterior, ±20%.</summary>
     public static TimeSpan Delay(TimeSpan baseDelay, int retry)

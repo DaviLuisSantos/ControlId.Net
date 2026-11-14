@@ -46,6 +46,12 @@ public sealed class RepClient : IRepClient
     /// <inheritdoc/>
     public RepMode Mode { get; }
 
+    /// <summary>
+    /// Estado do circuit breaker deste equipamento (<see cref="ControlIdDeviceOptions.CircuitBreakerFailureThreshold"/>).
+    /// Sempre <see cref="ControlIdCircuitState.Closed"/> com o circuit breaker desligado.
+    /// </summary>
+    public ControlIdCircuitState CircuitState => _transport.CircuitState;
+
     private string? ModeQuery => Mode == RepMode.Portaria671 ? "mode=671" : null;
 
     /// <inheritdoc/>

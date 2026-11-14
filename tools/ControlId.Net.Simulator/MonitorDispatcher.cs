@@ -78,7 +78,9 @@ public sealed class MonitorDispatcher(DeviceState state, IHttpClientFactory http
             string? error = null;
             try
             {
-                using var response = await http.PostAsJsonAsync(target, body, stoppingToken);
+                using var request = new HttpRequestMessage(HttpMethod.Post, target) { Content = JsonContent.Create(body) };
+                CallbackAuth.Apply(request, state);
+                using var response = await http.SendAsync(request, stoppingToken);
                 status = (int)response.StatusCode;
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !stoppingToken.IsCancellationRequested)

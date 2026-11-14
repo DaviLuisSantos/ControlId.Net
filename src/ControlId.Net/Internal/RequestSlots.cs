@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,6 +26,8 @@ internal sealed class RequestSlots : IDisposable
         // Como o SemaphoreSlim.WaitAsync: com o token já cancelado, nada sai para o equipamento.
         cancellationToken.ThrowIfCancellationRequested();
 
+        var started = Stopwatch.GetTimestamp();
+
         // Sem espera (o caso comum), a fila nem é contada.
         if (!_semaphore.Wait(0, CancellationToken.None))
         {
@@ -39,6 +42,7 @@ internal sealed class RequestSlots : IDisposable
             }
         }
 
+        Telemetry.RequestWaitDuration.Record((double)(Stopwatch.GetTimestamp() - started) / Stopwatch.Frequency, _deviceTags);
         Telemetry.ActiveRequests.Add(1, _deviceTags);
     }
 

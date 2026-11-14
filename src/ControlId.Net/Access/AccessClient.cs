@@ -62,6 +62,12 @@ public sealed class AccessClient : IAccessClient
     /// <summary>Sessão atual, ou <c>null</c> se ainda não logou.</summary>
     public string? Session => _transport.Session;
 
+    /// <summary>
+    /// Estado do circuit breaker deste equipamento (<see cref="ControlIdDeviceOptions.CircuitBreakerFailureThreshold"/>).
+    /// Sempre <see cref="ControlIdCircuitState.Closed"/> com o circuit breaker desligado.
+    /// </summary>
+    public ControlIdCircuitState CircuitState => _transport.CircuitState;
+
     /// <inheritdoc/>
     public Task LoginAsync(CancellationToken cancellationToken = default) => _transport.LoginAsync(cancellationToken);
 
