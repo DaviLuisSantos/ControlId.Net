@@ -1,0 +1,8 @@
+# Endpoints documentados que a biblioteca decidiu nao cobrir. Um nome.fcgi por linha; # comenta.
+# Continuam acessiveis por SendRawAsync.
+
+# Rota entre dois equipamentos, assinada com o segredo compartilhado; a documentacao diz que nao e para integracoes.
+dual_sided_query.fcgi
+
+# Coleta de testes de fabrica, so na colecao Postman, sem pagina na documentacao.
+tests.fcgi

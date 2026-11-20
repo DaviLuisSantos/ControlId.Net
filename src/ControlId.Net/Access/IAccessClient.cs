@@ -13,7 +13,7 @@ namespace ControlId.Access;
 /// Cliente da API de acesso Control iD (iDAccess, iDFlex, iDFace, iDBox, iDUHF...).
 /// O login é feito automaticamente na primeira chamada e refeito se a sessão expirar.
 /// </summary>
-public interface IAccessClient : IControlIdClient
+public partial interface IAccessClient : IControlIdClient
 {
     /// <summary>Força o login agora (opcional — as chamadas já fazem login sob demanda).</summary>
     Task LoginAsync(CancellationToken cancellationToken = default);
@@ -96,11 +96,22 @@ public interface IAccessClient : IControlIdClient
         long userId, byte[] image, bool rejectExistingFace = false, DateTimeOffset? timestamp = null, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// <c>user_set_image.fcgi</c>: como a sobrecarga anterior, com <see cref="UserImageUploadOptions"/> (recusa de rosto
+    /// repetido, que aqui começa ligada, e <c>bypass_quality_score</c>).
+    /// </summary>
+    Task<FaceImageResult> SetUserImageAsync(
+        long userId, byte[] image, UserImageUploadOptions options, DateTimeOffset? timestamp = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// <c>user_set_image_list.fcgi</c>: grava fotos em lote (a documentação limita a requisição a 1 MB na página de
     /// fotos e a 2 MB na de reconhecimento facial). Um resultado por foto, quando o equipamento é facial.
     /// </summary>
     Task<IReadOnlyList<FaceImageResult>> SetUserImagesAsync(
         IEnumerable<UserImage> images, bool rejectExistingFaces = false, CancellationToken cancellationToken = default);
+
+    /// <summary><c>user_set_image_list.fcgi</c>: fotos em lote com <see cref="UserImageUploadOptions"/> (inclui <c>bypass_quality_score</c>).</summary>
+    Task<IReadOnlyList<FaceImageResult>> SetUserImagesAsync(
+        IEnumerable<UserImage> images, UserImageUploadOptions options, CancellationToken cancellationToken = default);
 
     /// <summary><c>user_test_image.fcgi</c>: testa se a foto seria aceita no cadastro facial, sem gravar.</summary>
     Task<FaceImageResult> TestUserImageAsync(byte[] image, CancellationToken cancellationToken = default);
@@ -145,9 +156,12 @@ public interface IAccessClient : IControlIdClient
     /// <summary><c>face_template_extract_list.fcgi</c>: extração em lote; cada resultado traz o <see cref="FaceImageResult.Id"/> do item.</summary>
     Task<IReadOnlyList<FaceImageResult>> ExtractFaceTemplatesAsync(IEnumerable<FaceTemplateImage> images, CancellationToken cancellationToken = default);
 
-    /// <summary><c>face_template_enroll.fcgi</c>: cadastra templates faciais nos usuários; um resultado por usuário.</summary>
+    /// <summary>
+    /// <c>face_template_enroll.fcgi</c>: cadastra templates faciais nos usuários; um resultado por usuário. Por padrão
+    /// recusa rosto já cadastrado em outro usuário (<c>match</c> true, como no equipamento).
+    /// </summary>
     Task<IReadOnlyList<FaceImageResult>> EnrollFaceTemplatesAsync(
-        IEnumerable<FaceTemplateEnrollment> templates, bool rejectExistingFaces = false, CancellationToken cancellationToken = default);
+        IEnumerable<FaceTemplateEnrollment> templates, bool rejectExistingFaces = true, CancellationToken cancellationToken = default);
 
     /// <summary><c>face_template_destroy.fcgi</c>: remove os templates faciais dos usuários informados.</summary>
     Task DeleteFaceTemplatesAsync(IEnumerable<long> userIds, CancellationToken cancellationToken = default);
@@ -338,12 +352,23 @@ public interface IAccessClient : IControlIdClient
     Task<string> GenerateReportAsync(ReportRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// <c>save_screenshot.fcgi</c> com <c>frame_type</c> <c>screen</c> ou <c>display</c>: captura a tela do equipamento
+    /// (ou o buffer de exibição), em PNG. Equipamentos faciais, firmware V6, V7 e V8.
+    /// </summary>
+    Task<byte[]> CaptureScreenAsync(ScreenFrame frame = ScreenFrame.Screen, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// <c>export_afd.fcgi</c>: AFD gerado pelo equipamento de acesso (ex.: iDFlex Attendance), a partir de um NSR ou de
     /// uma data (ou completo). Com <paramref name="portaria671"/> <c>false</c>, vem no leiaute anterior (Portaria 595/1510).
     /// </summary>
     Task<string> ExportAfdAsync(long? initialNsr = null, DateTime? initialDate = null, bool portaria671 = true, CancellationToken cancellationToken = default);
 
-    /// <summary><see cref="ExportAfdAsync"/> já interpretado pelo <see cref="Rep.Afd.AfdParser"/>.</summary>
+    /// <summary>
+    /// <c>export_afd.fcgi</c> com todos os filtros (NSR ou data inicial, <c>limit</c> e <c>offset</c> para paginar).
+    /// </summary>
+    Task<string> ExportAfdAsync(AfdExportOptions options, CancellationToken cancellationToken = default);
+
+    /// <summary><see cref="ExportAfdAsync(long?, DateTime?, bool, CancellationToken)"/> já interpretado pelo <see cref="Rep.Afd.AfdParser"/>.</summary>
     Task<Rep.Afd.AfdFile> ExportAfdFileAsync(long? initialNsr = null, DateTime? initialDate = null, bool portaria671 = true, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -427,6 +452,12 @@ public interface IAccessClient : IControlIdClient
     /// <see cref="DataLossConfirmation.Confirmed"/>.
     /// </summary>
     Task ResetToFactoryDefaultAsync(DataLossConfirmation confirmation, bool keepNetworkSettings, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <c>reset_to_factory_default.fcgi</c> com <see cref="FactoryResetOptions"/> (manter rede, toda a configuração ou o OSDP).
+    /// APAGA os dados de usuário, sem volta. Exige <see cref="DataLossConfirmation.Confirmed"/>.
+    /// </summary>
+    Task ResetToFactoryDefaultAsync(DataLossConfirmation confirmation, FactoryResetOptions options, CancellationToken cancellationToken = default);
 
     /// <summary><c>delete_admins.fcgi</c>. Obsoleto: use a sobrecarga com <see cref="DataLossConfirmation"/>.</summary>
     [Obsolete("Apaga dados sem volta: use a sobrecarga com DataLossConfirmation.Confirmed.")]
@@ -590,6 +621,12 @@ public interface IAccessClient : IControlIdClient
     Task Configure8021XAsync(
         bool enabled, string? login = null, string? password = null,
         Ieee8021XInnerAuthentication innerAuthentication = Ieee8021XInnerAuthentication.MsChapV2, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <c>configure_802_1X.fcgi</c> com todos os parâmetros: método EAP (PEAP, TTLS ou TLS), uso de certificado de cliente e
+    /// interface. A senha não é registrada em log nem em mensagem de erro.
+    /// </summary>
+    Task Configure8021XAsync(Ieee8021XSettings settings, CancellationToken cancellationToken = default);
 
     /// <summary><c>set_osdp_installation_mode.fcgi</c>: modo de instalação do OSDP (permite trocar as chaves de criptografia).</summary>
     Task SetOsdpInstallationModeAsync(bool enabled, CancellationToken cancellationToken = default);

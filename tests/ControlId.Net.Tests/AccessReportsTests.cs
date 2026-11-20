@@ -179,7 +179,7 @@ public class AccessReportsTests
 
         Assert.Equal("2026-10-10 config changed", await client.ExportAuditLogsAsync(AuditLogCategories.Config | AuditLogCategories.Online));
         Assert.Equal(
-            """{"config":1,"api":0,"usb":0,"network":0,"time":0,"online":1,"menu":0}""",
+            """{"config":1,"api":0,"usb":0,"network":0,"time":0,"online":1,"menu":0,"boot":0,"push":0}""",
             device.RequestsTo("export_audit_logs.fcgi").Single().Body);
         await Assert.ThrowsAsync<ArgumentException>(() => client.ExportAuditLogsAsync(AuditLogCategories.None));
     }

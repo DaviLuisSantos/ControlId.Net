@@ -132,6 +132,46 @@ public class DocumentationCoverageTests
         ("get_audio_access_message.fcgi", "POST", c => c.GetAccessAudioAsync(AccessAudioEvent.Authorized)),
         ("has_audio_access_messages.fcgi", "POST", c => c.GetAccessAudioStatusAsync()),
         ("change_idcloud_code.fcgi", "GET", c => c.ChangeIdCloudCodeAsync()),
+        // Biometria
+        ("face_template_match.fcgi", "POST", c => c.MatchFaceTemplateAsync(Convert.ToBase64String(new byte[1024]))),
+        ("face_template_count_distinct.fcgi", "GET", c => c.CountFaceTemplatesAsync()),
+        ("template_match.fcgi", "POST", c => c.MatchFingerprintTemplatesAsync(new[] { Bytes })),
+
+        // Schema de objetos customizados
+        ("object_metadata.fcgi", "POST", c => c.GetObjectMetadataAsync()),
+        ("object_add.fcgi", "POST", c => c.CreateCustomTableAsync("pets", "Pets", new[] { new CustomFieldDefinition { ColumnName = "nome", Name = "Nome" } })),
+        ("object_remove.fcgi", "POST", c => c.DeleteCustomTablesAsync(DataLossConfirmation.Confirmed, new long[] { 1 })),
+        ("object_add_field.fcgi", "POST", c => c.AddCustomFieldAsync("pets", new CustomFieldDefinition { ColumnName = "cor", Name = "Cor" })),
+        ("object_update_field.fcgi", "POST", c => c.UpdateCustomFieldAsync(1, new CustomFieldDefinition { ColumnName = "cor", Name = "Cor" })),
+        ("object_remove_fields.fcgi", "POST", c => c.RemoveCustomFieldsAsync(DataLossConfirmation.Confirmed, new long[] { 1 })),
+        ("export_object.fcgi", "POST", c => c.ExportObjectCsvAsync("users")),
+        ("export_custom_tables_metadata.fcgi", "GET", c => c.ExportCustomTablesMetadataCsvAsync()),
+
+        // Rede, NTP e diagnóstico
+        ("get_ntp_server.fcgi", "GET", c => c.GetNtpServerAsync()),
+        ("set_ntp_server.fcgi", "POST", c => c.SetNtpServerAsync("pool.ntp.org")),
+        ("get_ntp_server_status.fcgi", "GET", c => c.GetNtpServerStatusAsync()),
+        ("check_port_availability.fcgi", "POST", c => c.CheckPortAvailabilityAsync(8000, 8010)),
+        ("get_vpn_ip.fcgi", "GET", c => c.GetVpnIpAsync()),
+        ("get_ssl_certificate.fcgi", "GET", c => c.GetSslCertificateAsync()),
+        ("get_802_1X_status.fcgi", "GET", c => c.Get8021XStatusAsync()),
+        ("get_ac_log.fcgi", "GET", c => c.GetDeviceLogAsync(DeviceLog.AccessControl)),
+        ("get_openvpn_log.fcgi", "GET", c => c.GetDeviceLogAsync(DeviceLog.OpenVpn)),
+        ("get_wpa_log.fcgi", "GET", c => c.GetDeviceLogAsync(DeviceLog.Wpa)),
+        ("get_wpasupplicant_log.fcgi", "GET", c => c.GetDeviceLogAsync(DeviceLog.WpaSupplicant)),
+
+        // Leitura de hardware e estado
+        ("io_state.fcgi", "POST", c => c.GetIoStateAsync()),
+        ("is_identifying.fcgi", "GET", c => c.IsIdentifyingAsync()),
+        ("get_catra_info.fcgi", "GET", c => c.GetTurnstileCountersAsync()),
+        ("get_last_snapshot.fcgi", "GET", c => c.GetLastSnapshotAsync()),
+        ("device_rfid_module.fcgi", "GET", c => c.GetRfidModuleAsync()),
+        ("get_hid_last_card.fcgi", "GET", c => c.GetHidLastCardAsync()),
+        ("get_wiegand_card_read.fcgi", "GET", c => c.GetLastWiegandReadAsync()),
+
+        // Senhas de sistema
+        ("master_password.fcgi", "POST", c => c.SetMasterPasswordAsync("senha-mestra")),
+        ("recovery_password.fcgi", "POST", c => c.SetUpdateModePasswordAsync("123456")),
     };
 
     [Theory]

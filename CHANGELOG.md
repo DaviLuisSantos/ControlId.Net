@@ -4,6 +4,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+### Fixed
+- **DNS ignorado pelo equipamento**: `DnsSettings` serializava `dns_primary` e `dns_secondary`; os nomes que o equipamento lê são `primary_dns` e `secondary_dns`.
+
+### Changed
+- **`EnrollFaceTemplatesAsync`**: `rejectExistingFaces` passa a ter padrão `true` (o padrão do equipamento), então o cadastro recusa face já cadastrada. **Migração:** passe `rejectExistingFaces: false` para manter o comportamento anterior.
+- **`AuditLogCategories.All`** passa a incluir `Boot` (128) e `Push` (256), então `ExportAuditLogsAsync()` sem argumentos traz as nove categorias. **Migração:** combine os flags desejados em vez de `All` se quiser o conjunto anterior.
+- **`IAccessClient` ganhou membros** (biometria, schema customizado, rede/NTP/logs, leitura de hardware, senhas de sistema e as sobrecargas abaixo): quem implementa a interface (fakes, decoradores) precisa acrescentá-los. `AccessClient` e `IAccessClient` passaram a ser `partial`.
+
+### Added
+- **Biometria**: `MatchFaceTemplateAsync`, `CountFaceTemplatesAsync`, `MatchFingerprintTemplatesAsync`.
+- **Schema de objetos customizados**: `GetObjectMetadataAsync`, `CreateCustomTableAsync`, `DeleteCustomTablesAsync`, `AddCustomFieldAsync`, `UpdateCustomFieldAsync`, `RemoveCustomFieldsAsync`, `ExportObjectCsvAsync`, `ExportCustomTablesMetadataCsvAsync` (remoções exigem `DataLossConfirmation`).
+- **Rede, NTP e diagnóstico**: `GetNtpServerAsync`, `SetNtpServerAsync`, `GetNtpServerStatusAsync`, `CheckPortAvailabilityAsync`, `GetVpnIpAsync`, `GetSslCertificateAsync`, `Get8021XStatusAsync` e `GetDeviceLogAsync(DeviceLog)`.
+- **Leitura de hardware**: `GetIoStateAsync`, `IsIdentifyingAsync`, `GetTurnstileCountersAsync`, `GetLastSnapshotAsync`, `GetRfidModuleAsync`, `GetHidLastCardAsync`, `GetLastWiegandReadAsync`.
+- **Senhas de sistema**: `SetMasterPasswordAsync`, `GetMasterPasswordInfoAsync`, `SetUpdateModePasswordAsync`, `RemoveUpdateModePasswordAsync`, `GetUpdateModePasswordStatusAsync` (as senhas nunca vão para mensagens de erro nem logs).
+- **Parâmetros novos em métodos existentes**: `NetworkSettings.Interface`/`DhcpEnabled`/`TenMbps`; `Configure8021XAsync(Ieee8021XSettings)` com método EAP; `ResetToFactoryDefaultAsync(confirmation, FactoryResetOptions)`; `ExportAfdAsync(AfdExportOptions)` com `Limit`/`Offset`; `CaptureScreenAsync(ScreenFrame)`; `SetUserImageAsync`/`SetUserImagesAsync` com `UserImageUploadOptions` (`BypassQualityScore`); `AuditLogCategories.Boot` e `Push`.
+- **Objetos e configuração**: `wiegand_modes`, `group_compatibility`, `AccessCard.WiegandFormatId`/`CredentialType`, identificação por grupo e novos parâmetros de `DeviceSettings` (`hid_reader`, `osdp`, `identifier`).
+- **Modo online**: eventos `new_pin` (`PinEvent`) e `new_face_template` (`FaceTemplateEvent`), cadastro remoto de `face_template_create` e `tag_create` (`RemoteEnrollType.Tag`, `RemoteEnrollResult.Registration`/`TagValue`/`NumBits`) e o autocadastro do quiosque (`new_user_enrolled`, `OnlineEvents.ParseKioskEnrollment`, `IOnlineAccessHandler.OnKioskEnrollmentAsync` com implementação padrão vazia).
+- **Guarda de cobertura**: o teste `EndpointCoverageGuardTests` falha quando um endpoint de `docs/controlid-api/endpoints.json` não está em `src/` nem em `Cobertura/pendentes.txt` ou `nao-cobrir.txt`; uma action mensal atualiza o dump da documentação.
+
 ## [0.9.0-alpha.1] - 2026-11-19
 
 Correções da [auditoria de 2026-11-19](docs/auditoria-2026-11-19.md): callbacks fechados por padrão, TLS do REP validado, fila de Push com prazos e limites, store EF com claim atômico, validação das opções na partida e núcleo endurecido. Tem mudanças que quebram: leia a seção abaixo antes de atualizar.
