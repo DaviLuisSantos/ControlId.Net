@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.AspNetCore.Builder;
 
@@ -37,8 +38,11 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
     /// <see cref="IOnlineAccessHandler.OnRemoteEnrollAsync"/>;</item>
     /// <item><c>new_user_enrolled</c> (autocadastro facial no equipamento) → <see cref="IOnlineAccessHandler.OnKioskEnrollmentAsync"/>;</item>
     /// <item><c>GET user_get_image</c> → <see cref="IOnlineAccessHandler.GetUserImageAsync"/>;</item>
-    /// <item><c>device_is_alive</c> e <c>session_is_valid</c> → 200, para o equipamento sair da contingência.</item>
+    /// <item><c>device_is_alive</c> e <c>session_is_valid</c> (GET ou POST) → 200, para o equipamento sair da contingência.</item>
     /// </list>
+    /// Na identificação, exceção do handler, retorno <see langword="null"/>, prazo vencido
+    /// (<see cref="ControlIdOnlineOptions.DecisionTimeout"/>) ou requisição que não pode ser interpretada nunca resultam em 500:
+    /// o equipamento recebe 200 com a <see cref="ControlIdOnlineOptions.FallbackAuthorization"/>.
     /// As rotas são fechadas por padrão (401): encadeie <c>RequireControlIdToken</c> no grupo devolvido ou, só em rede isolada,
     /// <c>AllowAnonymousControlIdCallbacks()</c>. No cadastro remoto e no <c>new_rex_log</c>, o <c>device_id</c> da query e o do
     /// corpo precisam coincidir (senão, 403).
@@ -70,11 +74,14 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
         group.MapPost("new_rex_log.fcgi", Measure(HandleExitButtonAsync));
         group.MapPost("new_user_enrolled.fcgi", Measure(HandleKioskEnrollmentAsync));
         group.MapGet("user_get_image.fcgi", Measure(HandleUserImageAsync));
-        group.MapPost("device_is_alive.fcgi", Measure(HandleAliveAsync));
-        group.MapPost("session_is_valid.fcgi", Measure(HandleSessionValidAsync));
+        group.MapMethods("device_is_alive.fcgi", AliveMethods, Measure(HandleAliveAsync));
+        group.MapMethods("session_is_valid.fcgi", AliveMethods, Measure(HandleSessionValidAsync));
         CallbackGuard.AddRouteState(group);
         return group;
     }
+
+    // O firmware chama esses dois endpoints em GET ou POST; as duas formas seguem a mesma regra de token.
+    private static readonly string[] AliveMethods = { "GET", "POST" };
 
     private static RequestDelegate Measure(RequestDelegate handler) => CallbackTelemetry.Measure(CallbackTelemetry.Online, handler);
 
@@ -134,6 +141,56 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
             return;
         }
 
+        var options = GetOnlineOptions(context);
+        OnlineIdentificationEvent? identification;
+        Exception? parseError = null;
+        try
+        {
+            identification = await ParseIdentificationAsync(context, endpoint, bytes).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            identification = null;
+            parseError = ex;
+        }
+
+        if (identification is null)
+        {
+            // Requisição que não deu para interpretar: o token e a lista de equipamentos ainda valem, com o device_id da query.
+            if ((!authorizeFirst && !CallbackGuard.Authorize(context, queryDeviceId, LoggerCategory))
+                || !CallbackGuard.IsKnownDevice(context, queryDeviceId, LoggerCategory))
+            {
+                return;
+            }
+
+            Touch(context, queryDeviceId);
+            await WriteFallbackAsync(context, options, CallbackTelemetry.FallbackException, parseError, queryDeviceId).ConfigureAwait(false);
+            return;
+        }
+
+        if (!authorizeFirst && !CallbackGuard.Authorize(context, identification.DeviceId, LoggerCategory))
+        {
+            return;
+        }
+
+        if (!CallbackGuard.IsKnownDevice(context, identification.DeviceId, LoggerCategory))
+        {
+            return;
+        }
+
+        Touch(context, identification.DeviceId);
+        var (authorization, reason, error) = await DecideAsync(context, identification, options).ConfigureAwait(false);
+        if (authorization is null)
+        {
+            await WriteFallbackAsync(context, options, reason!, error, identification.DeviceId).ConfigureAwait(false);
+            return;
+        }
+
+        await WriteAuthorizationAsync(context, authorization).ConfigureAwait(false);
+    }
+
+    private static async Task<OnlineIdentificationEvent?> ParseIdentificationAsync(HttpContext context, string endpoint, byte[] bytes)
+    {
         var values = context.Request.Query.Select(q => new KeyValuePair<string, string>(q.Key, q.Value.ToString())).ToList();
         byte[]? body = null;
         if (context.Request.HasFormContentType)
@@ -149,27 +206,83 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
             body = bytes;
         }
 
-        var identification = OnlineEvents.Parse(endpoint, values, body)!;
-        if (!authorizeFirst && !CallbackGuard.Authorize(context, identification.DeviceId, LoggerCategory))
+        return OnlineEvents.Parse(endpoint, values, body);
+    }
+
+    /// <summary>
+    /// Chama o handler com o prazo de <see cref="ControlIdOnlineOptions.DecisionTimeout"/>. Sem autorização (<c>null</c>), o
+    /// motivo diz por quê. O cancelamento da própria requisição (equipamento desistiu) não é falha do handler e segue adiante.
+    /// </summary>
+    private static async Task<(OnlineAuthorization? Authorization, string? Reason, Exception? Error)> DecideAsync(
+        HttpContext context, OnlineIdentificationEvent identification, ControlIdOnlineOptions options)
+    {
+        using var decisionCts = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
+        Task<OnlineAuthorization> decision;
+        try
         {
-            return;
+            var handler = GetHandler(context);
+            var token = decisionCts.Token;
+            decision = CallbackTelemetry.MeasureHandlerAsync(
+                CallbackTelemetry.Online, () => handler.AuthorizeAsync(identification, token));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return (null, CallbackTelemetry.FallbackException, ex);
         }
 
-        if (!CallbackGuard.IsKnownDevice(context, identification.DeviceId, LoggerCategory))
+        if (options.DecisionTimeout != Timeout.InfiniteTimeSpan)
         {
-            return;
+            using var delayCts = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
+            var delay = Task.Delay(options.DecisionTimeout, delayCts.Token);
+            var first = await Task.WhenAny(decision, delay).ConfigureAwait(false);
+            if (!ReferenceEquals(first, decision))
+            {
+                context.RequestAborted.ThrowIfCancellationRequested();
+
+                // Prazo vencido: cancela o token do handler e não deixa uma falha tardia dele ficar sem observador.
+                decisionCts.Cancel();
+                _ = decision.ContinueWith(
+                    static t => _ = t.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+                return (null, CallbackTelemetry.FallbackTimeout, null);
+            }
+
+            delayCts.Cancel();
         }
 
-        Touch(context, identification.DeviceId);
-        var handler = GetHandler(context);
-        var authorization = await CallbackTelemetry.MeasureHandlerAsync(
-                CallbackTelemetry.Online, () => handler.AuthorizeAsync(identification, context.RequestAborted)).ConfigureAwait(false)
-            ?? throw new InvalidOperationException($"{nameof(IOnlineAccessHandler)}.{nameof(IOnlineAccessHandler.AuthorizeAsync)} devolveu null.");
+        try
+        {
+            OnlineAuthorization? authorization = await decision.ConfigureAwait(false);
+            return authorization is null
+                ? (null, CallbackTelemetry.FallbackNull, null)
+                : (authorization, null, null);
+        }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return (null, CallbackTelemetry.FallbackException, ex);
+        }
+    }
 
+    private static async Task WriteFallbackAsync(
+        HttpContext context, ControlIdOnlineOptions options, string reason, Exception? error, long? deviceId)
+    {
+        CallbackTelemetry.RecordOnlineFallback(reason);
+        Log.OnlineFallback(GetLogger(context), error, deviceId, reason);
+        await WriteAuthorizationAsync(context, options.FallbackAuthorization).ConfigureAwait(false);
+    }
+
+    private static async Task WriteAuthorizationAsync(HttpContext context, OnlineAuthorization authorization)
+    {
         context.Response.StatusCode = StatusCodes.Status200OK;
         context.Response.ContentType = "application/json";
         await context.Response.WriteAsync(authorization.ToResponseJson(), Encoding.UTF8, context.RequestAborted).ConfigureAwait(false);
     }
+
+    private static ControlIdOnlineOptions GetOnlineOptions(HttpContext context) =>
+        context.RequestServices.GetService<IOptions<ControlIdOnlineOptions>>()?.Value ?? new ControlIdOnlineOptions();
 
     private static async Task HandleEnrollAsync(HttpContext context)
     {

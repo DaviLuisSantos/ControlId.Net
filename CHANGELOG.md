@@ -4,6 +4,37 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+Resolve as issues abertas do repositório. Tem duas mudanças de comportamento: veja **Changed**.
+
+### Added
+- **Exceções por desfecho** (#32, [ADR 0026](docs/adr/0026-excecoes-por-desfecho.md)): `ControlIdTimeoutException`, `ControlIdConnectionException` (o comando não saiu, seguro repetir), `ControlIdOutcomeUnknownException` (escrita enviada sem resposta; confira o estado antes de repetir), `ControlIdDeviceErrorException` e `ControlIdNotSupportedException`, todas derivadas de `ControlIdException`. `ControlIdDeviceOptions.ExceptionResponseBody` (`ErrorOnly`, `Full`, `None`) decide o que vai em `ResponseBody` (#39).
+- **Capacidades por firmware** (#34, [ADR 0027](docs/adr/0027-capacidades-por-firmware.md)): `GetCapabilitiesAsync` e `DeviceCapabilities`; um comando que o firmware conhecido não tem, ou que o equipamento já recusou, lança `ControlIdNotSupportedException` sem fazer requisição.
+- **Upsert e lotes** (#33, #35): `CreateOrModifyObjectsAsync` cai para `modify_objects` e `create_objects` quando o equipamento não tem `create_or_modify_objects`; `CreateObjectsAsync` e o upsert dividem em lotes de `MaxObjectsPerRequest` (200). O `PushServer` volta a envios individuais quando o equipamento recusa `transactions` (`PushServerOptions.UseTransactions`).
+- **Validação e lotes de fotos** (#56, #35): `ValidateImages` confere formato e dimensões (`MaxImageLongSide`, `MaxImageShortSide`, `MaxImageBytes`) antes da requisição e lança `ControlIdImageRejectedException`; `SetUserImagesAsync` valida cada foto, divide em lotes (`MaxImageBatchBytes`, `MaxImagesPerBatch`) e cai para `user_set_image` quando o equipamento recusa o lote.
+- **`ConnectTimeout`** (#53): prazo de conexão separado do `Timeout` (padrão 5 s), no `AccessClient` e no `RepClient` criados direto, no `net8.0` ou superior.
+- **Hora local dos eventos** (#50, [ADR 0028](docs/adr/0028-hora-local-dos-eventos.md)): `AccessLog.LocalTime`, `AccessDeviceEvent.LocalTimestamp`, `AlarmLog.LocalTime`, `ChangeLog.LocalTimestamp`, `ExitButtonLog.LocalTime` e `OnlineIdentificationEvent.LocalTime`, com `Kind` `Unspecified`.
+- **Modo online** (#51, #52): `device_is_alive.fcgi` e `session_is_valid.fcgi` em GET e POST; `ControlIdOnlineOptions` (`FallbackAuthorization`, `DecisionTimeout`), log 2014 e contador `controlid.server.online.fallbacks`.
+- **`CardNumber`** (#57): converte entre `facility,número` e o inteiro do equipamento (`FromFacility`, `ToFacility`, `Parse`, `TryParse`, `Format`).
+- **`EnrollAndWaitAsync`** (#36): cadastro remoto que acompanha o `enroller_state` até o fim, com prazo e cancelamento.
+- **Sincronização de pessoas** (#54): `SyncUserAsync` e `SyncUsersAsync` aplicam só a diferença para o estado desejado (`DesiredUser`), com um resultado por pessoa.
+- **Guardião de configuração** (#55): `AddControlIdConfigurationGuard` no pacote DI confere `general.online`, monitor, seções extras e o relógio a cada ciclo, com log, contador `controlid.guard.corrections` e `AddControlIdConfigurationGuard()` para health checks.
+- **Descoberta de equipamentos** (#58): `ControlIdDiscovery.ScanAsync` e `ExpandCidr`, com os status `Found`, `PortClosed`, `NotControlId`, `CredentialRejected` e `Error`.
+- **Pacote `ControlId.Net.Testing`** (#31): `RecordingHandler`, `ReplayHandler` e `Cassette` gravam e reproduzem a conversa com o equipamento, com segredos mascarados ([migração de um cliente próprio](docs/migrando-de-cliente-proprio.md)).
+- **Versões mínimas no `netstandard2.0`** (#38, [ADR 0030](docs/adr/0030-versoes-minimas-das-dependencias.md)) e projeto `ControlId.Net.MinDeps.Tests` na CI.
+- **Política de compatibilidade e critérios para a 1.0** (#40, [ADR 0029](docs/adr/0029-compatibilidade-e-criterios-para-a-1-0.md)).
+- **Simulador**: `DisabledCommands`, `user_set_image_list`, `set_system_time`, `enroller_state`, contador de requisições em `/simulator/state` e hora local nos eventos.
+
+### Changed
+- **`MaxConcurrentRequests` passa de 4 para 1** (#37, [ADR 0025](docs/adr/0025-uma-requisicao-por-vez.md)): o equipamento atende melhor uma requisição por vez. **Migração:** quem dependia do paralelismo define `MaxConcurrentRequests = 4` (ou o valor desejado) nas opções.
+- **Propriedades `*Utc` dos eventos ficam `[Obsolete]`** (#50): o equipamento grava a hora local dele, então o valor nunca foi UTC. **Migração:** troque pelas propriedades `Local*` (veja **Added**) e converta com o fuso do equipamento quando precisar de UTC.
+- **Exceções mais específicas** (#32): falhas que antes eram `ControlIdException` agora chegam como subtipos dela. Quem captura `ControlIdException` continua funcionando; quem comparava o tipo exato precisa ajustar.
+
+### Fixed
+- **Hora dos eventos** (#50): a hora local do equipamento era devolvida como se fosse UTC.
+- **500 no modo online** (#52): um handler que lança, devolve `null` ou demora responde 200 com a autorização de fallback (`Sistema indisponível`, por padrão), em vez de 500.
+- **405 no `device_is_alive` por GET** (#51): a rota passa a aceitar GET e POST.
+- **`ConnectTimeout` no REP** (#53): o `RepClient` criado direto também respeita o prazo de conexão.
+
 ## [0.10.0-alpha.1] - 2026-11-20
 
 Cobertura completa da [documentação da Access API](docs/controlid-api/README.md): os 180 endpoints documentados têm método tipado, e um teste falha quando surge um novo sem cobertura. Tem mudanças que quebram: veja **Changed**.

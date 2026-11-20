@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -60,11 +59,16 @@ internal static class ReadRetry
     public static bool IsTransient(HttpStatusCode status) =>
         (int)status >= 500 || status == HttpStatusCode.RequestTimeout || (int)status == 429;
 
-    /// <summary>Falha de rede ou timeout do cliente (não um cancelamento pedido por quem chamou).</summary>
+    /// <summary>
+    /// Comandos cuja falha de rede ou timeout não deixa dúvida sobre o desfecho: as leituras e o login (que só abre uma sessão).
+    /// Os demais viram <see cref="ControlIdOutcomeUnknownException"/> quando a resposta não chega.
+    /// </summary>
+    public static bool IsSafeToRepeat(string command) =>
+        IsReadOnly(command) || string.Equals(command, "login", StringComparison.Ordinal) || string.Equals(command, "logout", StringComparison.Ordinal);
+
+    /// <summary>Falha de rede ou timeout do cliente de uma leitura (não um cancelamento pedido por quem chamou).</summary>
     public static bool IsTransient(ControlIdException exception) =>
-        exception is not ControlIdCircuitOpenException
-        && exception.StatusCode is null
-        && exception.InnerException is HttpRequestException or TaskCanceledException;
+        exception is ControlIdTimeoutException or ControlIdConnectionException;
 
     /// <summary>Espera antes da tentativa <paramref name="retry"/> (1, 2, ...): o dobro da anterior, ±20%.</summary>
     public static TimeSpan Delay(TimeSpan baseDelay, int retry)

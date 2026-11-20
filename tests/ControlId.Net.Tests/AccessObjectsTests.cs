@@ -13,6 +13,7 @@ public class AccessObjectsTests
         BaseAddress = new Uri("http://10.0.0.5"),
         Login = "admin",
         Password = "secret",
+        ValidateImages = false,
     };
 
     private static FakeDeviceHandler LoggedDevice() => new FakeDeviceHandler().OnJson("login.fcgi", """{"session":"s"}""");
@@ -190,7 +191,7 @@ public class AccessObjectsTests
         var device = LoggedDevice().On("user_get_image.fcgi", HttpStatusCode.BadRequest, """{"error":"Image not found","code":1}""");
         using var client = new AccessClient(Options, device.CreateClient());
 
-        var ex = await Assert.ThrowsAsync<ControlIdException>(() => client.GetUserImageAsync(7));
+        var ex = await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUserImageAsync(7));
         Assert.Contains("Image not found", ex.Message);
     }
 

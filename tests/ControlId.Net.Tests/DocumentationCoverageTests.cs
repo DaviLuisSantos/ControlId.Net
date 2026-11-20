@@ -257,7 +257,7 @@ public class DocumentationCoverageTests
     public async Task Documented_endpoint_has_a_typed_method(string endpoint, string method)
     {
         var device = new AnyEndpointDevice();
-        using var client = new AccessClient(new ControlIdDeviceOptions { BaseAddress = new Uri("http://10.0.0.5") }, new HttpClient(device));
+        using var client = new AccessClient(new ControlIdDeviceOptions { BaseAddress = new Uri("http://10.0.0.5"), ValidateImages = false }, new HttpClient(device));
 
         var call = Calls.Single(c => c.Endpoint == endpoint).Call;
         try

@@ -2,7 +2,10 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -56,6 +59,7 @@ public sealed class PushServer
     private readonly int _maxPendingPerDevice;
     private readonly int _maxTrackedDevices;
     private readonly bool _requireUuid;
+    private readonly bool? _useTransactions;
     private readonly TimeSpan _resultHandlerTimeout;
     private readonly SemaphoreSlim[] _gates = CreateGates();
     private readonly ConcurrentDictionary<long, DateTimeOffset> _lastSeen = new();
@@ -64,6 +68,14 @@ public sealed class PushServer
     // Envios cujo waiter já desistiu (cancelamento ou CommandTimeout) e que ainda podem estar no store: o resultado ou
     // a falha deles é descartado em vez de ir ao handler.
     private readonly ConcurrentDictionary<Guid, byte> _abandoned = new();
+
+    // Equipamentos que recusaram o formato "transactions": os lotes deles saem como envios individuais.
+    private readonly ConcurrentDictionary<long, byte> _noTransactions = new();
+
+    // Lotes desmembrados em envios individuais. O grupo usa o id do lote original (é o id de quem espera); cada
+    // envio individual aponta de volta para o grupo e a posição dele.
+    private readonly ConcurrentDictionary<Guid, BatchGroup> _groups = new();
+    private readonly ConcurrentDictionary<Guid, GroupMember> _groupByMember = new();
     private int _trackedDevices;
     private int _trackingLimitLogged;
 
@@ -105,6 +117,7 @@ public sealed class PushServer
         _maxPendingPerDevice = options.MaxPendingPerDevice;
         _maxTrackedDevices = options.MaxTrackedDevices;
         _requireUuid = options.RequireUuid;
+        _useTransactions = options.UseTransactions;
         _resultHandlerTimeout = options.ResultHandlerTimeout;
     }
 
@@ -137,7 +150,11 @@ public sealed class PushServer
     /// Prazo, cancelamento e limite da fila como em <see cref="SendAsync"/>.
     /// <para>
     /// Nem todo firmware aceita lotes: o iDFace 6.9.12 trata o corpo como um comando só e responde
-    /// "Invalid member 'endpoint'", que chega como erro em todos os resultados. Nesse caso, envie um a um com <see cref="SendAsync"/>.
+    /// "Invalid member 'endpoint'". Com <see cref="PushServerOptions.UseTransactions"/> em <c>null</c> (automático), o
+    /// servidor percebe a recusa, lembra que aquele equipamento não aceita <c>transactions</c>, reenvia os comandos do lote
+    /// como envios individuais e entrega os resultados de sempre; os próximos lotes do equipamento já saem individuais.
+    /// Com <c>false</c>, todo lote sai individual; com <c>true</c>, a recusa chega como erro em todos os resultados.
+    /// Num lote desmembrado, <see cref="GetPendingCountAsync"/> conta um envio por comando.
     /// </para>
     /// </summary>
     public Task<IReadOnlyList<PushResult>> SendBatchAsync(long deviceId, IEnumerable<PushCommand> commands, CancellationToken cancellationToken = default) =>
@@ -320,6 +337,38 @@ public sealed class PushServer
                 : new[] { ParseSingleResult(deviceId, envelope.Endpoints[0], root) };
         }
 
+        // Resultado de um envio individual que veio de um lote desmembrado: entra no grupo e, se foi o último, entrega tudo.
+        if (_groupByMember.TryRemove(envelope.Id, out var member))
+        {
+            Telemetry.RecordPush(PushOutcome.Completed);
+            var memberResult = invalid is null
+                ? ParseSingleResult(deviceId, envelope.Endpoints[0], root)
+                : new PushResult(deviceId, envelope.Endpoints[0], null, invalid.Message);
+            await CompleteMemberAsync(member, memberResult).ConfigureAwait(false);
+            return true;
+        }
+
+        // O equipamento recusou o formato "transactions": lembra e reenvia os comandos um a um, com os mesmos awaiters.
+        if (results is not null
+            && envelope.Batch
+            && _useTransactions != true
+            && IsTransactionsRefused(results)
+            && !_abandoned.ContainsKey(envelope.Id)
+            && TrySplitBatchPayload(envelope.Payload, envelope.Endpoints.Count, out var individualPayloads))
+        {
+            _noTransactions[deviceId] = 0;
+            var group = new BatchGroup(envelope.Id, deviceId, envelope.Endpoints);
+            try
+            {
+                await AddMembersAsync(group, individualPayloads, enforceLimit: false, CancellationToken.None).ConfigureAwait(false);
+                return true;
+            }
+            catch (Exception)
+            {
+                // O store não aceitou os envios individuais: quem espera recebe a recusa do equipamento, como sem o fallback.
+            }
+        }
+
         if (_waiters.TryRemove(envelope.Id, out var waiter))
         {
             Telemetry.RecordPush(PushOutcome.Completed);
@@ -425,6 +474,13 @@ public sealed class PushServer
         else
         {
             PushLog.CommandOrphaned(_logger, envelope.Id, envelope.DeviceId, reason);
+        }
+
+        if (_groupByMember.TryRemove(envelope.Id, out var member))
+        {
+            // Um envio individual de lote desmembrado falhou: só o comando dele falha, os demais seguem.
+            await CompleteMemberAsync(member, new PushResult(envelope.DeviceId, envelope.Endpoints.Count > 0 ? envelope.Endpoints[0] : string.Empty, null, message)).ConfigureAwait(false);
+            return;
         }
 
         if (_waiters.TryRemove(envelope.Id, out var waiter))
@@ -680,20 +736,230 @@ public sealed class PushServer
         }
 
         Telemetry.RecordPush(outcome);
-        _ = RemoveAbandonedAsync(deviceId, id);
+
+        // Lote desmembrado: os envios individuais ainda na fila também saem, e os resultados que chegarem são descartados.
+        var group = DetachGroup(id);
+        _ = RemoveAbandonedAsync(deviceId, id, group);
         fail();
     }
 
-    private async Task RemoveAbandonedAsync(long deviceId, Guid id)
+    private async Task RemoveAbandonedAsync(long deviceId, Guid id, BatchGroup? group)
     {
         try
         {
             await RemoveFromStoreAsync(deviceId, id, takeGate: true).ConfigureAwait(false);
+            if (group is not null)
+            {
+                foreach (var memberId in group.MemberIds)
+                {
+                    await RemoveFromStoreAsync(deviceId, memberId, takeGate: true).ConfigureAwait(false);
+                }
+            }
         }
         finally
         {
             _abandoned.TryRemove(id, out _);
+            if (group is not null)
+            {
+                foreach (var memberId in group.MemberIds)
+                {
+                    _abandoned.TryRemove(memberId, out _);
+                }
+            }
         }
+    }
+
+    // Tira o grupo do controle e marca os envios individuais como abandonados (a marca vem antes de sair do mapa).
+    private BatchGroup? DetachGroup(Guid groupId)
+    {
+        if (!_groups.TryRemove(groupId, out var group))
+        {
+            return null;
+        }
+
+        foreach (var memberId in group.MemberIds)
+        {
+            _abandoned[memberId] = 0;
+            _groupByMember.TryRemove(memberId, out _);
+        }
+
+        return group;
+    }
+
+    private bool ShouldSplitBatch(long deviceId) =>
+        _useTransactions == false || (_useTransactions is null && _noTransactions.ContainsKey(deviceId));
+
+    // Recusa do formato "transactions": todo comando do lote voltou com "Invalid member"/"Invalid command".
+    private static bool IsTransactionsRefused(IReadOnlyList<PushResult> results) =>
+        results.Count > 0 && results.All(r => r.Error is { } error
+            && (error.IndexOf("Invalid member", StringComparison.OrdinalIgnoreCase) >= 0
+                || error.IndexOf("Invalid command", StringComparison.OrdinalIgnoreCase) >= 0));
+
+    // Refaz o JSON de cada comando do lote sem o transactionid: é o formato do envio individual.
+    private static bool TrySplitBatchPayload(string payload, int expected, out List<string> payloads)
+    {
+        payloads = new List<string>();
+        try
+        {
+            using var document = JsonDocument.Parse(payload);
+            if (document.RootElement.ValueKind != JsonValueKind.Object
+                || !document.RootElement.TryGetProperty("transactions", out var transactions)
+                || transactions.ValueKind != JsonValueKind.Array
+                || transactions.GetArrayLength() != expected)
+            {
+                return false;
+            }
+
+            foreach (var transaction in transactions.EnumerateArray())
+            {
+                if (transaction.ValueKind != JsonValueKind.Object)
+                {
+                    return false;
+                }
+
+                using var stream = new MemoryStream();
+                using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }))
+                {
+                    writer.WriteStartObject();
+                    foreach (var property in transaction.EnumerateObject())
+                    {
+                        if (!property.NameEquals("transactionid"))
+                        {
+                            property.WriteTo(writer);
+                        }
+                    }
+
+                    writer.WriteEndObject();
+                }
+
+                payloads.Add(Encoding.UTF8.GetString(stream.ToArray()));
+            }
+
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    // Registra o grupo e enfileira um envio individual por comando, em ordem. O limite da fila só vale para quem
+    // enfileira agora (enforceLimit); no reenvio de um lote recusado ele não se aplica, para não perder os resultados.
+    private async Task AddMembersAsync(BatchGroup group, List<string> payloads, bool enforceLimit, CancellationToken cancellationToken)
+    {
+        _groups[group.Id] = group;
+        for (var i = 0; i < group.MemberIds.Length; i++)
+        {
+            _groupByMember[group.MemberIds[i]] = new GroupMember(group, i);
+        }
+
+        var added = new List<Guid>();
+        try
+        {
+            var gate = GetGate(group.DeviceId);
+            await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                if (enforceLimit
+                    && _maxPendingPerDevice > 0
+                    && await _store.CountAsync(group.DeviceId, cancellationToken).ConfigureAwait(false) + payloads.Count > _maxPendingPerDevice)
+                {
+                    Telemetry.RecordPush(PushOutcome.Rejected);
+                    throw new PushQueueFullException(group.DeviceId, _maxPendingPerDevice);
+                }
+
+                try
+                {
+                    for (var i = 0; i < payloads.Count; i++)
+                    {
+                        var envelope = new PushEnvelope(group.MemberIds[i], group.DeviceId, batch: false, new[] { group.Endpoints[i] }, payloads[i], _clock());
+                        added.Add(envelope.Id);
+                        await _store.AddAsync(envelope, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+                catch
+                {
+                    foreach (var id in added)
+                    {
+                        await RemoveFromStoreAsync(group.DeviceId, id, takeGate: false).ConfigureAwait(false);
+                    }
+
+                    throw;
+                }
+
+                // Quem espera desistiu enquanto os envios entravam: o que já entrou sai da fila.
+                if (!_groups.ContainsKey(group.Id))
+                {
+                    foreach (var id in added)
+                    {
+                        await RemoveFromStoreAsync(group.DeviceId, id, takeGate: false).ConfigureAwait(false);
+                    }
+                }
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }
+        catch
+        {
+            _groups.TryRemove(group.Id, out _);
+            foreach (var memberId in group.MemberIds)
+            {
+                _groupByMember.TryRemove(memberId, out _);
+            }
+
+            throw;
+        }
+    }
+
+    // Guarda o resultado de um envio individual e, quando é o último do grupo, entrega todos na ordem do lote.
+    private async Task CompleteMemberAsync(GroupMember member, PushResult result)
+    {
+        var group = member.Group;
+        if (!group.TrySet(member.Index, result))
+        {
+            return;
+        }
+
+        _groups.TryRemove(group.Id, out _);
+        var results = group.Results();
+        if (_waiters.TryRemove(group.Id, out var waiter))
+        {
+            waiter.TrySetResult(results);
+        }
+        else if (!_abandoned.ContainsKey(group.Id))
+        {
+            await InvokeHandlerAsync(new PushCompletion(group.Id, group.DeviceId, results, null)).ConfigureAwait(false);
+        }
+    }
+
+    // Lote enfileirado como um envio individual por comando (equipamento que não aceita "transactions").
+    private async Task<Guid> AddSplitBatchAsync(
+        long deviceId,
+        IReadOnlyList<PushCommand> commands,
+        TaskCompletionSource<IReadOnlyList<PushResult>>? waiter,
+        CancellationToken cancellationToken)
+    {
+        var payloads = commands.Select(c => ControlIdJson.Serialize(c)).ToList();
+        var group = new BatchGroup(Guid.NewGuid(), deviceId, commands.Select(c => c.Endpoint).ToList());
+        if (waiter is not null)
+        {
+            _waiters[group.Id] = waiter;
+        }
+
+        try
+        {
+            await AddMembersAsync(group, payloads, enforceLimit: true, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            _waiters.TryRemove(group.Id, out _);
+            throw;
+        }
+
+        Telemetry.RecordPush(PushOutcome.Enqueued);
+        return group.Id;
     }
 
     // Remoção de melhor esforço, com prazo próprio. Nunca lança: a falha vira log 1106.
@@ -734,6 +1000,11 @@ public sealed class PushServer
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
+        if (batch && ShouldSplitBatch(deviceId))
+        {
+            return await AddSplitBatchAsync(deviceId, commands, waiter, cancellationToken).ConfigureAwait(false);
+        }
 
         string payload;
         if (!batch)
@@ -809,6 +1080,73 @@ public sealed class PushServer
     internal static int GateIndex(long deviceId) => (int)((uint)deviceId.GetHashCode() % GateCount);
 
     private SemaphoreSlim GetGate(long deviceId) => _gates[GateIndex(deviceId)];
+
+    // Lote desmembrado em envios individuais: junta os resultados na ordem do lote.
+    private sealed class BatchGroup
+    {
+        private readonly PushResult?[] _results;
+        private readonly object _sync = new();
+        private int _remaining;
+
+        public BatchGroup(Guid id, long deviceId, IReadOnlyList<string> endpoints)
+        {
+            Id = id;
+            DeviceId = deviceId;
+            Endpoints = endpoints;
+            MemberIds = new Guid[endpoints.Count];
+            for (var i = 0; i < MemberIds.Length; i++)
+            {
+                MemberIds[i] = Guid.NewGuid();
+            }
+
+            _results = new PushResult?[endpoints.Count];
+            _remaining = endpoints.Count;
+        }
+
+        public Guid Id { get; }
+
+        public long DeviceId { get; }
+
+        public IReadOnlyList<string> Endpoints { get; }
+
+        public Guid[] MemberIds { get; }
+
+        // Devolve true quando este foi o último resultado que faltava.
+        public bool TrySet(int index, PushResult result)
+        {
+            lock (_sync)
+            {
+                if (_results[index] is not null)
+                {
+                    return false;
+                }
+
+                _results[index] = result;
+                return --_remaining == 0;
+            }
+        }
+
+        public List<PushResult> Results()
+        {
+            lock (_sync)
+            {
+                return _results.Select(r => r!).ToList();
+            }
+        }
+    }
+
+    private sealed class GroupMember
+    {
+        public GroupMember(BatchGroup group, int index)
+        {
+            Group = group;
+            Index = index;
+        }
+
+        public BatchGroup Group { get; }
+
+        public int Index { get; }
+    }
 
     private sealed class PushTransaction
     {

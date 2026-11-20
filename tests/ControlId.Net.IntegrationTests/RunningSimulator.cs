@@ -26,9 +26,11 @@ internal sealed class RunningSimulator : IAsyncDisposable
     /// <summary>Cliente HTTP para as rotas <c>/simulator/*</c>.</summary>
     public HttpClient Control { get; }
 
-    public static async Task<RunningSimulator> StartAsync(Action<SimulatorOptions>? configure = null)
+    /// <param name="configure">Ajusta as opções em código.</param>
+    /// <param name="extraArgs">Argumentos de linha de comando extras (ex.: <c>--DisabledCommands=set_system_time</c>).</param>
+    public static async Task<RunningSimulator> StartAsync(Action<SimulatorOptions>? configure = null, params string[] extraArgs)
     {
-        var app = SimulatorApp.Build(["--urls", "http://127.0.0.1:0", "--Logging:LogLevel:Default", "Warning"], configure);
+        var app = SimulatorApp.Build(["--urls", "http://127.0.0.1:0", "--Logging:LogLevel:Default", "Warning", .. extraArgs], configure);
         await app.StartAsync();
         var address = app.Services.GetRequiredService<IServer>().Features.GetRequiredFeature<IServerAddressesFeature>().Addresses.First();
         return new RunningSimulator(app, new Uri(address));
@@ -55,6 +57,20 @@ internal sealed class RunningSimulator : IAsyncDisposable
         response.EnsureSuccessStatusCode();
         var log = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
         return log.GetProperty("id").GetInt64();
+    }
+
+    /// <summary>Quantas requisições o simulador recebeu do comando (sem o <c>.fcgi</c>), pelo contador de <c>/simulator/state</c>.</summary>
+    public async Task<long> RequestCountAsync(string command)
+    {
+        var state = await Control.GetFromJsonAsync<System.Text.Json.JsonElement>("/simulator/state");
+        return state.GetProperty("requests").TryGetProperty(command, out var count) ? count.GetInt64() : 0;
+    }
+
+    /// <summary>Se o <c>general.online</c> está ligado no simulador.</summary>
+    public async Task<bool> IsOnlineAsync()
+    {
+        var state = await Control.GetFromJsonAsync<System.Text.Json.JsonElement>("/simulator/state");
+        return state.GetProperty("online").GetBoolean();
     }
 
     public async Task ExpireSessionsAsync()

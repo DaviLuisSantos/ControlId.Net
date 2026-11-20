@@ -9,7 +9,19 @@
     <PackageTags>controlid;control-id;idaccess;idflex;idface;idclass;rep;dependency-injection;ihttpclientfactory</PackageTags>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!-- No netstandard2.0 as dependências ficam nas versões mínimas seguras (ADR 0030; valores no Directory.Packages.props). -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <!-- BackgroundService do guardião de configuração (AddControlIdConfigurationGuard). -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" VersionOverride="$(ControlIdMinHostingAbstractions)" />
+    <PackageReference Include="Microsoft.Extensions.Http" VersionOverride="$(ControlIdMinHttp)" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" VersionOverride="$(ControlIdMinOptionsConfigurationExtensions)" />
+    <!-- AddControlIdDevices no AddHealthChecks(). -->
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" VersionOverride="$(ControlIdMinHealthChecks)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
+    <!-- BackgroundService do guardião de configuração (AddControlIdConfigurationGuard). -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
     <!-- AddControlIdDevices no AddHealthChecks(). -->

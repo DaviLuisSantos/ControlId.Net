@@ -335,7 +335,7 @@ public class RepClientPhase2Tests
         Assert.Equal(RepMode.Portaria671, client.Mode);
 
         // Sem callback próprio vale a validação padrão do .NET: o certificado autoassinado do REP é recusado.
-        Assert.Null(client.Transport.OwnedHandler!.ServerCertificateCustomValidationCallback);
+        Assert.Null(PrimaryHandlerCertificate.Of(client.Transport.OwnedPrimaryHandler!));
     }
 
     [Fact]
@@ -349,8 +349,8 @@ public class RepClientPhase2Tests
 
         using var client = new RepClient("https://10.0.0.9", "ponto", "1234", RepMode.Legacy, sha256.ToLowerInvariant());
 
-        var callback = client.Transport.OwnedHandler!.ServerCertificateCustomValidationCallback!;
-        Assert.True(callback(new HttpRequestMessage(), certificate, null, System.Net.Security.SslPolicyErrors.RemoteCertificateChainErrors));
+        var callback = PrimaryHandlerCertificate.Of(client.Transport.OwnedPrimaryHandler!)!;
+        Assert.True(callback(certificate, System.Net.Security.SslPolicyErrors.RemoteCertificateChainErrors));
         Assert.Equal("ponto", client.Transport.Options.Login);
         Assert.Equal(RepMode.Legacy, client.Mode);
         Assert.False(client.Transport.Options.AcceptAnyServerCertificate);
@@ -369,7 +369,7 @@ public class RepClientPhase2Tests
             "The SSL connection could not be established.", new System.Security.Authentication.AuthenticationException("remote certificate is invalid")));
         using var client = new RepClient(Options(), RepMode.Portaria671, new HttpClient(handler));
 
-        var error = await Assert.ThrowsAsync<ControlIdException>(() => client.GetAboutAsync());
+        var error = await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetAboutAsync());
 
         Assert.Contains("GetServerCertificateSha256Async", error.Message);
         Assert.Contains("ServerCertificateSha256", error.Message);
@@ -381,7 +381,7 @@ public class RepClientPhase2Tests
     {
         using var client = new RepClient(Options(), RepMode.Portaria671, new HttpClient(new ThrowingHandler(new HttpRequestException("sem rede"))));
 
-        var error = await Assert.ThrowsAsync<ControlIdException>(() => client.GetAboutAsync());
+        var error = await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetAboutAsync());
 
         Assert.DoesNotContain("GetServerCertificateSha256Async", error.Message);
     }
@@ -392,7 +392,7 @@ public class RepClientPhase2Tests
         var handler = new ThrowingHandler(new HttpRequestException("ssl", new System.Security.Authentication.AuthenticationException("bad")));
         using var client = new RepClient(Options(), RepMode.Portaria671, new HttpClient(handler));
 
-        var error = await Assert.ThrowsAsync<ControlIdException>(() => client.OpenAfdStreamAsync());
+        var error = await Assert.ThrowsAnyAsync<ControlIdException>(() => client.OpenAfdStreamAsync());
 
         Assert.Contains("GetServerCertificateSha256Async", error.Message);
     }

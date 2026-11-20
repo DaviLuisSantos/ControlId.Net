@@ -34,7 +34,12 @@ public sealed class ExitButtonLog
     [JsonPropertyName("portal_id")]
     public long? PortalId { get; set; }
 
-    /// <summary><see cref="Time"/> como data, em UTC.</summary>
+    /// <summary><see cref="Time"/> como hora local do equipamento (<see cref="DateTimeKind.Unspecified"/>, sem fuso).</summary>
+    [JsonIgnore]
+    public DateTime LocalTime => Internal.DeviceLocalTime.FromEpoch(Time);
+
+    /// <summary><see cref="Time"/> lido como UTC. O equipamento grava a hora local dele, não UTC.</summary>
+    [Obsolete("O equipamento grava a hora local dele, não UTC. Use LocalTime.")]
     [JsonIgnore]
     public DateTimeOffset TimeUtc => DateTimeOffset.FromUnixTimeSeconds(Time);
 }

@@ -136,7 +136,7 @@ public class SystemPasswordsTests
             """{"error":"Invalid access level for command recovery_password","code":1}""");
         using var client = new AccessClient(Options, device.CreateClient());
 
-        var ex = await Assert.ThrowsAsync<ControlIdException>(() => client.SetUpdateModePasswordAsync(password));
+        var ex = await Assert.ThrowsAnyAsync<ControlIdException>(() => client.SetUpdateModePasswordAsync(password));
 
         Assert.Contains("Invalid access level", ex.Message);
         Assert.DoesNotContain(password, ex.Message);
@@ -151,7 +151,7 @@ public class SystemPasswordsTests
         var device = LoggedDevice().On("master_password.fcgi", HttpStatusCode.BadRequest, """{"error":"Invalid master password","code":2}""");
         using var client = new AccessClient(Options, device.CreateClient());
 
-        var ex = await Assert.ThrowsAsync<ControlIdException>(() => client.SetMasterPasswordAsync(password));
+        var ex = await Assert.ThrowsAnyAsync<ControlIdException>(() => client.SetMasterPasswordAsync(password));
 
         Assert.DoesNotContain(password, ex.Message);
         Assert.DoesNotContain(password, ex.ToString());

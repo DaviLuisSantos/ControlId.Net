@@ -4,6 +4,8 @@
   href: guia.md
 - name: Cobertura
   href: COBERTURA.md
+- name: Migrando de um cliente próprio
+  href: migrando-de-cliente-proprio.md
 - name: Decisões (ADRs)
   href: adr/README.md
 - name: API

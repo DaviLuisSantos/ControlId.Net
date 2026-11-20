@@ -141,7 +141,27 @@ public sealed partial class AccessClient : IAccessClient, IControlIdClientDiagno
     /// <inheritdoc/>
     public async Task<IReadOnlyList<long>> CreateObjectsAsync<T>(string @object, IEnumerable<T> values, CancellationToken cancellationToken = default)
     {
-        var body = new Dictionary<string, object?> { ["object"] = @object, ["values"] = values.ToList() };
+        var list = (values ?? throw new ArgumentNullException(nameof(values))).ToList();
+        var batchSize = _transport.Options.MaxObjectsPerRequest;
+        if (list.Count <= batchSize)
+        {
+            return await CreateObjectsBatchAsync(@object, list, cancellationToken).ConfigureAwait(false);
+        }
+
+        // Lotes de MaxObjectsPerRequest: o equipamento recusa ou trava com pedidos muito grandes (#33).
+        var ids = new List<long>(list.Count);
+        for (var offset = 0; offset < list.Count; offset += batchSize)
+        {
+            var chunk = list.GetRange(offset, Math.Min(batchSize, list.Count - offset));
+            ids.AddRange(await CreateObjectsBatchAsync(@object, chunk, cancellationToken).ConfigureAwait(false));
+        }
+
+        return ids;
+    }
+
+    private async Task<IReadOnlyList<long>> CreateObjectsBatchAsync<T>(string @object, List<T> values, CancellationToken cancellationToken)
+    {
+        var body = new Dictionary<string, object?> { ["object"] = @object, ["values"] = values };
         var response = await _transport.PostAsync<IdsResponse>("create_objects.fcgi", body, cancellationToken).ConfigureAwait(false);
         return response.Ids ?? new List<long>();
     }
@@ -230,11 +250,35 @@ public sealed partial class AccessClient : IAccessClient, IControlIdClientDiagno
             throw new ArgumentNullException(nameof(options));
         }
 
-        ValidateImage(image, nameof(image));
+        var deviceOptions = _transport.Options;
+        if (deviceOptions.ValidateImages)
+        {
+            if (image is null || image.Length == 0)
+            {
+                throw new ArgumentException("Informe a imagem.", nameof(image));
+            }
+
+            var rejection = ImageHeader.Check(deviceOptions, userId, image);
+            if (rejection is not null)
+            {
+                throw rejection;
+            }
+        }
+        else
+        {
+            ValidateImage(image, nameof(image));
+        }
+
+        return await SendUserImageAsync(userId, image, options, timestamp ?? DateTimeOffset.UtcNow, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<FaceImageResult> SendUserImageAsync(
+        long userId, byte[] image, UserImageUploadOptions options, DateTimeOffset timestamp, CancellationToken cancellationToken)
+    {
         var query = string.Join(
             "&",
             "user_id=" + userId.ToString(CultureInfo.InvariantCulture),
-            "timestamp=" + (timestamp ?? DateTimeOffset.UtcNow).ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
+            "timestamp=" + timestamp.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
             "match=" + (options.RejectExistingFace ? "1" : "0")) + (options.BypassQualityScore ? "&bypass_quality_score=1" : string.Empty);
         var text = await _transport.PostBytesAsync("user_set_image.fcgi", image, "application/octet-stream", cancellationToken, query).ConfigureAwait(false);
         return ParseFaceResult(text);
@@ -259,15 +303,115 @@ public sealed partial class AccessClient : IAccessClient, IControlIdClientDiagno
             throw new ArgumentNullException(nameof(options));
         }
 
-        var body = new Dictionary<string, object> { ["match"] = options.RejectExistingFace, ["user_images"] = images.ToList() };
+        var deviceOptions = _transport.Options;
+        var input = images.ToList();
+
+        // Fotos inválidas viram resultado de falha daquele usuário; as demais seguem em lotes.
+        var rejected = new Dictionary<int, FaceImageResult>();
+        var valid = new List<int>(input.Count);
+        for (var i = 0; i < input.Count; i++)
+        {
+            var rejection = deviceOptions.ValidateImages ? ImageHeader.Check(deviceOptions, input[i].UserId, input[i].Image) : null;
+            if (rejection is null)
+            {
+                valid.Add(i);
+            }
+            else
+            {
+                rejected[i] = FailedImageResult(input[i].UserId, rejection.Message, 0);
+            }
+        }
+
+        // Resultado de cada foto válida, pela posição de entrada. Um lote sem resultados por foto (equipamento não facial) deixa as posições vazias.
+        var accepted = new Dictionary<int, FaceImageResult>();
+        foreach (var batch in SplitImageBatches(input, valid, deviceOptions))
+        {
+            var results = await SendImageBatchAsync(input, batch, options, cancellationToken).ConfigureAwait(false);
+            for (var k = 0; k < batch.Count && k < results.Count; k++)
+            {
+                accepted[batch[k]] = results[k];
+            }
+        }
+
+        var ordered = new List<FaceImageResult>(input.Count);
+        for (var i = 0; i < input.Count; i++)
+        {
+            if (rejected.TryGetValue(i, out var failure))
+            {
+                ordered.Add(failure);
+            }
+            else if (accepted.TryGetValue(i, out var result))
+            {
+                ordered.Add(result);
+            }
+        }
+
+        return ordered;
+    }
+
+    // Divide as fotos válidas em lotes: a soma do Base64 não passa de MaxImageBatchBytes e há no máximo MaxImagesPerBatch fotos.
+    // Uma foto que sozinha passa do limite vai num lote só dela.
+    private static List<List<int>> SplitImageBatches(List<UserImage> input, List<int> valid, ControlIdDeviceOptions deviceOptions)
+    {
+        var batches = new List<List<int>>();
+        List<int>? current = null;
+        long currentBytes = 0;
+        foreach (var index in valid)
+        {
+            var size = (input[index].Image.Length + 2L) / 3 * 4;
+            if (current is null || current.Count >= deviceOptions.MaxImagesPerBatch || currentBytes + size > deviceOptions.MaxImageBatchBytes)
+            {
+                current = new List<int>();
+                batches.Add(current);
+                currentBytes = 0;
+            }
+
+            current.Add(index);
+            currentBytes += size;
+        }
+
+        return batches;
+    }
+
+    // Envia um lote; se o equipamento o recusar (exceto "não suportado"), grava as fotos desse lote uma a uma com user_set_image.
+    private async Task<IReadOnlyList<FaceImageResult>> SendImageBatchAsync(
+        List<UserImage> input, List<int> batch, UserImageUploadOptions options, CancellationToken cancellationToken)
+    {
+        var body = new Dictionary<string, object> { ["match"] = options.RejectExistingFace, ["user_images"] = batch.Select(i => input[i]).ToList() };
         if (options.BypassQualityScore)
         {
             body["bypass_quality_score"] = true;
         }
 
-        var text = await _transport.PostRawAsync("user_set_image_list.fcgi", body, cancellationToken).ConfigureAwait(false);
-        return ParseResults(text);
+        try
+        {
+            var text = await _transport.PostRawAsync("user_set_image_list.fcgi", body, cancellationToken).ConfigureAwait(false);
+            return ParseResults(text);
+        }
+        catch (ControlIdDeviceErrorException ex) when (ex is not ControlIdNotSupportedException)
+        {
+            // Segue para o envio foto a foto, só deste lote.
+        }
+
+        var singles = new List<FaceImageResult>(batch.Count);
+        foreach (var index in batch)
+        {
+            var photo = input[index];
+            try
+            {
+                singles.Add(await SendUserImageAsync(photo.UserId, photo.Image, options, DateTimeOffset.FromUnixTimeSeconds(photo.Timestamp), cancellationToken).ConfigureAwait(false));
+            }
+            catch (ControlIdDeviceErrorException ex) when (ex is not ControlIdNotSupportedException)
+            {
+                singles.Add(FailedImageResult(photo.UserId, ex.DeviceMessage ?? ex.Message, ex.DeviceErrorCode ?? 0));
+            }
+        }
+
+        return singles;
     }
+
+    private static FaceImageResult FailedImageResult(long userId, string message, int code) =>
+        new() { UserId = userId, Success = false, Errors = new List<FaceImageError> { new() { Code = code, Message = message } } };
 
     /// <inheritdoc/>
     public async Task<FaceImageResult> TestUserImageAsync(byte[] image, CancellationToken cancellationToken = default)
@@ -837,9 +981,108 @@ public sealed partial class AccessClient : IAccessClient, IControlIdClientDiagno
     /// <inheritdoc/>
     public async Task<int> CreateOrModifyObjectsAsync<T>(string @object, IEnumerable<T> values, CancellationToken cancellationToken = default)
     {
-        var body = new Dictionary<string, object?> { ["object"] = @object, ["values"] = (values ?? throw new ArgumentNullException(nameof(values))).ToList() };
-        var response = await _transport.PostAsync<ChangesResponse>("create_or_modify_objects.fcgi", body, cancellationToken).ConfigureAwait(false);
-        return response.Changes;
+        var list = (values ?? throw new ArgumentNullException(nameof(values))).ToList();
+        var batchSize = _transport.Options.MaxObjectsPerRequest;
+        var total = 0;
+        var done = 0;
+
+        if (!_transport.IsKnownUnsupported(CreateOrModifyCommand))
+        {
+            try
+            {
+                do
+                {
+                    var chunk = list.GetRange(done, Math.Min(batchSize, list.Count - done));
+                    var body = new Dictionary<string, object?> { ["object"] = @object, ["values"] = chunk };
+                    var response = await _transport.PostAsync<ChangesResponse>("create_or_modify_objects.fcgi", body, cancellationToken).ConfigureAwait(false);
+                    total += response.Changes;
+                    done += chunk.Count;
+                }
+                while (done < list.Count);
+
+                return total;
+            }
+            catch (ControlIdNotSupportedException) when (_transport.IsKnownUnsupported(CreateOrModifyCommand))
+            {
+                // "Invalid command" ou 404 (o transporte já marcou o comando): segue pelo fallback com o que faltou.
+            }
+        }
+
+        return total + await UpsertByIdAsync(@object, list.GetRange(done, list.Count - done), batchSize, cancellationToken).ConfigureAwait(false);
+    }
+
+    private const string CreateOrModifyCommand = "create_or_modify_objects";
+
+    // Fallback do upsert: modify_objects por id e create_objects só para quem não existia. Não é atômico (ver o XML doc).
+    private async Task<int> UpsertByIdAsync<T>(string @object, List<T> values, int batchSize, CancellationToken cancellationToken)
+    {
+        var ids = new List<long>(values.Count);
+        foreach (var value in values)
+        {
+            ids.Add(ReadObjectId(value));
+        }
+
+        var total = 0;
+        var missing = new List<T>();
+        for (var i = 0; i < values.Count; i++)
+        {
+            var changes = await ModifyObjectsAsync(@object, values[i]!, Where.Equal(@object, "id", ids[i]), cancellationToken).ConfigureAwait(false);
+            if (changes == 0)
+            {
+                missing.Add(values[i]);
+            }
+            else
+            {
+                total += changes;
+            }
+        }
+
+        for (var offset = 0; offset < missing.Count; offset += batchSize)
+        {
+            var chunk = missing.GetRange(offset, Math.Min(batchSize, missing.Count - offset));
+            await CreateObjectsBatchAsync(@object, chunk, cancellationToken).ConfigureAwait(false);
+            total += chunk.Count;
+        }
+
+        return total;
+    }
+
+    private static long ReadObjectId<T>(T value)
+    {
+        if (value is null)
+        {
+#pragma warning disable CA2208 // "values" é o parâmetro do método público que chamou; este auxiliar privado recebe um item.
+            throw new ArgumentException("Há um valor nulo na lista; o upsert por id precisa que cada item tenha o campo \"id\".", "values");
+#pragma warning restore CA2208
+        }
+
+        using var doc = JsonDocument.Parse(JsonSerializer.Serialize(value, value.GetType(), ControlIdJson.Options));
+        if (doc.RootElement.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in doc.RootElement.EnumerateObject())
+            {
+                if (!string.Equals(property.Name, "id", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (property.Value.ValueKind == JsonValueKind.Number && property.Value.TryGetInt64(out var number))
+                {
+                    return number;
+                }
+
+                if (property.Value.ValueKind == JsonValueKind.String
+                    && long.TryParse(property.Value.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+                {
+                    return parsed;
+                }
+            }
+        }
+
+#pragma warning disable CA2208 // "values" é o parâmetro do método público que chamou.
+        throw new ArgumentException(
+            "Este equipamento não tem create_or_modify_objects e o upsert por id precisa que cada item tenha o campo \"id\".", "values");
+#pragma warning restore CA2208
     }
 
     /// <inheritdoc/>

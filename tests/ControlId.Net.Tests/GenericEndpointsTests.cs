@@ -98,7 +98,7 @@ public class GenericEndpointsTests
             .On("buzzer_buzz.fcgi", HttpStatusCode.BadRequest, """{"error":"Invalid frequency","code":3}""");
         using var client = new AccessClient(Options, device.CreateClient());
 
-        var ex = await Assert.ThrowsAsync<ControlIdException>(() => client.SendRawAsync("buzzer_buzz", new { frequency = 99999 }));
+        var ex = await Assert.ThrowsAnyAsync<ControlIdException>(() => client.SendRawAsync("buzzer_buzz", new { frequency = 99999 }));
 
         Assert.Equal(3, ex.DeviceErrorCode);
         Assert.Equal("?session=new", device.RequestsTo("buzzer_buzz.fcgi").Last().Uri.Query);

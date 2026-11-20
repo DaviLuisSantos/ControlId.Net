@@ -14,6 +14,7 @@ Portaria 671/2021. [Guia completo em português](https://github.com/DaviLuisSant
 | `ControlId.Net.DependencyInjection` | `AddControlIdAccess` / `AddControlIdRep`, many devices from `appsettings.json` |
 | `ControlId.Net.AspNetCore` | Push, Monitor and Online mode endpoints for ASP.NET Core (net8.0+), closed by default (Bearer token) |
 | `ControlId.Net.Push.EntityFrameworkCore` | Durable Push command queue on EF Core (net10.0) |
+| `ControlId.Net.Testing` | Record and replay the device conversation in tests (`RecordingHandler`, `ReplayHandler`, `Cassette`) |
 
 ## Quick start
 

@@ -82,7 +82,11 @@ public abstract class OnlineIdentificationEvent
     /// <summary>Momento da tentativa (Unix timestamp).</summary>
     public long? Time { get; }
 
-    /// <summary><see cref="Time"/> como data, em UTC.</summary>
+    /// <summary><see cref="Time"/> como hora local do equipamento (<see cref="DateTimeKind.Unspecified"/>, sem fuso).</summary>
+    public DateTime? LocalTime => Time is { } time ? Internal.DeviceLocalTime.FromEpoch(time) : null;
+
+    /// <summary><see cref="Time"/> lido como UTC. O equipamento grava a hora local dele, não UTC.</summary>
+    [Obsolete("O equipamento grava a hora local dele, não UTC. Use LocalTime.")]
     public DateTimeOffset? TimeUtc => Time is { } time ? DateTimeOffset.FromUnixTimeSeconds(time) : null;
 
     /// <summary>Portal da tentativa.</summary>

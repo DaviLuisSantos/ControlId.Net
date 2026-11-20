@@ -1,1 +1,32 @@
 #nullable enable
+ControlId.DependencyInjection.ControlIdConfigurationGuardOptions
+ControlId.DependencyInjection.ControlIdConfigurationGuardOptions.ClockTolerance.get -> System.TimeSpan?
+ControlId.DependencyInjection.ControlIdConfigurationGuardOptions.ClockTolerance.set -> void
+ControlId.DependencyInjection.ControlIdConfigurationGuardOptions.ControlIdConfigurationGuardOptions() -> void
+ControlId.DependencyInjection.ControlIdConfigurationGuardOptions.Devices.get -> System.Collections.Generic.IDictionary<string!, ControlId.DependencyInjection.DesiredDeviceConfiguration!>!
+ControlId.DependencyInjection.ControlIdConfigurationGuardOptions.Interval.get -> System.TimeSpan
+ControlId.DependencyInjection.ControlIdConfigurationGuardOptions.Interval.set -> void
+ControlId.DependencyInjection.ControlIdConfigurationGuardOptions.TimeZone.get -> System.TimeZoneInfo!
+ControlId.DependencyInjection.ControlIdConfigurationGuardOptions.TimeZone.set -> void
+ControlId.DependencyInjection.DesiredDeviceConfiguration
+ControlId.DependencyInjection.DesiredDeviceConfiguration.DesiredDeviceConfiguration() -> void
+ControlId.DependencyInjection.DesiredDeviceConfiguration.Monitor.get -> ControlId.DependencyInjection.MonitorTarget?
+ControlId.DependencyInjection.DesiredDeviceConfiguration.Monitor.set -> void
+ControlId.DependencyInjection.DesiredDeviceConfiguration.Online.get -> bool?
+ControlId.DependencyInjection.DesiredDeviceConfiguration.Online.set -> void
+ControlId.DependencyInjection.DesiredDeviceConfiguration.OnlineServerId.get -> long?
+ControlId.DependencyInjection.DesiredDeviceConfiguration.OnlineServerId.set -> void
+ControlId.DependencyInjection.DesiredDeviceConfiguration.Settings.get -> System.Collections.Generic.IDictionary<string!, System.Collections.Generic.IDictionary<string!, string!>!>!
+ControlId.DependencyInjection.MonitorTarget
+ControlId.DependencyInjection.MonitorTarget.Hostname.get -> string?
+ControlId.DependencyInjection.MonitorTarget.Hostname.set -> void
+ControlId.DependencyInjection.MonitorTarget.MonitorTarget() -> void
+ControlId.DependencyInjection.MonitorTarget.Path.get -> string?
+ControlId.DependencyInjection.MonitorTarget.Path.set -> void
+ControlId.DependencyInjection.MonitorTarget.Port.get -> int?
+ControlId.DependencyInjection.MonitorTarget.Port.set -> void
+ControlId.DependencyInjection.MonitorTarget.RequestTimeout.get -> System.TimeSpan?
+ControlId.DependencyInjection.MonitorTarget.RequestTimeout.set -> void
+Microsoft.Extensions.DependencyInjection.ControlIdConfigurationGuardExtensions
+static Microsoft.Extensions.DependencyInjection.ControlIdConfigurationGuardExtensions.AddControlIdConfigurationGuard(this Microsoft.Extensions.DependencyInjection.IHealthChecksBuilder! builder, string! name = "controlid-guard", Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus? failureStatus = null, System.Collections.Generic.IEnumerable<string!>? tags = null) -> Microsoft.Extensions.DependencyInjection.IHealthChecksBuilder!
+static Microsoft.Extensions.DependencyInjection.ControlIdConfigurationGuardExtensions.AddControlIdConfigurationGuard(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<ControlId.DependencyInjection.ControlIdConfigurationGuardOptions!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

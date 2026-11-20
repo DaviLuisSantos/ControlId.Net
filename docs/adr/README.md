@@ -29,3 +29,9 @@ muda; ela ganha o status "Substituída" (ou "Complementada", quando a nova só a
 | [0022](0022-tls-do-rep-validado.md) | TLS do REP validado por padrão | Aceita |
 | [0023](0023-limites-da-fila-de-push.md) | Limites da fila de Push: prazos, validade, tamanho e claim atômico | Aceita |
 | [0024](0024-cliente-de-provisionamento-separado.md) | Cliente de provisionamento separado para chaves HID e código OEM | Aceita |
+| [0025](0025-uma-requisicao-por-vez.md) | Uma requisição por vez por equipamento (`MaxConcurrentRequests` = 1) | Aceita |
+| [0026](0026-excecoes-por-desfecho.md) | Exceções por desfecho da chamada | Aceita |
+| [0027](0027-capacidades-por-firmware.md) | Capacidades por firmware e degradação | Aceita |
+| [0028](0028-hora-local-dos-eventos.md) | Hora local dos eventos | Aceita |
+| [0029](0029-compatibilidade-e-criterios-para-a-1-0.md) | Compatibilidade e critérios para a 1.0 | Aceita |
+| [0030](0030-versoes-minimas-das-dependencias.md) | Versões mínimas das dependências no netstandard2.0 | Aceita; complementa a 0010 |

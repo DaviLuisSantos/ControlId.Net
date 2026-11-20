@@ -61,4 +61,10 @@ internal static partial class Log
 
     [LoggerMessage(EventId = 2013, Level = LogLevel.Information, Message = "Varredura automática do Push desligada (PushServerOptions.PurgeInterval = null).")]
     public static partial void PushPurgeDisabled(ILogger logger);
+
+    [LoggerMessage(
+        EventId = 2014,
+        Level = LogLevel.Warning,
+        Message = "Modo online: o equipamento {DeviceId} recebeu a resposta de contingência (ControlIdOnlineOptions.FallbackAuthorization) pelo motivo '{Reason}'.")]
+    public static partial void OnlineFallback(ILogger logger, Exception? exception, long? deviceId, string reason);
 }

@@ -26,6 +26,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\ControlId.Net\ControlId.Net.csproj" />
     <ProjectReference Include="..\..\src\ControlId.Net.DependencyInjection\ControlId.Net.DependencyInjection.csproj" />
+    <ProjectReference Include="..\..\src\ControlId.Net.Testing\ControlId.Net.Testing.csproj" />
   </ItemGroup>
 
   <!-- O pacote ASP.NET Core é net8.0: roda sobre o ASP.NET Core 8 e o 10, cada um com o TestHost da sua versão. -->
@@ -57,10 +58,11 @@
     <!-- Assemblies de referência do .NET Framework sem depender do targeting pack instalado. -->
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" PrivateAssets="all" />
     <!--
-      AddInMemoryCollection vem do Microsoft.Extensions.Configuration, que chega pelo pacote de DI
-      (Options.ConfigurationExtensions -> Configuration.Binder). Uma referência direta aqui ficaria para trás nas
-      atualizações do Dependabot (que não altera ItemGroups condicionais) e quebraria o restore com NU1605.
+      AddInMemoryCollection vem do Microsoft.Extensions.Configuration. Com as versões mínimas do netstandard2.0 (ADR 0030),
+      ele não chega mais pelo pacote de DI (Options.ConfigurationExtensions 8.0 -> Configuration.Binder só traz as
+      abstrações), então a referência é direta, na mesma linha 8.0 das mínimas.
     -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" VersionOverride="$(ControlIdMinMicrosoftExtensionsConfiguration)" />
 
   </ItemGroup>
 

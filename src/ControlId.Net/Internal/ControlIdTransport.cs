@@ -43,6 +43,11 @@ internal sealed class ControlIdTransport : IDisposable
     // Cópia própria: change_login atualiza estas credenciais sem alterar o objeto de opções do chamador.
     private volatile Credentials _credentials;
 
+    // Comandos que este equipamento recusou como inexistentes ("Invalid command" ou 404): as próximas chamadas não saem (ADR 0027).
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _unsupported = new(StringComparer.Ordinal);
+
+    private volatile string? _firmware;
+
     public ControlIdTransport(ControlIdDeviceOptions options, HttpClient? httpClient = null, ILoggerFactory? fallbackLoggerFactory = null)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -66,11 +71,11 @@ internal sealed class ControlIdTransport : IDisposable
 
         if (httpClient is null)
         {
-            var handler = new HttpClientHandler();
-            HttpHandlers.LimitConnections(handler, options.MaxConcurrentRequests);
-            CertificatePinning.Configure(handler, options.ServerCertificateSha256, options.AcceptAnyServerCertificate);
+            var handler = HttpHandlers.CreatePrimaryHandler(
+                options.MaxConcurrentRequests, options.ConnectTimeout, options.ServerCertificateSha256, options.AcceptAnyServerCertificate);
 
-            OwnedHandler = handler;
+            OwnedHandler = handler as HttpClientHandler;
+            OwnedPrimaryHandler = handler;
             _http = new HttpClient(handler, disposeHandler: true) { Timeout = options.Timeout };
             _ownsHttpClient = true;
         }
@@ -85,6 +90,22 @@ internal sealed class ControlIdTransport : IDisposable
 
     /// <summary>Handler criado pelo próprio transporte, ou <c>null</c> se o <see cref="HttpClient"/> veio de fora (testes).</summary>
     internal HttpClientHandler? OwnedHandler { get; }
+
+    /// <summary>Handler primário criado pelo transporte (<see cref="HttpClientHandler"/> ou, com prazo de conexão, <c>SocketsHttpHandler</c>), ou <c>null</c> (testes).</summary>
+    internal HttpMessageHandler? OwnedPrimaryHandler { get; }
+
+    /// <summary>Firmware do equipamento, quando algum cliente já o leu; só entra nas mensagens de comando não suportado.</summary>
+    internal string? Firmware
+    {
+        get => _firmware;
+        set => _firmware = value;
+    }
+
+    /// <summary>O equipamento já recusou <paramref name="command"/> como inexistente nesta instância?</summary>
+    internal bool IsKnownUnsupported(string command) => _unsupported.ContainsKey(command);
+
+    /// <summary>Registra que o equipamento não tem <paramref name="command"/>: as próximas chamadas falham sem requisição.</summary>
+    internal void MarkUnsupported(string command) => _unsupported[command] = 0;
 
     /// <summary>Logger do equipamento (categoria <see cref="ControlIdTelemetry.LoggerCategory"/>), para os clientes.</summary>
     public ILogger Logger => _logger;
@@ -168,7 +189,7 @@ internal sealed class ControlIdTransport : IDisposable
         }
         catch (JsonException ex)
         {
-            throw new ControlIdException($"Resposta inválida de '{endpoint}'.", responseBody: text, innerException: ex);
+            throw new ControlIdException($"Resposta inválida de '{endpoint}'.", responseBody: Capture(text), innerException: ex);
         }
     }
 
@@ -265,6 +286,12 @@ internal sealed class ControlIdTransport : IDisposable
         CommandScope scope,
         CancellationToken cancellationToken)
     {
+        if (_unsupported.ContainsKey(scope.Command))
+        {
+            // Já recusado antes: falha sem login, circuito nem requisição.
+            throw new ControlIdNotSupportedException(scope.Command, _firmware, null, null, null);
+        }
+
         var maxRetries = ReadRetry.IsReadOnly(scope.Command) ? _options.ReadRetries : 0;
         var retries = 0;
         var relogged = false;
@@ -386,17 +413,75 @@ internal sealed class ControlIdTransport : IDisposable
         Volatile.Write(ref _session, session);
     }
 
-    // Falha de rede: com o certificado TLS recusado, a mensagem diz como fixar a impressão digital.
+    // Falha de rede: com o certificado TLS recusado, a mensagem diz como fixar a impressão digital. Se o comando pode ter
+    // saído (escrita sem resposta), o desfecho é desconhecido; senão, é uma falha de conexão (leitura ou comando que não saiu).
     private ControlIdException CommunicationFailure(string endpoint, HttpRequestException exception)
     {
         var message = $"Falha de comunicação com {_options.BaseAddress} ao chamar '{endpoint}'.";
-        if (IsCertificateFailure(exception))
+        var certificate = IsCertificateFailure(exception);
+        if (certificate)
         {
             message += " O certificado TLS do equipamento foi recusado: fixe a impressão digital em ControlIdDeviceOptions.ServerCertificateSha256"
                 + " (obtenha o valor com ControlIdCertificates.GetServerCertificateSha256Async).";
         }
 
-        return new ControlIdException(message, innerException: exception);
+        var command = Telemetry.CommandName(endpoint);
+        if (certificate || ReadRetry.IsSafeToRepeat(command) || NeverReachedDevice(exception))
+        {
+            return new ControlIdConnectionException(message, exception);
+        }
+
+        return new ControlIdOutcomeUnknownException(
+            message + " A conexão caiu depois do envio: não se sabe se o equipamento executou o comando. Confira o estado antes de repetir.",
+            command,
+            timedOut: false,
+            exception);
+    }
+
+    // Timeout do cliente: leitura vira ControlIdTimeoutException; escrita, desfecho desconhecido.
+    private ControlIdException TimeoutFailure(string endpoint, Exception exception)
+    {
+        var message = $"Timeout ao chamar '{endpoint}' em {_options.BaseAddress}.";
+        var command = Telemetry.CommandName(endpoint);
+        if (ReadRetry.IsSafeToRepeat(command))
+        {
+            return new ControlIdTimeoutException(message, exception);
+        }
+
+        return new ControlIdOutcomeUnknownException(
+            message + " O comando foi enviado e não se sabe se o equipamento o executou. Confira o estado antes de repetir.",
+            command,
+            timedOut: true,
+            exception);
+    }
+
+    // A falha aconteceu antes de o comando sair (recusa, DNS, rede inacessível, prazo de conexão): seguro repetir.
+    private static bool NeverReachedDevice(HttpRequestException exception)
+    {
+#if NET8_0_OR_GREATER
+        if (exception.HttpRequestError is HttpRequestError.ConnectionError or HttpRequestError.NameResolutionError or HttpRequestError.SecureConnectionError)
+        {
+            return true;
+        }
+#endif
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            switch (current)
+            {
+                case System.Net.Sockets.SocketException socket when socket.SocketErrorCode is
+                    System.Net.Sockets.SocketError.ConnectionRefused or System.Net.Sockets.SocketError.HostUnreachable
+                    or System.Net.Sockets.SocketError.NetworkUnreachable or System.Net.Sockets.SocketError.HostNotFound
+                    or System.Net.Sockets.SocketError.TryAgain or System.Net.Sockets.SocketError.NoData
+                    or System.Net.Sockets.SocketError.AddressNotAvailable or System.Net.Sockets.SocketError.TimedOut:
+                    return true;
+                case TimeoutException:
+                    return true;
+                case WebException { Status: WebExceptionStatus.ConnectFailure or WebExceptionStatus.NameResolutionFailure or WebExceptionStatus.ProxyNameResolutionFailure }:
+                    return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool IsCertificateFailure(Exception exception)
@@ -427,7 +512,7 @@ internal sealed class ControlIdTransport : IDisposable
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
         {
             Log.LoginRefused(_logger, _device, (int)response.StatusCode);
-            throw new ControlIdAuthenticationException("Login recusado pelo equipamento. Verifique usuário e senha.", response.StatusCode, text);
+            throw new ControlIdAuthenticationException("Login recusado pelo equipamento. Verifique usuário e senha.", response.StatusCode, Capture(text));
         }
 
         EnsureSuccess(response, "login.fcgi", text);
@@ -439,12 +524,12 @@ internal sealed class ControlIdTransport : IDisposable
         }
         catch (JsonException ex)
         {
-            throw new ControlIdException("Resposta inválida de 'login.fcgi'.", response.StatusCode, responseBody: text, innerException: ex);
+            throw new ControlIdException("Resposta inválida de 'login.fcgi'.", response.StatusCode, responseBody: Capture(text), innerException: ex);
         }
 
         if (string.IsNullOrEmpty(parsed?.Session))
         {
-            throw new ControlIdAuthenticationException("O equipamento não retornou uma sessão.", response.StatusCode, text);
+            throw new ControlIdAuthenticationException("O equipamento não retornou uma sessão.", response.StatusCode, Capture(text));
         }
 
         Log.LoginSucceeded(_logger, _device);
@@ -518,7 +603,7 @@ internal sealed class ControlIdTransport : IDisposable
         {
             _circuit.Failure(probe);
             Log.CommunicationFailed(_logger, _device, Telemetry.CommandName(endpoint), ex);
-            throw new ControlIdException($"Timeout ao chamar '{endpoint}' em {_options.BaseAddress}.", innerException: ex);
+            throw TimeoutFailure(endpoint, ex);
         }
         catch
         {
@@ -541,7 +626,8 @@ internal sealed class ControlIdTransport : IDisposable
         return response.Content.ReadAsStringAsync(cancellationToken);
 #else
         _ = cancellationToken;
-        return response.Content.ReadAsStringAsync();
+        // No .NET Framework uma resposta sem corpo (ex.: 404 vazio) chega com Content nulo.
+        return response.Content is null ? Task.FromResult(string.Empty) : response.Content.ReadAsStringAsync();
 #endif
     }
 
@@ -562,26 +648,67 @@ internal sealed class ControlIdTransport : IDisposable
             return;
         }
 
-        string? deviceMessage = null;
-        int? deviceCode = null;
-        try
-        {
-            var error = ControlIdJson.Deserialize<DeviceError>(body);
-            deviceMessage = error?.Error;
-            deviceCode = error?.Code;
-        }
-        catch (JsonException)
-        {
-            // Corpo não é JSON; fica só no ResponseBody.
-        }
+        var error = ParseDeviceError(body);
+        var deviceMessage = error?.Error;
+        var deviceCode = error?.Code;
+        var command = Telemetry.CommandName(endpoint);
 
         var message = deviceMessage is null
             ? $"'{endpoint}' falhou com HTTP {(int)response.StatusCode}."
             : $"'{endpoint}' falhou com HTTP {(int)response.StatusCode}: {deviceMessage}";
 
-        Log.DeviceError(_logger, _device, Telemetry.CommandName(endpoint), (int)response.StatusCode, deviceCode, deviceMessage);
-        throw new ControlIdException(message, response.StatusCode, deviceCode, body);
+        Log.DeviceError(_logger, _device, command, (int)response.StatusCode, deviceCode, deviceMessage);
+
+        // O login nunca vira "não suportado": marcá-lo travaria o cliente.
+        if (!string.Equals(command, "login", StringComparison.Ordinal))
+        {
+            var invalidCommand = Mentions(deviceMessage, "Invalid command");
+            var notFound = response.StatusCode == HttpStatusCode.NotFound;
+            if (invalidCommand || notFound || Mentions(deviceMessage, "Invalid table"))
+            {
+                // "Invalid table" é da tabela, não do comando: lança sem marcar.
+                if (invalidCommand || notFound)
+                {
+                    MarkUnsupported(command);
+                }
+
+                throw new ControlIdNotSupportedException(command, _firmware, response.StatusCode, deviceMessage, Capture(body));
+            }
+        }
+
+        throw new ControlIdDeviceErrorException(message, response.StatusCode, deviceCode, deviceMessage, Capture(body));
     }
+
+    private static bool Mentions(string? text, string fragment) =>
+        text is not null && text.IndexOf(fragment, StringComparison.OrdinalIgnoreCase) >= 0;
+
+    // O JSON de erro do equipamento ({"error":..,"code":..}); null se o corpo não for isso.
+    private static DeviceError? ParseDeviceError(string? body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return null;
+        }
+
+        try
+        {
+            var error = ControlIdJson.Deserialize<DeviceError>(body!);
+            return error is not null && (error.Error is not null || error.Code is not null) ? error : null;
+        }
+        catch (JsonException)
+        {
+            // Corpo não é JSON.
+            return null;
+        }
+    }
+
+    // Corpo da resposta que vai para ControlIdException.ResponseBody, conforme ExceptionResponseBody.
+    private string? Capture(string? body) => _options.ExceptionResponseBody switch
+    {
+        ExceptionResponseBody.None => null,
+        ExceptionResponseBody.Full => body,
+        _ => ParseDeviceError(body) is null ? null : body,
+    };
 
     private static Uri EnsureTrailingSlash(Uri uri) =>
         uri.AbsoluteUri.EndsWith("/", StringComparison.Ordinal) ? uri : new Uri(uri.AbsoluteUri + "/");

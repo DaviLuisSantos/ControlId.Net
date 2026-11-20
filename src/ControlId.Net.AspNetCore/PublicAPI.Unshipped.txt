@@ -1,1 +1,8 @@
 #nullable enable
+ControlId.AspNetCore.ControlIdOnlineOptions
+ControlId.AspNetCore.ControlIdOnlineOptions.ControlIdOnlineOptions() -> void
+ControlId.AspNetCore.ControlIdOnlineOptions.DecisionTimeout.get -> System.TimeSpan
+ControlId.AspNetCore.ControlIdOnlineOptions.DecisionTimeout.set -> void
+ControlId.AspNetCore.ControlIdOnlineOptions.FallbackAuthorization.get -> ControlId.Access.Online.OnlineAuthorization!
+ControlId.AspNetCore.ControlIdOnlineOptions.FallbackAuthorization.set -> void
+static readonly ControlId.AspNetCore.ControlIdOnlineOptions.DefaultDecisionTimeout -> System.TimeSpan

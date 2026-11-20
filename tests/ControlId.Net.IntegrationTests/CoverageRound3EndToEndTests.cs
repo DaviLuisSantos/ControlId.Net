@@ -30,7 +30,7 @@ public sealed class CoverageRound3EndToEndTests
         Assert.Equal("4445464B45593031", defaultKek.KeyId);
         Assert.Equal(string.Empty, (await provisioning.GetHidKeyInfoAsync("03F001")).KeyId);
         Assert.True((await provisioning.GetHidKeyInfoAsync("030101")).IsMediaKey);
-        await Assert.ThrowsAsync<ControlIdException>(() => provisioning.GetHidKeyInfoAsync("0A0A0A"));
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => provisioning.GetHidKeyInfoAsync("0A0A0A"));
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public sealed class CoverageRound3EndToEndTests
         Assert.Equal("A261", (await provisioning.GetHidOidAsync("1.1.1.2.3.1")).Hex);
 
         Assert.True((await provisioning.ResetHidConfigAsync(DataLossConfirmation.Confirmed)).IsResetting);
-        await Assert.ThrowsAsync<ControlIdException>(() => provisioning.ResetHidConfigAsync(DataLossConfirmation.Confirmed));
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => provisioning.ResetHidConfigAsync(DataLossConfirmation.Confirmed));
         Assert.True((await provisioning.WaitHidConfigResetAsync(TimeSpan.FromMilliseconds(10))).IsDone);
 
         Assert.True((await provisioning.RestoreHidConfigAsync(DataLossConfirmation.Confirmed, new byte[] { 1, 2, 3 })).IsResetting);
@@ -71,6 +71,6 @@ public sealed class CoverageRound3EndToEndTests
         Assert.Equal(new[] { "7.12.0", "7.13.2" }, await provisioning.GetOemDowngradeApprovedVersionsAsync());
         await provisioning.SetOemApprovedFirmwareAsync("MYOEM", "ABCDE12345", "7.13.2");
         await provisioning.ClearOemApprovedFirmwareAsync("MYOEM", "ABCDE12345");
-        await Assert.ThrowsAsync<ControlIdException>(() => provisioning.SetOemApprovedFirmwareAsync("OTHER", "ABCDE12345", "7.13.2"));
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => provisioning.SetOemApprovedFirmwareAsync("OTHER", "ABCDE12345", "7.13.2"));
     }
 }

@@ -152,7 +152,7 @@ public class AccessObjectsPhase1Tests
         var device = LoggedDevice().On("modify_objects.fcgi", System.Net.HttpStatusCode.InternalServerError, """{"error":"busy","code":1}""");
         using var client = new AccessClient(Options, device.CreateClient());
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.SetAdministratorAsync(7, true));
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.SetAdministratorAsync(7, true));
 
         Assert.Empty(device.RequestsTo("destroy_objects.fcgi"));
         Assert.Empty(device.RequestsTo("create_objects.fcgi"));

@@ -44,8 +44,58 @@ await device.DestroyObjectsAsync("cards", Where.In("cards", "id", new[] { 1L, 2L
 await device.CreateCardAsync(new AccessCard { UserId = id, Value = 123456789 });
 var digitais = await device.GetTemplatesAsync(userId: id);
 
-await device.SetUserImageAsync(id, File.ReadAllBytes("maria.jpg")); // JPEG < 1 MB
+await device.SetUserImageAsync(id, File.ReadAllBytes("maria.jpg"));
 byte[] foto = await device.GetUserImageAsync(id);
+```
+
+#### Validação de fotos e `user_test_image` (#56)
+
+Com `ValidateImages` (padrão `true`), o cliente lê o cabeçalho do JPEG ou do PNG e recusa a foto **antes** da requisição se
+ela passar dos limites: `MaxImageLongSide` (1920), `MaxImageShortSide` (1080) e `MaxImageBytes` (2 MiB). A recusa é uma
+`ControlIdImageRejectedException`, com o motivo (`ImageRejectionReason.Format`, `Dimensions` ou `Size`), as dimensões, o
+tamanho e o `UserId`. Os limites são opções e dão para ajustar ao modelo do equipamento.
+
+```csharp
+try
+{
+    await device.SetUserImageAsync(id, File.ReadAllBytes("grande.jpg"));
+}
+catch (ControlIdImageRejectedException e)
+{
+    Console.WriteLine($"{e.Reason}: {e.Width}x{e.Height}, {e.ByteCount} bytes (usuário {e.UserId})");
+}
+
+// Antes de gravar, o equipamento diz se enxerga um rosto aproveitável (nada é gravado):
+FaceImageResult teste = await device.TestUserImageAsync(File.ReadAllBytes("maria.jpg"));
+Console.WriteLine(teste.Success ? "Foto aceita" : "Sem rosto aproveitável");
+```
+
+`SetUserImagesAsync` valida cada foto: a inválida volta como `FaceImageResult` com `Success = false` e o motivo, sem
+derrubar as outras. As válidas viram requisições de até `MaxImageBatchBytes` (1 MiB de Base64) e `MaxImagesPerBatch`
+(100) fotos. Se o equipamento recusar um lote, só as fotos dele são regravadas uma a uma. Os resultados voltam na ordem
+de entrada:
+
+```csharp
+var resultados = await device.SetUserImagesAsync(fotos.Select(f => new UserImage(f.UserId, f.Bytes)));
+foreach (var r in resultados.Where(r => !r.Success))
+{
+    Console.WriteLine($"Foto do usuário {r.UserId} recusada");
+}
+```
+
+#### Número do cartão e `ignore_facility` (#57)
+
+O valor de 64 bits de um cartão com facility code é `facility × 2^32 + número`. `CardNumber` converte do e para o
+formato impresso no cartão (`facility,número`). Com a configuração `ignore_facility` ligada, o equipamento compara só o
+número, e o cartão pode ser cadastrado com facility 0. O `identifier_id` dos eventos de acesso traz o mesmo valor de 64 bits.
+
+```csharp
+long valor = CardNumber.Parse("123,45678");          // também aceita 123.45678, 123-45678 e 12345678 (facility 0)
+await device.CreateCardAsync(new AccessCard { UserId = id, Value = valor });
+
+var (facility, numero) = CardNumber.ToFacility(valor);   // (123, 45678)
+string impresso = CardNumber.Format(valor);              // "123,45678"
+bool ok = CardNumber.TryParse("texto", out _);           // false
 ```
 
 ### Áreas, feriados, eventos, alarmes e SecBox
@@ -106,6 +156,27 @@ if (!resultado.Success)
 - Com o equipamento em **modo online**, o resultado assíncrono não vai pelo Monitor: chega em `card_create`, `face_create`, `fingerprint_create`, `template_create`, `pin_create` ou `password_create`, que o `MapControlIdOnline` entrega em `IOnlineAccessHandler.OnRemoteEnrollAsync`. Nesse caso a foto da face vem em `Result.Face`.
 - Via Push: `PushCommand.RemoteEnroll(request)` e `result.ResponseAs<RemoteEnrollResult>()`.
 - Falhas do cadastro (timeout da pessoa, face repetida) vêm em `Error`, sem exceção; use `EnsureSuccess()` se preferir exceção.
+
+#### `EnrollAndWaitAsync` (#36)
+
+Para esperas longas sem depender do Monitor, `EnrollAndWaitAsync` inicia o cadastro assíncrono e acompanha
+`enroller_state.fcgi` até o equipamento sair do estado de cadastro. O resultado é montado de `LastEnrollSucceeded` e
+`LastEnrollError`:
+
+```csharp
+var resultado = await device.EnrollAndWaitAsync(
+    new RemoteEnrollRequest(RemoteEnrollType.Face) { UserId = id, Save = true },
+    timeout: TimeSpan.FromSeconds(60),             // padrão 60 s
+    pollInterval: TimeSpan.FromMilliseconds(500)); // padrão 500 ms
+
+if (!resultado.Success)
+{
+    Console.WriteLine(resultado.Error);
+}
+```
+
+- Se o `timeout` vencer, o cadastro é cancelado no equipamento (`TryCancelRemoteEnrollAsync`) e a chamada lança `ControlIdTimeoutException`. Se o `CancellationToken` for cancelado, o cadastro também é cancelado e a `OperationCanceledException` segue.
+- Limitações do iDFace 6.9.12: com `Save = false` a tela de cadastro não abre (use `Save = true` e `UserId`), e o estado final não traz o valor capturado, só sucesso, erro e `UserId`. Para o PIN o equipamento costuma devolver o erro `UNKNOWN` mesmo quando grava: confira o usuário depois de terminar.
 
 ### Grupos, horários e regras de acesso
 
@@ -385,6 +456,21 @@ var push = new PushServer(store, new PushServerOptions { CommandTimeout = TimeSp
 - Métrica `controlid.push.commands`, com a tag `controlid.push.outcome` (`enqueued`, `delivered`, `completed`, `orphaned`,
   `expired`, `cancelled`, `rejected`, `timeout`).
 
+### Lotes recusados (`transactions`) (#35)
+
+O `PushServer` entrega comandos em lote como `transactions`. Firmware que não aceita esse formato (resposta como
+`Invalid member 'endpoint'` ou `Invalid command`) é lembrado por equipamento: os comandos do lote são reenfileirados como
+envios individuais, sem perder resultados nem quem espera por eles, e os próximos lotes daquele equipamento já saem
+individuais. `PushServerOptions.UseTransactions` controla isso: `null` (padrão) decide sozinho, `true` sempre usa
+`transactions` e `false` nunca usa.
+
+```csharp
+builder.Services.AddControlIdPush(o =>
+{
+    o.UseTransactions = false;   // equipamento conhecido por não aceitar transactions
+});
+```
+
 ### Modo online (Pro e Enterprise)
 
 No modo online o equipamento pergunta ao **seu servidor**, a cada tentativa de acesso, se deve liberar:
@@ -439,7 +525,136 @@ public sealed class RegrasDeAcesso(MeuDbContext db) : IOnlineAccessHandler
 - O equipamento espera a resposta por no máximo `RequestTimeout` (até 5 s). Exceção ou demora contam como falha; depois de `MaxRequestAttempts` falhas ele entra em **contingência** e decide sozinho com os dados locais, até o servidor voltar (`device_is_alive`, já respondido pelas rotas).
 - Em `*_create.fcgi` e `new_rex_log.fcgi`, um `device_id` na query diferente do corpo é recusado com 403 (log 2007).
 - `client.AuthorizeRemotelyAsync(...)` libera um acesso em tempo real a partir do servidor (`remote_user_authorization`).
+
+**Fallback e alive (#51, #52).** O equipamento conta uma resposta 500 como falha do servidor. Por isso, se o seu handler
+lançar exceção, devolver `null` ou passar do `DecisionTimeout`, o token do handler é cancelado e a rota responde **200 com
+a autorização de fallback**; uma requisição que não pôde ser interpretada também cai no fallback. Nunca sai 500. Configure
+por `ControlIdOnlineOptions`:
+
+```csharp
+builder.Services.Configure<ControlIdOnlineOptions>(o =>
+{
+    o.FallbackAuthorization = OnlineAuthorization.Deny(message: "Sistema indisponível");   // padrão
+    o.DecisionTimeout = TimeSpan.FromSeconds(3);                                           // padrão; Timeout.InfiniteTimeSpan desliga
+});
+```
+
+Cada fallback gera o log 2014 e soma em `controlid.server.online.fallbacks`, com a tag `controlid.online.fallback.reason`
+(`exception`, `null` ou `timeout`). Mantenha o `DecisionTimeout` abaixo do `RequestTimeout` do equipamento (máx. 5 s).
+`device_is_alive.fcgi` e `session_is_valid.fcgi` respondem a **GET e POST**, com a mesma regra de token das demais rotas.
 - Sem ASP.NET Core: `OnlineEvents.Parse(rota, campos, corpo)` interpreta a requisição, `authorization.ToResponseJson()` gera a resposta e `OnlineEvents.ParseEnroll(rota, json)` lê os resultados de cadastro remoto.
+
+### Hora local dos eventos (#50)
+
+O equipamento grava a **hora local dele**, não UTC. As propriedades `*Utc` antigas (as de cada modelo da
+tabela abaixo) ficaram `[Obsolete]`: tratavam a hora de parede como UTC e
+saíam deslocadas pelo fuso. Use as novas, que devolvem `DateTime` com `Kind = Unspecified` (hora de parede do relógio do
+equipamento, sem conversão) ([ADR 0028](adr/0028-hora-local-dos-eventos.md)):
+
+| Modelo | Propriedade nova |
+| --- | --- |
+| `AccessLog` | `LocalTime` |
+| `AccessDeviceEvent` | `LocalTimestamp` |
+| `AlarmLog` | `LocalTime` |
+| `ChangeLog` | `LocalTimestamp` |
+| `ExitButtonLog` | `LocalTime` |
+| `OnlineIdentificationEvent` | `LocalTime` (`DateTime?`) |
+
+```csharp
+foreach (var log in await device.GetAccessLogsAsync(afterId: 0, limit: 100))
+{
+    Console.WriteLine($"{log.LocalTime:dd/MM/yyyy HH:mm:ss}");   // 10:00 no relógio do equipamento aparece como 10:00
+}
+
+// Para comparar com o relógio do servidor, converta com o fuso do equipamento:
+var fuso = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+var primeiro = (await device.GetAccessLogsAsync(afterId: 0, limit: 1)).First();
+var instante = new DateTimeOffset(primeiro.LocalTime, fuso.GetUtcOffset(primeiro.LocalTime));
+```
+
+### Upsert e lotes (#33, #35)
+
+`CreateOrModifyObjectsAsync` usa `create_or_modify_objects.fcgi`. Em firmware sem esse comando (`Invalid command` ou 404),
+ele cai sozinho para `modify_objects` filtrando por `id` e `create_objects` só para quem não existia; por isso cada valor
+precisa de `id` (sem ele, `ArgumentException`). O fallback **não é atômico**: se parar no meio, o que já foi gravado
+fica, e repetir a chamada termina o trabalho sem alterar o estado. `CreateObjectsAsync` e o caminho nativo do upsert
+enviam lotes de `MaxObjectsPerRequest` (200): 450 objetos viram 3 requisições, com ids e contagens juntados.
+
+```csharp
+int alterados = await device.CreateOrModifyObjectsAsync("users", new[]
+{
+    new { id = 1L, name = "Maria" },
+    new { id = 2L, name = "João" },
+});
+
+IReadOnlyList<long> novos = await device.CreateObjectsAsync("groups", grupos);   // em lotes de 200
+```
+
+No Push, a mesma ideia vale para `transactions`: veja [Prazos e limites do Push](#prazos-e-limites-do-push).
+
+### Sincronizar pessoas pelo estado desejado (#54)
+
+`SyncUserAsync` e `SyncUsersAsync` levam o equipamento ao estado que você descreve com `DesiredUser`: criam ou atualizam o
+usuário, ajustam cartões e grupos e enviam a foto. Rodar de novo com o mesmo estado não escreve nada. O campo `null` não é
+gerenciado; uma lista vazia de `Cards` remove todos os cartões.
+
+```csharp
+var resultados = await device.SyncUsersAsync(new[]
+{
+    new DesiredUser
+    {
+        Id = 1, Name = "Maria", Registration = "1020",
+        BeginTime = new DateTime(2026, 1, 1),            // hora local do equipamento
+        Password = "1234",                                // cifrada com HashPasswordAsync só quando muda
+        Cards = new long[] { CardNumber.Parse("123,45678") },
+        GroupIds = new long[] { 1 },
+        Photo = File.ReadAllBytes("maria.jpg"),
+    },
+});
+
+foreach (var r in resultados.Where(r => !r.Success))
+{
+    foreach (var erro in r.Errors) Console.WriteLine($"Usuário {r.UserId}: {erro}");   // ex.: card:<valor>: ...
+}
+
+// Remover do equipamento quem não está na lista exige confirmação:
+await device.SyncUsersAsync(desejados, new UserSyncOptions
+{
+    RemoveMissing = true,
+    DataLossConfirmation = DataLossConfirmation.Confirmed,
+});
+```
+
+- Uma falha por pessoa não derruba o lote: um cartão recusado (por exemplo, já é de outra pessoa) aparece só em `Errors` daquela pessoa. A sincronização não é transacional: uma execução interrompida deixa o que já foi gravado, e repetir termina o trabalho.
+- O equipamento não devolve a senha em claro nem um hash da foto, então a comparação usa **marcas mantidas em memória por instância de `AccessClient`**: o que essa instância enviou por último. Na primeira sincronização de cada instância, a senha de quem já existe é regravada, e a foto é baixada e comparada byte a byte (reenviada se diferir); depois disso, repetir o mesmo estado não faz nenhuma escrita. As marcas se perdem ao reiniciar o processo ou ao trocar de instância, então mantenha uma instância de longa duração (como faz o pacote de DI).
+- Para saber o que mudou, use `Created`, `Removed`, `PhotoUpdated`, `ChangedFields`, `CardsAdded`/`CardsRemoved` e `GroupsAdded`/`GroupsRemoved`.
+
+### Capacidades por firmware (#34)
+
+Alguns comandos não existem em todo firmware (o iDFace 6.9.12, por exemplo, responde `Invalid command` a vários). O
+[ADR 0027](adr/0027-capacidades-por-firmware.md) descreve a matriz, que espelha as seções "Observado num iDFace real" de
+[COBERTURA.md](COBERTURA.md) (um teste confere que as duas concordam). `GetCapabilitiesAsync` lê o firmware em
+`system_information.fcgi` e marca os comandos ausentes: depois disso, chamá-los lança `ControlIdNotSupportedException`
+**sem enviar requisição**.
+
+```csharp
+DeviceCapabilities caps = await device.GetCapabilitiesAsync();
+Console.WriteLine($"{caps.Model} {caps.Firmware}: sem {string.Join(", ", caps.UnsupportedCommands)}");
+
+if (caps.Supports("create_or_modify_objects")) { /* caminho nativo */ }
+
+try
+{
+    await device.GetDoorStatesAsync();
+}
+catch (ControlIdNotSupportedException e)
+{
+    Console.WriteLine($"{e.Command} não existe no firmware {e.Firmware}");
+}
+```
+
+Firmware fora da matriz não tem restrições conhecidas. Mesmo sem chamar `GetCapabilitiesAsync`, um `Invalid command` ou
+um 404 num `.fcgi` marca o comando no cliente, e a segunda chamada já não faz requisição; `Invalid table` lança sem marcar.
 
 ## REP iDClass
 
@@ -658,13 +873,25 @@ var device = new AccessClient(new ControlIdDeviceOptions
 }, http);
 ```
 
+`ConnectTimeout`, `AcceptAnyServerCertificate` e o limite de conexões do handler só valem quando o pacote cria o
+`HttpClient`. Com um externo, configure o prazo de conexão no handler dele; sem isso, a conexão a um endereço que não
+responde espera o `Timeout` inteiro:
+
+```csharp
+services.AddHttpClient("portaria-principal")
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { ConnectTimeout = TimeSpan.FromSeconds(5) });
+```
+
 ## Bases grandes e vários equipamentos
 
 ### Limite por equipamento
 
-Cada cliente limita as requisições simultâneas ao seu equipamento (`MaxConcurrentRequests`, padrão 4, login incluído).
+Cada cliente limita as requisições simultâneas ao seu equipamento (`MaxConcurrentRequests`, padrão **1**, login incluído).
 Dá para disparar quantas chamadas quiser em paralelo: as que passarem do limite esperam a vez, sem sobrecarregar o
 equipamento. Cada equipamento tem o próprio limite, então vários equipamentos rodam em paralelo entre si.
+
+O padrão é 1 (era 4 antes da 0.10) porque o equipamento atende uma requisição por vez
+([ADR 0025](adr/0025-uma-requisicao-por-vez.md)). Quem dependia de 4 precisa pedir: `MaxConcurrentRequests = 4`.
 
 O limite protege o equipamento, mas não o deixa mais rápido: um iDFace atende uma requisição por vez (cerca de 100 ms
 cada), e 32 chamadas levaram ~3,4 s com 1, 4 ou 8 simultâneas. Paralelizar compensa entre equipamentos diferentes.
@@ -789,6 +1016,8 @@ No mesmo `Meter`, sem `server.address` (o `deviceId` também não vai para as ta
 | --- | --- | --- |
 | `controlid.push.commands` | Contador | Envios do `PushServer` por desfecho (`controlid.push.outcome`) |
 | `controlid.server.callback.requests` | Contador | Callbacks recebidos pelas rotas do ASP.NET Core (`controlid.callback.kind`: `push`, `result`, `monitor`, `online`; `controlid.callback.outcome`: `ok`, `unauthorized`, `forbidden`, `too_large`, `bad_request`, `error`) |
+| `controlid.server.online.fallbacks` | Contador | Respostas de fallback do modo online (`controlid.online.fallback.reason`: `exception`, `null`, `timeout`) |
+| `controlid.guard.corrections` | Contador | Correções feitas pelo guardião de configuração |
 | `controlid.server.callback.handler.duration` | Histograma (s) | Tempo do código da aplicação chamado pelo callback (`controlid.callback.kind`, `error.type` em caso de exceção) |
 
 Uma fila que não esvazia indica que o equipamento não está dando conta (um iDFace atende uma requisição por vez); muitos
@@ -857,6 +1086,15 @@ O pacote `ControlId.Net.AspNetCore` registra os eventos das rotas:
 | 2011 | Error | Um `IPushResultHandler` falhou (os demais seguem) |
 | 2012 | Error | A varredura do Push falhou; nova tentativa no próximo intervalo |
 | 2013 | Information | Varredura automática do Push desligada (`PurgeInterval = null`) |
+| 2014 | Warning | Modo online respondeu com o fallback (exceção, `null` ou `DecisionTimeout`) |
+
+O guardião de configuração (pacote `ControlId.Net.DependencyInjection`) registra:
+
+| EventId | Nível | Evento |
+| --- | --- | --- |
+| 3001 | Warning | Campo que divergia do desejado foi corrigido (equipamento e campo) |
+| 3002 | Warning | Não foi possível conferir um equipamento; tenta de novo no próximo ciclo |
+| 3003 | Error | O ciclo do guardião falhou; tenta de novo no próximo |
 
 ## Simulador para desenvolvimento e testes
 
@@ -1062,10 +1300,137 @@ Dá para implementar o seu `IPushCommandStore` para outro banco (e `IPushCommand
 | Exceção | Quando |
 | --- | --- |
 | `ControlIdAuthenticationException` | Usuário ou senha recusados no `login.fcgi` |
-| `ControlIdException` | HTTP de erro do equipamento (com `StatusCode`, `DeviceErrorCode` e `ResponseBody`), timeout ou falha de rede (inclusive certificado TLS recusado) |
+| `ControlIdConnectionException` | Não conectou (conexão recusada, endereço sem resposta, prazo de conexão vencido): o comando **não saiu**, é seguro repetir |
+| `ControlIdTimeoutException` | Leitura sem resposta no `Timeout` |
+| `ControlIdOutcomeUnknownException` | Escrita enviada sem resposta (timeout ou conexão caída): o equipamento pode ter aplicado ou não (`Command`, `TimedOut`) |
+| `ControlIdDeviceErrorException` | O equipamento respondeu com erro (`StatusCode`, `DeviceErrorCode`, `DeviceMessage`) |
+| `ControlIdNotSupportedException` | `Invalid command`, `Invalid table` ou 404 num `.fcgi` (`Command`, `Firmware`); deriva da anterior |
+| `ControlIdImageRejectedException` | Foto recusada antes do envio (`Reason`, `Width`, `Height`, `ByteCount`, `UserId`) |
+| `ControlIdException` | Base de todas as anteriores; falhas de rede restantes, inclusive certificado TLS recusado |
 | `ControlIdCircuitOpenException` | Circuit breaker aberto (`RetryAfter`) |
 | `PushQueueFullException` | Fila de Push do equipamento cheia (`DeviceId`, `Limit`) |
 | `TimeoutException` | `SendAsync`/`SendBatchAsync` do Push sem resposta no `CommandTimeout` |
+
+As exceções do cliente derivam de `ControlIdException`, então `catch (ControlIdException)` continua pegando tudo
+([ADR 0026](adr/0026-excecoes-por-desfecho.md)); capture os tipos específicos antes dele para decidir por desfecho.
+
+### Escrita sem resposta: o exemplo da porta (#32)
+
+Em uma escrita, "não sei se aconteceu" é diferente de "não aconteceu". Um `OpenDoorAsync` que dá timeout pode ter aberto a
+porta. Em vez de repetir às cegas, confira o estado (`doors_state`):
+
+```csharp
+try
+{
+    await device.OpenDoorAsync(door: 1);
+}
+catch (ControlIdConnectionException)
+{
+    await device.OpenDoorAsync(door: 1);        // nada saiu: repetir é seguro
+}
+catch (ControlIdOutcomeUnknownException e)
+{
+    var estado = await device.GetDoorStatesAsync();
+    var aberta = estado.Doors.Any(d => d.Id == 1 && d.Open);
+    Console.WriteLine($"{e.Command} ({(e.TimedOut ? "timeout" : "conexão caída")}): porta {(aberta ? "abriu" : "não abriu")}");
+}
+catch (ControlIdTimeoutException)
+{
+    // só em leitura: ler de novo é seguro
+}
+```
+
+### Prazo de conexão (#53)
+
+`ConnectTimeout` (padrão 5 s) limita só o estabelecimento da conexão, para um equipamento fora do ar falhar em segundos e
+não nos 30 s do `Timeout`. O prazo vencido vira `ControlIdConnectionException`. Se o `ConnectTimeout` passar do
+`Timeout`, vale o `Timeout`; `Timeout.InfiniteTimeSpan` desliga o prazo. No .NET Framework (alvo `netstandard2.0`) o
+`HttpClientHandler` não tem prazo de conexão e o `ConnectTimeout` é **ignorado**: só o `Timeout` vale. Com um `HttpClient`
+externo, veja [HttpClient externo](#httpclient-externo).
+
+### O que o pacote registra e o que não registra (LGPD) (#39)
+
+Nome, cartão, foto, PIN e senha são dados pessoais. O pacote **não** os leva para logs, traces, métricas nem mensagens de exceção:
+
+| Saída | O que contém | O que nunca contém |
+| --- | --- | --- |
+| Logs (`ILogger`) | Comando, endereço do equipamento, status HTTP, código e mensagem de erro do equipamento, contagens | Sessão, login, senha, corpo de requisição ou resposta, nomes, cartões, fotos |
+| Traces | `controlid.command`, `server.address`, `server.port`, `error.type`, status | Sessão, login, senha, conteúdo |
+| Métricas | Contadores e durações, com `server.address` e `server.port` | Identificador de equipamento do Push, dados de pessoas |
+| Exceções | `Message` com comando e motivo; `ControlIdImageRejectedException` com `UserId` e dimensões | Os bytes da foto, senha, cartão |
+| Cassetes do `ControlId.Net.Testing` | Conversa gravada | `session`, `login`, `password`, `salt`, `image` e `template` (mascarados como `***`) |
+
+`ControlIdDeviceOptions.ExceptionResponseBody` decide o que fica em `ControlIdException.ResponseBody`: `ErrorOnly` (padrão)
+só guarda o corpo quando ele é o JSON de erro do equipamento (`{"error":..,"code":..}`) e deixa `null` nos demais casos;
+`Full` guarda o corpo recebido (pode conter dados de pessoas: use só para diagnóstico e não o leve para logs); `None` nunca
+guarda. O `PersonalDataLeakTests` do repositório exercita isso. O que a **sua** aplicação grava (logs próprios, banco, o
+corpo que você recebe nos callbacks) continua sendo responsabilidade dela.
+
+## Guardião de configuração (#55)
+
+Alguém muda `general.online` pela tela do equipamento, ou o relógio dele deriva, e a integração para de funcionar sem
+aviso. `AddControlIdConfigurationGuard` (pacote `ControlId.Net.DependencyInjection`) roda um serviço de segundo plano que,
+a cada ciclo, lê a configuração de cada equipamento listado e **só escreve o que difere** do desejado. Um equipamento
+fora do ar não trava os demais.
+
+```csharp
+builder.Services.AddControlIdConfigurationGuard(o =>
+{
+    o.Interval = TimeSpan.FromMinutes(5);          // padrão
+    o.ClockTolerance = TimeSpan.FromSeconds(60);   // padrão; null desliga o acerto do relógio
+    o.TimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");   // padrão: Local
+
+    o.Devices["portaria"] = new DesiredDeviceConfiguration
+    {
+        Online = true,
+        OnlineServerId = 1,
+        Monitor = new MonitorTarget { Hostname = "192.168.0.20", Port = 5000, Path = "/monitor" },
+    };
+    o.Devices["portaria"].Settings["push_server"] = new Dictionary<string, string> { ["push_request_period"] = "5" };
+});
+
+builder.Services.AddHealthChecks().AddControlIdConfigurationGuard();   // último ciclo e falhas
+```
+
+Quando `system_information.time` diverge além da `ClockTolerance`, o guardião acerta o relógio com `SetSystemTimeAsync`.
+Cada correção gera o log 3001 e soma em `controlid.guard.corrections`; as falhas são os logs 3002 e 3003. O guardião usa o
+`IControlIdClientFactory`, então os equipamentos precisam estar registrados (`AddControlIdAccess` ou `AddControlIdAccessDevices`).
+
+## Descoberta de equipamentos (#58)
+
+`ControlIdDiscovery` varre endereços e diz o que há em cada um. A varredura é paralela (`MaxParallelism`, 32) e, num
+endereço sem resposta, termina perto do `ConnectTimeout` (1 s).
+
+```csharp
+var enderecos = ControlIdDiscovery.ExpandCidr("192.168.0.0/24", port: 80);
+
+var achados = await ControlIdDiscovery.ScanAsync(
+    enderecos,
+    new[] { new DiscoveryCredential("admin", "minha-senha") },
+    new DiscoveryOptions { TryFactoryDefaults = false });   // true também tenta as credenciais de fábrica; padrão false
+
+foreach (var d in achados)
+{
+    Console.WriteLine($"{d.Address} {d.Status} {d.Model} {d.Firmware} {d.Serial} {d.Mac} (login {d.CredentialLogin})");
+}
+```
+
+`DiscoveryStatus`: `Found`, `PortClosed`, `NotControlId`, `CredentialRejected` e `Error`. `CredentialLogin` mostra qual
+login funcionou, nunca a senha; a senha também não vai para log nem para exceção.
+
+## Testes sem equipamento (`ControlId.Net.Testing`) (#31)
+
+O pacote `ControlId.Net.Testing` grava a conversa com um equipamento real num cassete JSON (`RecordingHandler`, que mascara
+sessão, login, senha, `salt`, imagem e template) e a reproduz nos testes (`ReplayHandler`), que falha dizendo o que divergiu
+(ordem, endpoint ou corpo). Passo a passo e a troca de um cliente próprio pelo `ControlId.Net`:
+[Migrando de um cliente próprio e testando sem equipamento](migrando-de-cliente-proprio.md).
+
+```csharp
+var cassette = Cassette.Load("cassetes/usuarios.json");
+using var http = new HttpClient(new ReplayHandler(cassette));
+using var client = new AccessClient(opcoes, http);
+var usuarios = await client.GetUsersAsync();
+```
 
 ## Desenvolvimento
 

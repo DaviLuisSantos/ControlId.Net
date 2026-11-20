@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;netstandard2.0</TargetFrameworks>
+    <RootNamespace>ControlId.Testing</RootNamespace>
+
+    <PackageId>ControlId.Net.Testing</PackageId>
+    <Description>Gravação e reprodução de conversas com o equipamento Control iD para testes: um handler HTTP grava as requisições e respostas num cassete JSON (com os segredos mascarados) e outro reproduz o cassete sem equipamento.</Description>
+    <PackageTags>controlid;control-id;idaccess;idflex;idface;testing;record-replay;cassette;vcr;controle-de-acesso</PackageTags>
+
+    <!-- Pacote novo: não há versão publicada para comparar a API. -->
+    <PackageValidationBaselineVersion></PackageValidationBaselineVersion>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <!-- Versão mínima segura no netstandard2.0 (ADR 0030). -->
+    <PackageReference Include="System.Text.Json" VersionOverride="$(ControlIdMinSystemTextJson)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ControlId.Net\ControlId.Net.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -91,7 +91,7 @@ public class RemoteEnrollTests
         Assert.False(result.Success);
         Assert.Equal("FACE_EXISTS", result.Error);
         Assert.Equal(42, result.MatchUserId);
-        var ex = Assert.Throws<ControlIdException>(() => result.EnsureSuccess());
+        var ex = Assert.ThrowsAny<ControlIdException>(() => result.EnsureSuccess());
         Assert.Contains("42", ex.Message);
     }
 
@@ -114,7 +114,7 @@ public class RemoteEnrollTests
         var http = new HttpClient(new DelayingHandler(device, "remote_enroll.fcgi", TimeSpan.FromSeconds(5))) { Timeout = TimeSpan.FromMilliseconds(200) };
         using var client = new AccessClient(Options, http);
 
-        var ex = await Assert.ThrowsAsync<ControlIdException>(() => client.RemoteEnrollAsync(new RemoteEnrollRequest(RemoteEnrollType.Card)));
+        var ex = await Assert.ThrowsAnyAsync<ControlIdException>(() => client.RemoteEnrollAsync(new RemoteEnrollRequest(RemoteEnrollType.Card)));
 
         Assert.Contains("Timeout", ex.Message);
         Assert.Single(device.RequestsTo("cancel_remote_enroll.fcgi"));

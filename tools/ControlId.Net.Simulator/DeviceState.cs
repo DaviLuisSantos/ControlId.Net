@@ -25,6 +25,14 @@ public sealed class DeviceState
         Reset();
     }
 
+    private readonly Dictionary<string, long> _requests = new(StringComparer.Ordinal);
+
+    /// <summary>Requisições recebidas por comando (sem o <c>.fcgi</c>) desde o início ou o último <see cref="Reset"/>.</summary>
+    public IReadOnlyDictionary<string, long> Requests => _requests;
+
+    /// <summary>Conta uma requisição ao comando. Chamar com o <see cref="Lock"/>.</summary>
+    public void CountRequest(string command) => _requests[command] = _requests.GetValueOrDefault(command) + 1;
+
     /// <summary>Lock de todo o estado.</summary>
     public object Lock { get; } = new();
 
@@ -213,6 +221,7 @@ public sealed class DeviceState
         _configuration.Clear();
         _images.Clear();
         _customTables.Clear();
+        _requests.Clear();
         _nextCustomId = 1;
         _doorOpenUntil = new DateTimeOffset?[_doorOpenUntil.Length];
         _login = _options.Login;

@@ -98,7 +98,7 @@ public class LoggingTests
         var device = Device().On("create_objects.fcgi", HttpStatusCode.BadRequest, """{"error":"constraint failed","code":5}""");
         using var client = new AccessClient(Options(logs), device.CreateClient());
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.CreateUserAsync(new AccessUser { Name = "Ana" }));
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.CreateUserAsync(new AccessUser { Name = "Ana" }));
 
         var entry = Assert.Single(logs.Entries, e => e.EventId == 1005);
         Assert.Equal(LogLevel.Warning, entry.Level);
@@ -115,7 +115,7 @@ public class LoggingTests
         using var http = new HttpClient(new ThrowingHandler());
         using var client = new AccessClient(Options(logs), http);
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
 
         var entry = Assert.Single(logs.Entries, e => e.EventId == 1006);
         Assert.Equal(LogLevel.Warning, entry.Level);

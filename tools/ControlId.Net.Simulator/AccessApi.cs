@@ -30,6 +30,9 @@ public static class AccessApi
         ["set_configuration"] = SetConfiguration,
         ["user_set_image"] = UserSetImage,
         ["user_get_image"] = UserGetImage,
+        ["user_set_image_list"] = UserSetImageList,
+        ["set_system_time"] = SetSystemTime,
+        ["enroller_state"] = _ => Json(new JsonObject { ["enroller_state"] = "NORMAL_STATE", ["biometry_state"] = "NOT_ENROLLING", ["last_enroll"] = 0, ["last_enroll_error"] = "UNKNOWN" }),
         ["user_list_images"] = UserListImages,
         ["user_destroy_image"] = UserDestroyImage,
         ["message_to_screen"] = MessageToScreen,
@@ -161,6 +164,16 @@ public static class AccessApi
         var body = await ReadBodyAsync(context.Request);
         var session = context.Request.Query["session"].FirstOrDefault();
 
+        lock (state.Lock)
+        {
+            state.CountRequest(command);
+        }
+
+        if (state.Options.IsCommandDisabled(command))
+        {
+            return Error("Invalid command", StatusCodes.Status400BadRequest);
+        }
+
         try
         {
             switch (command)
@@ -234,7 +247,7 @@ public static class AccessApi
         IResult result;
         try
         {
-            result = Commands.TryGetValue(command, out var handler)
+            result = Commands.TryGetValue(command, out var handler) && !state.Options.IsCommandDisabled(command)
                 ? await handler(new Request(context, state, monitor, body))
                 : Error("Invalid command", StatusCodes.Status400BadRequest);
         }
@@ -512,6 +525,66 @@ public static class AccessApi
         }
 
         return Json(new JsonObject { ["user_id"] = userId, ["success"] = true, ["scores"] = new JsonObject { ["bounds_width"] = 400, ["center_pose_quality"] = 100 } });
+    }
+
+    private static Task<IResult> UserSetImageList(Request r)
+    {
+        var limit = r.State.Options.MaxImageListBytes;
+        if (r.Body.Length > limit)
+        {
+            return Task.FromResult(Error($"Request entity too large (limit {limit} bytes)", StatusCodes.Status413PayloadTooLarge));
+        }
+
+        var items = r.Json["user_images"] as JsonArray ?? throw new DeviceException("Missing 'user_images'");
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var results = new JsonArray();
+
+        lock (r.State.Lock)
+        {
+            foreach (var item in items.OfType<JsonObject>())
+            {
+                var userId = ObjectStore.TryGetLong(item["user_id"], out var id) ? id : 0;
+                var errors = new JsonArray();
+                byte[]? image = null;
+                try
+                {
+                    image = Convert.FromBase64String(item["image"]?.GetValue<string>() ?? string.Empty);
+                }
+                catch (FormatException)
+                {
+                }
+
+                if (image is null or { Length: 0 })
+                {
+                    errors.Add(new JsonObject { ["code"] = 1, ["message"] = "Empty image" });
+                }
+                else if (!r.State.Objects.Rows("users").Any(u => ObjectStore.TryGetLong(u["id"], out var uid) && uid == userId))
+                {
+                    errors.Add(new JsonObject { ["code"] = 2, ["message"] = "User not found" });
+                }
+                else
+                {
+                    r.State.SetImage(userId, image, timestamp);
+                }
+
+                results.Add(new JsonObject { ["user_id"] = userId, ["success"] = errors.Count == 0, ["errors"] = errors });
+            }
+        }
+
+        return Json(new JsonObject { ["results"] = results });
+    }
+
+    private static Task<IResult> SetSystemTime(Request r)
+    {
+        foreach (var field in new[] { "day", "month", "year", "hour", "minute", "second" })
+        {
+            if (!ObjectStore.TryGetLong(r.Json[field], out _))
+            {
+                throw new DeviceException($"Missing '{field}'");
+            }
+        }
+
+        return Json(new JsonObject());
     }
 
     private static Task<IResult> UserGetImage(Request r)

@@ -37,7 +37,7 @@ public class ReadRetryTests
         var device = Device().On("execute_actions.fcgi", HttpStatusCode.ServiceUnavailable);
         using var client = new AccessClient(Options(readRetries: 3), device.CreateClient());
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.OpenDoorAsync(1));
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.OpenDoorAsync(1));
 
         Assert.Single(device.RequestsTo("execute_actions.fcgi"));
     }
@@ -48,7 +48,7 @@ public class ReadRetryTests
         var device = Device().On("load_objects.fcgi", HttpStatusCode.BadGateway);
         using var client = new AccessClient(Options(readRetries: 2), device.CreateClient());
 
-        var error = await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+        var error = await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
 
         Assert.Equal(HttpStatusCode.BadGateway, error.StatusCode);
         Assert.Equal(3, device.RequestsTo("load_objects.fcgi").Count());
@@ -62,7 +62,7 @@ public class ReadRetryTests
         var device = Device().On("load_objects.fcgi", status, """{"error":"Invalid command","code":1}""");
         using var client = new AccessClient(Options(readRetries: 3), device.CreateClient());
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
 
         Assert.Single(device.RequestsTo("load_objects.fcgi"));
     }
@@ -73,7 +73,7 @@ public class ReadRetryTests
         var device = Device().On("load_objects.fcgi", HttpStatusCode.ServiceUnavailable);
         using var client = new AccessClient(new ControlIdDeviceOptions { BaseAddress = new Uri("http://10.0.0.9") }, device.CreateClient());
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
 
         Assert.Single(device.RequestsTo("load_objects.fcgi"));
     }

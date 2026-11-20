@@ -57,8 +57,8 @@ public class ClientDiagnosticsTests
         using var client = new AccessClient(Options("http", clock.Read, logs), device.CreateClient());
         IControlIdClientDiagnostics diagnostics = client;
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
-        await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
         Assert.Equal(ControlIdCircuitState.Open, diagnostics.CircuitState);
         await Assert.ThrowsAsync<ControlIdCircuitOpenException>(() => client.GetUsersAsync());
 
@@ -80,13 +80,13 @@ public class ClientDiagnosticsTests
             .On("get_about.fcgi", HttpStatusCode.ServiceUnavailable);
         using var rep = new RepClient(Options("https", clock.Read), RepMode.Portaria671, device.CreateClient());
 
-        await Assert.ThrowsAsync<ControlIdException>(() => rep.GetAboutAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => rep.GetAboutAsync());
         rep.ResetCircuit();
-        await Assert.ThrowsAsync<ControlIdException>(() => rep.GetAboutAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => rep.GetAboutAsync());
 
         // Uma falha antes do reset e uma depois: o limite (2) não foi atingido.
         Assert.Equal(ControlIdCircuitState.Closed, rep.CircuitState);
-        await Assert.ThrowsAsync<ControlIdException>(() => rep.GetAboutAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => rep.GetAboutAsync());
         Assert.Equal(ControlIdCircuitState.Open, rep.CircuitState);
     }
 
@@ -100,8 +100,8 @@ public class ClientDiagnosticsTests
 
         handler.Status = HttpStatusCode.ServiceUnavailable;
         handler.Gated = false;
-        await Assert.ThrowsAsync<ControlIdException>(() => rep.GetAboutAsync());
-        await Assert.ThrowsAsync<ControlIdException>(() => rep.GetAboutAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => rep.GetAboutAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => rep.GetAboutAsync());
         Assert.Equal(ControlIdCircuitState.Open, rep.CircuitState);
 
         clock.Advance(TimeSpan.FromSeconds(30));
@@ -114,7 +114,7 @@ public class ClientDiagnosticsTests
 
         // A sonda antiga falha depois do reset: não reabre o circuito nem conta como falha de sonda.
         gate.SetResult(true);
-        await Assert.ThrowsAsync<ControlIdException>(() => probe);
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => probe);
         Assert.Equal(ControlIdCircuitState.Closed, rep.CircuitState);
     }
 

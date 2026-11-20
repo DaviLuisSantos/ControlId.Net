@@ -104,3 +104,16 @@ jobs:
             8.0.x
             10.0.x
       - run: dotnet test tests/ControlId.Net.Tests -c Release -f net48
+
+  # Roda o build netstandard2.0 no .NET Framework 4.8 com as dependências nas versões mínimas (ADR 0030): o projeto não
+  # referencia nada que as suba, e os testes conferem as versões carregadas.
+  min-deps:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - run: dotnet test tests/ControlId.Net.MinDeps.Tests -c Release

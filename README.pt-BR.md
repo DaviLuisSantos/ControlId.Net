@@ -152,6 +152,7 @@ equipamento sozinho e atualiza ao vivo:
 | `ControlId.Net.DependencyInjection` | `AddControlIdAccess` / `AddControlIdRep`, vários equipamentos pelo `appsettings.json` |
 | `ControlId.Net.AspNetCore` | Rotas de Push, Monitor e modo online no ASP.NET Core (net8.0+), com token Bearer |
 | `ControlId.Net.Push.EntityFrameworkCore` | Fila de Push durável no EF Core (net10.0) |
+| `ControlId.Net.Testing` | Grava e reproduz a conversa com o equipamento nos testes (`RecordingHandler`, `ReplayHandler`, `Cassette`) |
 
 ## Engenharia
 

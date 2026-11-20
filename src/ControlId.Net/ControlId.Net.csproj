@@ -10,15 +10,20 @@
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="System.Text.Json" />
+    <!-- No netstandard2.0 as dependências ficam nas versões mínimas seguras (ADR 0030; valores no Directory.Packages.props). -->
+    <PackageReference Include="System.Text.Json" VersionOverride="$(ControlIdMinSystemTextJson)" />
     <!-- IAsyncEnumerable da leitura paginada. -->
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" VersionOverride="$(ControlIdMinBclAsyncInterfaces)" />
     <!-- ActivitySource e Meter (OpenTelemetry); no net8.0 vêm do runtime. -->
-    <PackageReference Include="System.Diagnostics.DiagnosticSource" />
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" VersionOverride="$(ControlIdMinDiagnosticSource)" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- ILogger: logs estruturados via ControlIdDeviceOptions.LoggerFactory. Traz também o gerador de LoggerMessage. -->
+  <!-- ILogger: logs estruturados via ControlIdDeviceOptions.LoggerFactory. Traz também o gerador de LoggerMessage. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" VersionOverride="$(ControlIdMinLoggingAbstractions)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
 

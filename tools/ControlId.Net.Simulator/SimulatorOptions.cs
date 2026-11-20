@@ -36,6 +36,21 @@ public sealed class SimulatorOptions
     /// <summary>Cria alguns usuários e cartões de exemplo ao iniciar.</summary>
     public bool SeedSampleData { get; set; } = true;
 
+    /// <summary>
+    /// Comandos que respondem HTTP 400 <c>{"error":"Invalid command"}</c>, como um firmware que não os tem (nome sem
+    /// <c>.fcgi</c>, ex.: <c>user_set_image_list</c>). Por linha de comando: <c>--Simulator:DisabledCommands=a,b</c> ou <c>--DisabledCommands=a,b</c>.
+    /// </summary>
+    public List<string> DisabledCommands { get; set; } = new();
+
+    /// <summary>Tamanho máximo do corpo de <c>user_set_image_list.fcgi</c>, em bytes; acima disso a requisição é recusada (HTTP 413).</summary>
+    public long MaxImageListBytes { get; set; } = 2 * 1024 * 1024;
+
+    /// <summary>Se o comando está desligado por <see cref="DisabledCommands"/> (aceita itens separados por vírgula).</summary>
+    public bool IsCommandDisabled(string command) =>
+        DisabledCommands.Any(item => item is not null
+            && item.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Any(name => string.Equals(name.EndsWith(".fcgi", StringComparison.Ordinal) ? name[..^5] : name, command, StringComparison.Ordinal)));
+
     /// <summary>Se o tipo configurado é o REP. Lança <see cref="InvalidOperationException"/> para um tipo desconhecido.</summary>
     public bool IsRep()
     {

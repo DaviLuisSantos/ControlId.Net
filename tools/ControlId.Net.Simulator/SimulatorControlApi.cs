@@ -42,6 +42,8 @@ public static class SimulatorControlApi
                         lastError = push.LastError,
                     },
                     commands = AccessApi.SupportedCommands,
+                    disabledCommands = state.Options.DisabledCommands,
+                    requests = state.Requests.OrderBy(p => p.Key, StringComparer.Ordinal).ToDictionary(p => p.Key, p => p.Value),
                 });
             }
         });
@@ -52,6 +54,8 @@ public static class SimulatorControlApi
         group.MapPost("/identify", async (IdentifyRequest request, DeviceState state, MonitorDispatcher monitor, OnlineClient online, CancellationToken cancellationToken) =>
         {
             var now = DateTimeOffset.UtcNow;
+            // O equipamento grava a hora de parede local codificada como epoch (sem fuso), como o firmware real.
+            var localEpoch = new DateTimeOffset(DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified), TimeSpan.Zero).ToUnixTimeSeconds();
             var portal = request.PortalId ?? 1;
             long? userId;
             string? userName;
@@ -85,7 +89,7 @@ public static class SimulatorControlApi
                 var form = new List<KeyValuePair<string, string>>
                 {
                     new("device_id", state.Options.DeviceId.ToString(CultureInfo.InvariantCulture)),
-                    new("time", now.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture)),
+                    new("time", localEpoch.ToString(CultureInfo.InvariantCulture)),
                     new("portal_id", portal.ToString(CultureInfo.InvariantCulture)),
                     new("identifier_id", request.CardValue is null ? "0" : "1"),
                     new("uuid", Guid.NewGuid().ToString()),
@@ -156,7 +160,7 @@ public static class SimulatorControlApi
 
                 log = new JsonObject
                 {
-                    ["time"] = now.ToUnixTimeSeconds(),
+                    ["time"] = localEpoch,
                     ["event"] = eventType,
                     ["device_id"] = state.Options.DeviceId,
                     ["identifier_id"] = request.CardValue is null ? 0 : 1,

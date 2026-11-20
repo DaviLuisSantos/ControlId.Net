@@ -37,7 +37,7 @@ public class OnlineModeTests
         Assert.True(e.FaceMask);
         Assert.False(e.UserHasImage); // 2 = não tem foto
         Assert.Equal("ab+cd", e.Uuid);
-        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1700000000), e.TimeUtc);
+        Assert.Equal(new DateTime(2023, 11, 14, 22, 13, 20), e.LocalTime);
         Assert.Equal("Neal Caffrey", e.Values["user_name"]);
     }
 

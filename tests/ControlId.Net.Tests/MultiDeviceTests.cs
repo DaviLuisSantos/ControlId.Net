@@ -47,7 +47,7 @@ public class MultiDeviceTests
         Assert.Equal(new[] { true, false, true }, results.Select(r => r.Succeeded));
         Assert.Equal(1, results[0].Value);
         Assert.Equal(3, results[2].Value);
-        Assert.IsType<ControlIdException>(results[1].Error);
+        Assert.IsAssignableFrom<ControlIdException>(results[1].Error);
 
         var ex = Assert.Throws<InvalidOperationException>(() => results[1].Value);
         Assert.Same(results[1].Error, ex.InnerException);
@@ -152,7 +152,7 @@ public class MultiDeviceTests
         Assert.Equal(4, results.Count);
         Assert.Equal(1, byDevice["portaria"].Value);
         Assert.Equal(3, byDevice["refeitorio"].Value);
-        Assert.IsType<ControlIdException>(byDevice["garagem"].Error);
+        Assert.IsAssignableFrom<ControlIdException>(byDevice["garagem"].Error);
         Assert.IsType<InvalidOperationException>(byDevice["sem-config"].Error);
 
         var some = await factory.RunOnAccessDevicesAsync(new[] { "portaria" }, (d, ct) => d.LoginAsync(ct));

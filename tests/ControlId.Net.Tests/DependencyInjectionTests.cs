@@ -195,8 +195,8 @@ public class DependencyInjectionTests
         var handlers = provider.GetRequiredService<IHttpMessageHandlerFactory>();
 
         Assert.False(new ControlIdRepOptions().AcceptAnyServerCertificate);
-        Assert.Null(PrimaryHandler(handlers.CreateHandler("ControlId.Rep:")).ServerCertificateCustomValidationCallback);
-        Assert.Null(PrimaryHandler(handlers.CreateHandler("ControlId.Access:")).ServerCertificateCustomValidationCallback);
+        Assert.Null(PrimaryHandlerCertificate.Of(handlers.CreateHandler("ControlId.Rep:")));
+        Assert.Null(PrimaryHandlerCertificate.Of(handlers.CreateHandler("ControlId.Access:")));
     }
 
     [Fact]
@@ -217,8 +217,8 @@ public class DependencyInjectionTests
         await using var provider = services.BuildServiceProvider();
         var handlers = provider.GetRequiredService<IHttpMessageHandlerFactory>();
 
-        Assert.NotNull(PrimaryHandler(handlers.CreateHandler("ControlId.Rep:aberto")).ServerCertificateCustomValidationCallback);
-        Assert.NotNull(PrimaryHandler(handlers.CreateHandler("ControlId.Rep:fixado")).ServerCertificateCustomValidationCallback);
+        Assert.NotNull(PrimaryHandlerCertificate.Of(handlers.CreateHandler("ControlId.Rep:aberto")));
+        Assert.NotNull(PrimaryHandlerCertificate.Of(handlers.CreateHandler("ControlId.Rep:fixado")));
     }
 
     [Fact]
@@ -333,13 +333,30 @@ public class DependencyInjectionTests
         Assert.Throws<ObjectDisposedException>(() => factory.GetAccessClient());
     }
 
-    private static HttpClientHandler PrimaryHandler(HttpMessageHandler handler)
+}
+
+/// <summary>Lê a validação de certificado do handler primário, seja ele <see cref="HttpClientHandler"/> ou, no .NET 8+, <c>SocketsHttpHandler</c>.</summary>
+internal static class PrimaryHandlerCertificate
+{
+    public static Func<System.Security.Cryptography.X509Certificates.X509Certificate2, System.Net.Security.SslPolicyErrors, bool>? Of(HttpMessageHandler handler)
     {
         while (handler is DelegatingHandler delegating)
         {
             handler = delegating.InnerHandler!;
         }
 
-        return Assert.IsType<HttpClientHandler>(handler);
+        switch (handler)
+        {
+            case HttpClientHandler client:
+                var custom = client.ServerCertificateCustomValidationCallback;
+                return custom is null ? null : (certificate, errors) => custom(new HttpRequestMessage(), certificate, null, errors);
+#if NET8_0_OR_GREATER
+            case SocketsHttpHandler sockets:
+                var remote = sockets.SslOptions.RemoteCertificateValidationCallback;
+                return remote is null ? null : (certificate, errors) => remote(sockets, certificate, null, errors);
+#endif
+            default:
+                throw new InvalidOperationException($"Handler primário inesperado: {handler.GetType()}.");
+        }
     }
 }

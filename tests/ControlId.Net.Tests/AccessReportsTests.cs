@@ -84,7 +84,7 @@ public class AccessReportsTests
         var e = Assert.Single(events);
         Assert.Equal("door", e.Event);
         Assert.Equal("OPEN", e.Type);
-        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1700000000), e.TimestampUtc);
+        Assert.Equal(new DateTime(2023, 11, 14, 22, 13, 20), e.LocalTimestamp);
         Assert.Equal(6, Assert.Single(alarms).Cause);
 
         var bodies = device.RequestsTo("load_objects.fcgi").Select(r => r.Body).ToList();

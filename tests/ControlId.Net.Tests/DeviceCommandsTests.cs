@@ -77,7 +77,7 @@ public class DeviceCommandsTests
         var device = LoggedDevice().On("change_login.fcgi", HttpStatusCode.BadRequest, """{"error":"invalid","code":1}""");
         using var client = new AccessClient(Options, device.CreateClient());
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.ChangeLoginAsync("novo", "x"));
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.ChangeLoginAsync("novo", "x"));
         await client.LoginAsync();
 
         Assert.Equal("""{"login":"admin","password":"admin"}""", device.RequestsTo("login.fcgi").Last().Body);

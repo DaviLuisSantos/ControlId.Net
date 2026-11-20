@@ -39,7 +39,7 @@ public class CircuitBreakerTests
         device.OnCommand = _ => Status(HttpStatusCode.ServiceUnavailable);
         for (var i = 0; i < failures; i++)
         {
-            var error = await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+            var error = await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
             Assert.Equal(HttpStatusCode.ServiceUnavailable, error.StatusCode);
         }
     }
@@ -62,7 +62,7 @@ public class CircuitBreakerTests
 
         for (var i = 0; i < 10; i++)
         {
-            await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+            await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
         }
 
         Assert.Equal(10, device.Commands);
@@ -120,13 +120,13 @@ public class CircuitBreakerTests
         device.OnCommand = _ => Status(HttpStatusCode.BadRequest, """{"error":"Invalid door","code":7}""");
         for (var i = 0; i < 5; i++)
         {
-            await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+            await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
         }
 
         device.OnCommand = _ => Status(HttpStatusCode.Unauthorized);
         for (var i = 0; i < 5; i++)
         {
-            await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+            await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
         }
 
         Assert.Equal(ControlIdCircuitState.Closed, client.CircuitState);
@@ -184,8 +184,8 @@ public class CircuitBreakerTests
         };
         using var client = Client(Options(clock, threshold: 2), device);
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
-        await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
 
         Assert.Equal(ControlIdCircuitState.Open, client.CircuitState);
         await Assert.ThrowsAsync<ControlIdCircuitOpenException>(() => client.GetUsersAsync());
@@ -252,7 +252,7 @@ public class CircuitBreakerTests
 
         clock.Advance(BreakDuration);
         var before = device.Commands;
-        var error = await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+        var error = await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, error.StatusCode);
         Assert.Equal(before + 1, device.Commands);
@@ -312,7 +312,7 @@ public class CircuitBreakerTests
 
         for (var i = 0; i < 3; i++)
         {
-            await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+            await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
         }
 
         Assert.Equal(ControlIdCircuitState.Open, client.CircuitState);
@@ -330,8 +330,8 @@ public class CircuitBreakerTests
         var device = new Device { OnCommand = _ => Status(HttpStatusCode.ServiceUnavailable) };
         using var client = new RepClient(Options(clock, threshold: 2), RepMode.Portaria671, new HttpClient(device));
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.OpenAfdStreamAsync());
-        await Assert.ThrowsAsync<ControlIdException>(() => client.OpenAfdStreamAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.OpenAfdStreamAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.OpenAfdStreamAsync());
         Assert.Equal(ControlIdCircuitState.Open, client.CircuitState);
 
         await Assert.ThrowsAsync<ControlIdCircuitOpenException>(() => client.OpenAfdStreamAsync());
@@ -357,8 +357,8 @@ public class CircuitBreakerTests
         var device = new Device { OnCommand = _ => Status(HttpStatusCode.ServiceUnavailable) };
         using var client = Client(options, device);
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
-        await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
         await Assert.ThrowsAsync<ControlIdCircuitOpenException>(() => client.GetUsersAsync());
 
         clock.Advance(BreakDuration);
@@ -389,7 +389,7 @@ public class CircuitBreakerTests
         var device = new Device { OnCommand = _ => Status(HttpStatusCode.ServiceUnavailable) };
         using var client = Client(options, device);
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
         clock.Advance(BreakDuration);
         device.OnCommand = _ => Status(HttpStatusCode.OK, """{"users":[]}""");
         await client.GetUsersAsync();
@@ -463,6 +463,7 @@ public class CircuitBreakerTests
         var device = new Device();
         var options = Options(clock);
         options.Timeout = TimeSpan.FromSeconds(1);
+        options.MaxConcurrentRequests = 2; // a sonda abandonada segura uma vaga até o equipamento responder
         using var client = Client(options, device);
         await TripAsync(client, device, 3);
 
@@ -490,7 +491,7 @@ public class CircuitBreakerTests
         await WaitUntilAsync(() => device.Commands == 5);
 
         first.SetResult(true);
-        await Assert.ThrowsAsync<ControlIdException>(() => abandoned);
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => abandoned);
         Assert.Equal(ControlIdCircuitState.HalfOpen, client.CircuitState); // a falha tardia não reabriu
 
         second.SetResult(true);
@@ -509,7 +510,7 @@ public class CircuitBreakerTests
         using var client = Client(options, device);
         logs.Probe = () => client.CircuitState;
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
         clock.Advance(BreakDuration);
         device.OnCommand = _ => Status(HttpStatusCode.OK, """{"users":[]}""");
         await client.GetUsersAsync();
@@ -566,8 +567,8 @@ public class CircuitBreakerTests
         await using var provider = services.BuildServiceProvider();
         var rep = Assert.IsType<RepClient>(provider.GetRequiredService<IControlIdClientFactory>().GetRepClient("rh"));
 
-        await Assert.ThrowsAsync<ControlIdException>(() => rep.GetAboutAsync());
-        await Assert.ThrowsAsync<ControlIdException>(() => rep.GetAboutAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => rep.GetAboutAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => rep.GetAboutAsync());
         var rejected = await Assert.ThrowsAsync<ControlIdCircuitOpenException>(() => rep.GetAboutAsync());
 
         Assert.Equal(ControlIdCircuitState.Open, rep.CircuitState);

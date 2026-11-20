@@ -180,14 +180,14 @@ public class TransportPathParityTests
 
     private static void AssertDeviceError(Outcome outcome, HttpStatusCode status, int commands)
     {
-        var error = Assert.IsType<ControlIdException>(outcome.Exception);
+        var error = Assert.IsAssignableFrom<ControlIdException>(outcome.Exception);
         Assert.Equal(status, error.StatusCode);
         Assert.Equal(commands, outcome.Commands);
     }
 
     private static void AssertCommunicationFailure(Outcome outcome, string inner, string message)
     {
-        var error = Assert.IsType<ControlIdException>(outcome.Exception);
+        var error = Assert.IsAssignableFrom<ControlIdException>(outcome.Exception);
         Assert.Null(error.StatusCode);
         Assert.Equal(inner, error.InnerException?.GetType().Name);
         Assert.Contains(message, error.Message, StringComparison.Ordinal);
@@ -320,7 +320,7 @@ public class TransportPathParityTests
         rig.Fake.On("load_objects.fcgi", HttpStatusCode.ServiceUnavailable);
         for (var i = 0; i < 2; i++)
         {
-            await Assert.ThrowsAsync<ControlIdException>(() => rig.Transport.PostRawAsync("load_objects.fcgi", null, CancellationToken.None));
+            await Assert.ThrowsAnyAsync<ControlIdException>(() => rig.Transport.PostRawAsync("load_objects.fcgi", null, CancellationToken.None));
         }
 
         Assert.Equal(ControlIdCircuitState.Open, rig.Transport.CircuitState);

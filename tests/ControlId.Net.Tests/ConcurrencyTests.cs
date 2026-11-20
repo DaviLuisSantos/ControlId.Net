@@ -89,6 +89,7 @@ public class ConcurrencyTests
 
         await Task.WhenAll(Enumerable.Range(0, 40).Select(_ => client.GetUsersAsync()));
 
+        Assert.Equal(1, ControlIdDeviceOptions.DefaultMaxConcurrentRequests);
         Assert.Equal(ControlIdDeviceOptions.DefaultMaxConcurrentRequests, device.MaxInFlight);
         Assert.Equal(1, device.Logins);
         Assert.Equal(40, device.Requests);

@@ -363,6 +363,17 @@ em exemplos, sem descrição, ficam como `string`.
 | `sec_boxs` (configuração) | O site põe `out_mode` e `wiegand_format_size` em `sec_boxs`; o Postman e a descrição de `denied_transaction_code` usam `sec_box` | `sec_box` |
 | `session_is_valid` (servidor) | Resposta não documentada | `{"session_is_valid": true}` |
 
+## Alive, limites de foto e degradações automáticas
+
+Tudo aqui é comportamento do pacote; o que foi observado em equipamento fica nas seções "Observado num iDFace real".
+
+- **`device_is_alive.fcgi` e `session_is_valid.fcgi` no modo online:** o equipamento chama os dois em **POST** (firmware observado) e a documentação mostra **GET**. As rotas aceitam os dois métodos e aplicam a mesma regra de token (#51).
+- **Limites de foto:** não há tabela por modelo; os valores são opções de `ControlIdDeviceOptions` e valem para qualquer modelo: lado maior 1920 px (`MaxImageLongSide`), lado menor 1080 px (`MaxImageShortSide`), 2 MiB por foto (`MaxImageBytes`), 1 MiB de base64 e 100 fotos por lote de `user_set_image_list` (`MaxImageBatchBytes`, `MaxImagesPerBatch`). A foto fora do limite falha com `ControlIdImageRejectedException` antes da requisição; `ValidateImages = false` desliga a checagem para quem sabe que o modelo aceita mais (#56, #35).
+- **Fallback do upsert:** `CreateOrModifyObjectsAsync` usa `create_or_modify_objects`; quando o equipamento responde "Invalid command" ou 404, o comando fica marcado como não suportado e o pacote faz `modify_objects` por `id` e `create_objects` só para quem não foi alterado. O fallback não é atômico (veja o XML doc). Lotes de até `MaxObjectsPerRequest` (200) objetos (#33, #35).
+- **Fallback do Push:** quando o equipamento recusa o lote em `transactions` (o 6.9.12 responde "Invalid member 'endpoint'"), o `PushServer` lembra isso por equipamento e reenfileira os comandos como envios individuais; `PushServerOptions.UseTransactions` força o modo (`null` = automático) (#35).
+- **Matriz em código:** a matriz de comandos não suportados por firmware (`GetCapabilitiesAsync`, `DeviceCapabilities`) espelha as listas das seções "Observado num iDFace real"; o teste `CapabilityMatrixDocsTests` falha se o código e este documento divergirem. Ao observar um comando novo, atualize as duas pontas (#34).
+- **Hora dos eventos:** `time` dos logs e eventos é a hora local do relógio do equipamento, não UTC; use as propriedades `Local*` (#50).
+
 ## Observado num iDFace real (firmware 6.9.12)
 
 Testado em 2026-10-13 com o pacote chamando o equipamento e com o `ControlId.Net.AspNetCore` recebendo Monitor, Push e

@@ -1,3 +1,4 @@
+using System;
 using System.Text.Json.Serialization;
 
 namespace ControlId.Access;
@@ -13,6 +14,10 @@ public sealed class AccessLog
     /// <summary>Data/hora do evento (Unix timestamp).</summary>
     [JsonPropertyName("time")]
     public long Time { get; set; }
+
+    /// <summary><see cref="Time"/> como hora local do equipamento (<see cref="DateTimeKind.Unspecified"/>, sem fuso).</summary>
+    [JsonIgnore]
+    public DateTime LocalTime => Internal.DeviceLocalTime.FromEpoch(Time);
 
     /// <summary>Código do evento (ex.: 7 = acesso concedido). Veja a documentação Control iD.</summary>
     [JsonPropertyName("event")]

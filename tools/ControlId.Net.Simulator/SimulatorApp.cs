@@ -20,6 +20,13 @@ public static class SimulatorApp
         // O tipo decide quais serviços e rotas existem; por isso as opções são lidas já aqui.
         var options = new SimulatorOptions();
         builder.Configuration.GetSection("Simulator").Bind(options);
+        if (builder.Configuration["DisabledCommands"] is { Length: > 0 } disabled)
+        {
+            // --DisabledCommands=a,b (sem o prefixo Simulator:).
+            options.DisabledCommands.Add(disabled);
+            builder.Services.PostConfigure<SimulatorOptions>(o => o.DisabledCommands.Add(disabled));
+        }
+
         configure?.Invoke(options);
         var rep = options.IsRep();
 

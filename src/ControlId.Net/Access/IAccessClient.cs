@@ -35,7 +35,11 @@ public partial interface IAccessClient : IControlIdClient
     /// </summary>
     IAsyncEnumerable<T> EnumerateObjectsAsync<T>(LoadObjectsRequest request, int pageSize = AccessClient.DefaultPageSize, CancellationToken cancellationToken = default);
 
-    /// <summary><c>create_objects.fcgi</c> — devolve os IDs criados.</summary>
+    /// <summary>
+    /// <c>create_objects.fcgi</c> — devolve os IDs criados. Listas maiores que
+    /// <see cref="ControlIdDeviceOptions.MaxObjectsPerRequest"/> seguem em vários pedidos, e os IDs voltam juntos na ordem.
+    /// Cada pedido é independente: uma falha no meio deixa criados os lotes anteriores.
+    /// </summary>
     Task<IReadOnlyList<long>> CreateObjectsAsync<T>(string @object, IEnumerable<T> values, CancellationToken cancellationToken = default);
 
     /// <summary><c>modify_objects.fcgi</c> — devolve a quantidade de registros alterados.</summary>
@@ -83,9 +87,14 @@ public partial interface IAccessClient : IControlIdClient
     Task<bool> DeleteTemplateAsync(long templateId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// <c>user_set_image.fcgi</c>: grava a foto (JPEG ou PNG, menor que 1 MB). Nos equipamentos faciais a foto vira o
+    /// <c>user_set_image.fcgi</c>: grava a foto (JPEG ou PNG). Nos equipamentos faciais a foto vira o
     /// cadastro facial e o resultado traz notas de qualidade e erros (rosto não detectado, já cadastrado...); nos
     /// demais o equipamento não responde nada e o resultado vem como sucesso.
+    /// Com <see cref="ControlIdDeviceOptions.ValidateImages"/> (padrão), a biblioteca lê o cabeçalho da imagem antes de
+    /// enviar e lança <see cref="ControlIdImageRejectedException"/> se o formato, as dimensões
+    /// (<see cref="ControlIdDeviceOptions.MaxImageLongSide"/> e <see cref="ControlIdDeviceOptions.MaxImageShortSide"/>) ou o
+    /// tamanho (<see cref="ControlIdDeviceOptions.MaxImageBytes"/>) forem recusados, sem fazer a requisição. Para saber
+    /// antes se há um rosto aproveitável na foto, sem gravar, use <see cref="TestUserImageAsync"/>.
     /// </summary>
     /// <param name="userId">Usuário.</param>
     /// <param name="image">Imagem.</param>
@@ -105,6 +114,12 @@ public partial interface IAccessClient : IControlIdClient
     /// <summary>
     /// <c>user_set_image_list.fcgi</c>: grava fotos em lote (a documentação limita a requisição a 1 MB na página de
     /// fotos e a 2 MB na de reconhecimento facial). Um resultado por foto, quando o equipamento é facial.
+    /// Cada foto é validada como em <see cref="SetUserImageAsync(long, byte[], bool, DateTimeOffset?, CancellationToken)"/>:
+    /// a inválida não derruba o lote e volta como <see cref="FaceImageResult"/> com <c>Success = false</c> e a descrição
+    /// do motivo no seu <c>UserId</c>. As demais são divididas em requisições de até
+    /// <see cref="ControlIdDeviceOptions.MaxImageBatchBytes"/> (Base64) e <see cref="ControlIdDeviceOptions.MaxImagesPerBatch"/>
+    /// fotos. Se o equipamento recusar um lote, só as fotos dele são regravadas uma a uma com <c>user_set_image.fcgi</c>.
+    /// Os resultados voltam na ordem de entrada. Para checar o rosto antes, sem gravar, use <see cref="TestUserImageAsync"/>.
     /// </summary>
     Task<IReadOnlyList<FaceImageResult>> SetUserImagesAsync(
         IEnumerable<UserImage> images, bool rejectExistingFaces = false, CancellationToken cancellationToken = default);
@@ -409,8 +424,18 @@ public partial interface IAccessClient : IControlIdClient
 
     /// <summary>
     /// <c>create_or_modify_objects.fcgi</c>: altera os registros cujo <c>id</c> já existe e cria os demais.
-    /// Devolve a quantidade de registros criados ou alterados.
+    /// Devolve a quantidade de registros criados ou alterados. Listas maiores que
+    /// <see cref="ControlIdDeviceOptions.MaxObjectsPerRequest"/> seguem em vários pedidos, somando as contagens.
     /// </summary>
+    /// <remarks>
+    /// Se o equipamento não tem o comando (firmware 6.9.12, "Invalid command" ou 404, ou
+    /// <see cref="GetCapabilitiesAsync"/> já o marcou), o cliente cai para um fallback: <c>modify_objects</c> filtrando
+    /// pelo <c>id</c> de cada item e <c>create_objects</c> só para os que não alteraram nenhum registro. Cada item precisa
+    /// do campo <c>id</c>; sem ele, lança <see cref="System.ArgumentException"/> antes de enviar qualquer pedido do fallback. O fallback
+    /// <b>não é atômico</b>: são vários pedidos, e uma falha no meio deixa parte dos itens já gravada. Repetir a chamada
+    /// com os mesmos valores é seguro (idempotente) e termina o que ficou faltando. Um item que sumiu entre o modify e o
+    /// create pode ser recriado por outro cliente no intervalo; nesse caso o create falha com erro do equipamento.
+    /// </remarks>
     Task<int> CreateOrModifyObjectsAsync<T>(string @object, IEnumerable<T> values, CancellationToken cancellationToken = default);
 
     /// <summary><c>message_to_screen.fcgi</c>: mostra a mensagem no display; sem <paramref name="duration"/>, fica até ser trocada.</summary>

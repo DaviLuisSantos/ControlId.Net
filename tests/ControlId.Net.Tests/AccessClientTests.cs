@@ -88,7 +88,7 @@ public class AccessClientTests
 
         using var client = new AccessClient(Options, device.CreateClient());
 
-        var ex = await Assert.ThrowsAsync<ControlIdException>(() => client.CreateUserAsync(new AccessUser { Name = "x" }));
+        var ex = await Assert.ThrowsAnyAsync<ControlIdException>(() => client.CreateUserAsync(new AccessUser { Name = "x" }));
         Assert.Equal(HttpStatusCode.BadRequest, ex.StatusCode);
         Assert.Equal(5, ex.DeviceErrorCode);
         Assert.Contains("constraint failed", ex.Message);

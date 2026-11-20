@@ -33,6 +33,21 @@ internal static class CallbackTelemetry
         "s",
         "Duração do código da aplicação chamado por um callback (PushServer, handlers do Monitor e do modo online).");
 
+    public const string FallbackReasonTag = "controlid.online.fallback.reason";
+
+    public const string FallbackException = "exception";
+    public const string FallbackNull = "null";
+    public const string FallbackTimeout = "timeout";
+
+    public static readonly Counter<long> OnlineFallbacks = Meter.CreateCounter<long>(
+        "controlid.server.online.fallbacks",
+        "{response}",
+        "Respostas de contingência do modo online enviadas no lugar da decisão do handler (tag controlid.online.fallback.reason: exception, null ou timeout).");
+
+    /// <summary>Conta uma resposta de contingência do modo online.</summary>
+    public static void RecordOnlineFallback(string reason) =>
+        OnlineFallbacks.Add(1, new TagList { { FallbackReasonTag, reason } });
+
     /// <summary>Envolve a rota: conta a requisição com o resultado deduzido do status (exceção = <c>error</c>).</summary>
     public static RequestDelegate Measure(string kind, RequestDelegate handler) => async context =>
     {

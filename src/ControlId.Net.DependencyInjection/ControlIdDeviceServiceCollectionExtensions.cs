@@ -154,7 +154,7 @@ public static class ControlIdDeviceServiceCollectionExtensions
         return AddHttpClient(services, ControlIdRegistry.AccessHttpClientName(name), sp =>
         {
             var options = sp.GetRequiredService<IOptionsMonitor<ControlIdDeviceOptions>>().Get(name);
-            return (options.AcceptAnyServerCertificate, options.ServerCertificateSha256, options.MaxConcurrentRequests);
+            return (options.AcceptAnyServerCertificate, options.ServerCertificateSha256, options.MaxConcurrentRequests, options.ConnectTimeout);
         });
     }
 
@@ -165,38 +165,22 @@ public static class ControlIdDeviceServiceCollectionExtensions
         return AddHttpClient(services, ControlIdRegistry.RepHttpClientName(name), sp =>
         {
             var options = sp.GetRequiredService<IOptionsMonitor<ControlIdRepOptions>>().Get(name);
-            return (options.AcceptAnyServerCertificate, options.ServerCertificateSha256, options.MaxConcurrentRequests);
+            return (options.AcceptAnyServerCertificate, options.ServerCertificateSha256, options.MaxConcurrentRequests, (TimeSpan?)null);
         });
     }
 
-    private static IHttpClientBuilder AddHttpClient(IServiceCollection services, string httpClientName, Func<IServiceProvider, (bool AcceptAnyCertificate, string? CertificateSha256, int MaxConnections)> handlerSettings)
+    private static IHttpClientBuilder AddHttpClient(IServiceCollection services, string httpClientName, Func<IServiceProvider, (bool AcceptAnyCertificate, string? CertificateSha256, int MaxConnections, TimeSpan? ConnectTimeout)> handlerSettings)
     {
         return services
             .AddHttpClient(httpClientName)
             .ConfigurePrimaryHttpMessageHandler(sp =>
             {
                 var settings = handlerSettings(sp);
-                var handler = new HttpClientHandler();
-                LimitConnections(handler, settings.MaxConnections);
-                CertificatePinning.Configure(handler, settings.CertificateSha256, settings.AcceptAnyCertificate);
-
-                return handler;
+                return HttpHandlers.CreatePrimaryHandler(
+                    settings.MaxConnections, settings.ConnectTimeout, settings.CertificateSha256, settings.AcceptAnyCertificate);
             })
             // O cliente do equipamento guarda o HttpClient (e a sessão) pela vida da aplicação, então o handler não é reciclado.
             .SetHandlerLifetime(Timeout.InfiniteTimeSpan);
-    }
-
-    // Alinha as conexões ao MaxConcurrentRequests (no .NET Framework o padrão seria 2 por servidor).
-    private static void LimitConnections(HttpClientHandler handler, int maxConnections)
-    {
-        try
-        {
-            handler.MaxConnectionsPerServer = maxConnections;
-        }
-        catch (PlatformNotSupportedException)
-        {
-            // Fica o padrão do runtime; o limite do transporte continua valendo.
-        }
     }
 
     private static ControlIdRegistry AddCore(IServiceCollection services)

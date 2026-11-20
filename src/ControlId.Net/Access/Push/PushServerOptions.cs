@@ -57,6 +57,16 @@ public sealed class PushServerOptions
     public bool RequireUuid { get; set; }
 
     /// <summary>
+    /// Usa o formato <c>transactions</c> nos lotes (<see cref="PushServer.SendBatchAsync"/> e
+    /// <see cref="PushServer.EnqueueBatchAsync"/>). <c>null</c> (padrão) é automático: o lote sai como <c>transactions</c> e,
+    /// se o equipamento recusar o formato (o iDFace 6.9.12 responde "Invalid member 'endpoint'"), o servidor lembra isso para
+    /// aquele equipamento, reenvia os comandos do lote como envios individuais e entrega os mesmos resultados; os lotes
+    /// seguintes dele já saem individuais. <c>true</c> sempre usa <c>transactions</c> e nunca recua. <c>false</c> nunca usa
+    /// <c>transactions</c>: todo lote sai como envios individuais.
+    /// </summary>
+    public bool? UseTransactions { get; set; }
+
+    /// <summary>
     /// Prazo de cada chamada ao <see cref="IPushResultHandler"/> (padrão: 30 segundos). O handler recebe um token que
     /// vence nesse prazo, sem ligação com a requisição do equipamento; se não terminar a tempo ou lançar, a falha é logada
     /// e a resposta ao equipamento segue normalmente.
