@@ -1,7 +1,1 @@
 #nullable enable
-ControlId.DependencyInjection.ControlIdHealthCheckOptions.CacheDuration.get -> System.TimeSpan
-ControlId.DependencyInjection.ControlIdHealthCheckOptions.CacheDuration.set -> void
-ControlId.DependencyInjection.ControlIdHealthCheckOptions.RequireDevices.get -> bool
-ControlId.DependencyInjection.ControlIdHealthCheckOptions.RequireDevices.set -> void
-ControlId.DependencyInjection.ControlIdHealthCheckOptions.TotalTimeout.get -> System.TimeSpan
-ControlId.DependencyInjection.ControlIdHealthCheckOptions.TotalTimeout.set -> void
