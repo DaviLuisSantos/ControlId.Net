@@ -298,6 +298,183 @@ public class RepClientPhase2Tests
     {
         Assert.Equal(104, new RepAbout { FirmwareVersion = 260 }.ApiRevision);
         Assert.Equal(101, new RepAbout { FirmwareVersion = 257 }.ApiRevision);
+        Assert.Equal("104", new RepAbout { FirmwareVersion = 260 }.ApiRevisionText);
+    }
+
+    [Theory]
+    [InlineData(0x10A, "10A")]
+    [InlineData(0xFF, "FF")]
+    [InlineData(-1, "FFFFFFFFFFFFFFFF")]
+    [InlineData(0x99999999999, "99999999999")] // só dígitos, mas não cabe num int
+    public void Api_revision_never_throws_and_keeps_the_text(long firmwareVersion, string text)
+    {
+        var about = new RepAbout { FirmwareVersion = firmwareVersion };
+
+        Assert.Equal(-1, about.ApiRevision);
+        Assert.Equal(text, about.ApiRevisionText);
+    }
+
+    [Fact]
+    public void Api_revision_text_is_not_serialized()
+    {
+        var json = Internal.ControlIdJson.Serialize(new RepAbout { FirmwareVersion = 266 });
+
+        Assert.DoesNotContain("ApiRevision", json, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // ---------------------------------------------------------------- Atalho e TLS
+
+    [Fact]
+    public void Shortcut_validates_the_certificate_by_default()
+    {
+        using var client = new RepClient("https://10.0.0.9");
+
+        var options = client.Transport.Options;
+        Assert.False(options.AcceptAnyServerCertificate);
+        Assert.Null(options.ServerCertificateSha256);
+        Assert.Equal(RepMode.Portaria671, client.Mode);
+
+        // Sem callback próprio vale a validação padrão do .NET: o certificado autoassinado do REP é recusado.
+        Assert.Null(client.Transport.OwnedHandler!.ServerCertificateCustomValidationCallback);
+    }
+
+    [Fact]
+    public void Shortcut_accepts_the_pinned_certificate()
+    {
+        using var key = System.Security.Cryptography.RSA.Create(2048);
+        var request = new System.Security.Cryptography.X509Certificates.CertificateRequest(
+            "CN=iDClass", key, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+        using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
+        var sha256 = Internal.CertificatePinning.Sha256(certificate);
+
+        using var client = new RepClient("https://10.0.0.9", "ponto", "1234", RepMode.Legacy, sha256.ToLowerInvariant());
+
+        var callback = client.Transport.OwnedHandler!.ServerCertificateCustomValidationCallback!;
+        Assert.True(callback(new HttpRequestMessage(), certificate, null, System.Net.Security.SslPolicyErrors.RemoteCertificateChainErrors));
+        Assert.Equal("ponto", client.Transport.Options.Login);
+        Assert.Equal(RepMode.Legacy, client.Mode);
+        Assert.False(client.Transport.Options.AcceptAnyServerCertificate);
+    }
+
+    [Fact]
+    public void Shortcut_rejects_an_invalid_fingerprint()
+    {
+        Assert.Throws<ArgumentException>(() => new RepClient("https://10.0.0.9", serverCertificateSha256: "ABCDEF"));
+    }
+
+    [Fact]
+    public async Task A_refused_certificate_explains_how_to_pin_it()
+    {
+        var handler = new ThrowingHandler(new HttpRequestException(
+            "The SSL connection could not be established.", new System.Security.Authentication.AuthenticationException("remote certificate is invalid")));
+        using var client = new RepClient(Options(), RepMode.Portaria671, new HttpClient(handler));
+
+        var error = await Assert.ThrowsAsync<ControlIdException>(() => client.GetAboutAsync());
+
+        Assert.Contains("GetServerCertificateSha256Async", error.Message);
+        Assert.Contains("ServerCertificateSha256", error.Message);
+        Assert.IsType<HttpRequestException>(error.InnerException);
+    }
+
+    [Fact]
+    public async Task An_ordinary_network_failure_does_not_mention_the_certificate()
+    {
+        using var client = new RepClient(Options(), RepMode.Portaria671, new HttpClient(new ThrowingHandler(new HttpRequestException("sem rede"))));
+
+        var error = await Assert.ThrowsAsync<ControlIdException>(() => client.GetAboutAsync());
+
+        Assert.DoesNotContain("GetServerCertificateSha256Async", error.Message);
+    }
+
+    [Fact]
+    public async Task The_afd_stream_also_explains_a_refused_certificate()
+    {
+        var handler = new ThrowingHandler(new HttpRequestException("ssl", new System.Security.Authentication.AuthenticationException("bad")));
+        using var client = new RepClient(Options(), RepMode.Portaria671, new HttpClient(handler));
+
+        var error = await Assert.ThrowsAsync<ControlIdException>(() => client.OpenAfdStreamAsync());
+
+        Assert.Contains("GetServerCertificateSha256Async", error.Message);
+    }
+
+    // ---------------------------------------------------------------- Logout
+
+    [Fact]
+    public async Task Logout_with_the_network_down_does_not_throw_and_drops_the_session()
+    {
+        var device = Rep().OnJson("count_users.fcgi", """{"count":1}""");
+        var handler = new SwitchableHandler(device);
+        using var client = new RepClient(Options(), RepMode.Portaria671, new HttpClient(handler));
+        await client.CountUsersAsync();
+        Assert.NotNull(client.Session);
+
+        handler.Failure = new HttpRequestException("sem rede");
+        await client.LogoutAsync();
+        Assert.Null(client.Session);
+
+        await client.LoginAsync();
+        Assert.NotNull(client.Session);
+        handler.Failure = new TaskCanceledException("timeout do HttpClient");
+        await client.LogoutAsync();
+        Assert.Null(client.Session);
+    }
+
+    [Fact]
+    public async Task Logout_canceled_by_the_caller_still_throws()
+    {
+        var device = Rep().OnJson("count_users.fcgi", """{"count":1}""");
+        var handler = new SwitchableHandler(device);
+        using var client = new RepClient(Options(), RepMode.Portaria671, new HttpClient(handler));
+        await client.CountUsersAsync();
+
+        using var cts = new CancellationTokenSource();
+        handler.Failure = null;
+        handler.HangLogout = true;
+        var logout = client.LogoutAsync(cts.Token);
+        cts.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => logout);
+    }
+
+    private sealed class ThrowingHandler : HttpMessageHandler
+    {
+        private readonly Exception _exception;
+
+        public ThrowingHandler(Exception exception) => _exception = exception;
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => throw _exception;
+    }
+
+    // Repassa ao equipamento falso; com Failure, a próxima requisição de logout lança a exceção.
+    private sealed class SwitchableHandler : DelegatingHandler
+    {
+        public SwitchableHandler(HttpMessageHandler inner)
+            : base(inner)
+        {
+        }
+
+        public Exception? Failure { get; set; }
+
+        public bool HangLogout { get; set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith("/logout.fcgi", StringComparison.Ordinal))
+            {
+                if (HangLogout)
+                {
+                    await Task.Delay(Timeout.Infinite, cancellationToken);
+                }
+
+                if (Failure is { } failure)
+                {
+                    Failure = null;
+                    throw failure;
+                }
+            }
+
+            return await base.SendAsync(request, cancellationToken);
+        }
     }
 
     // ---------------------------------------------------------------- AFD

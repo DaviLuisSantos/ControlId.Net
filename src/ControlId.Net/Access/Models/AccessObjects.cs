@@ -130,9 +130,12 @@ public sealed class AlarmLog
     [JsonPropertyName("cause")]
     public int Cause { get; set; }
 
-    /// <summary><see cref="Cause"/> como enum (mesma numeração de <c>alarm_status</c>).</summary>
+    /// <summary>
+    /// <see cref="Cause"/> como enum (mesma numeração de <c>alarm_status</c>); <see cref="AlarmCause.Unknown"/> para um código
+    /// que a biblioteca não conhece.
+    /// </summary>
     [JsonIgnore]
-    public AlarmCause CauseType => (AlarmCause)Cause;
+    public AlarmCause CauseType => Internal.EnumValues.ToDefined<AlarmCause>(Cause);
 
     /// <summary>Usuário envolvido.</summary>
     [JsonPropertyName("user_id")]

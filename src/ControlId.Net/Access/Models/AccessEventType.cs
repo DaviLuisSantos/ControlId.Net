@@ -6,6 +6,9 @@ namespace ControlId.Access;
 /// </summary>
 public enum AccessEventType
 {
+    /// <summary>Código que esta versão da biblioteca não conhece (ex.: de um firmware mais novo); o número fica em <see cref="AccessLog.Event"/>.</summary>
+    Unknown = 0,
+
     /// <summary>1: equipamento inválido.</summary>
     InvalidDevice = 1,
 

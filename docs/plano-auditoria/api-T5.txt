@@ -1,0 +1,15 @@
+ControlId.Net: ControlId.IControlIdClientDiagnostics
+ControlId.Net: ControlId.IControlIdClientDiagnostics.CircuitState.get -> ControlId.ControlIdCircuitState
+ControlId.Net: ControlId.IControlIdClientDiagnostics.ResetCircuit() -> void
+ControlId.Net: ControlId.IControlIdClientDiagnostics.Session.get -> string?
+ControlId.Net: ControlId.Access.AccessClient.ClearConfigurationFieldCache() -> void
+ControlId.Net: ControlId.Access.AccessClient.ResetCircuit() -> void
+ControlId.Net: ControlId.Access.AccessEventType.Unknown = 0 -> ControlId.Access.AccessEventType
+ControlId.Net: ControlId.Access.AlarmCause.Unknown = -1 -> ControlId.Access.AlarmCause
+ControlId.Net: ControlId.Access.FaceImageErrorCode.Unknown = 0 -> ControlId.Access.FaceImageErrorCode
+ControlId.Net: ControlId.Access.VpnStatus.Unknown = -1 -> ControlId.Access.VpnStatus
+ControlId.Net: ControlId.Rep.RepAbout.ApiRevisionText.get -> string!
+ControlId.Net: ControlId.Rep.RepClient.RepClient(string! baseAddress, string! login = "admin", string! password = "admin", ControlId.Rep.RepMode mode = ControlId.Rep.RepMode.Portaria671, string? serverCertificateSha256 = null) -> void
+ControlId.Net: ControlId.Rep.RepClient.ResetCircuit() -> void
+ControlId.Net: ControlId.Rep.RepClient.Session.get -> string?
+ControlId.Net: *REMOVED*ControlId.Rep.RepClient.RepClient(string! baseAddress, string! login = "admin", string! password = "admin", ControlId.Rep.RepMode mode = ControlId.Rep.RepMode.Portaria671) -> void

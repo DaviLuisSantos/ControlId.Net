@@ -44,9 +44,9 @@ public sealed class FaceImageError
     [JsonPropertyName("info")]
     public FaceMatchInfo? Info { get; set; }
 
-    /// <summary><see cref="Code"/> como enum.</summary>
+    /// <summary><see cref="Code"/> como enum; <see cref="FaceImageErrorCode.Unknown"/> para um código que a biblioteca não conhece.</summary>
     [JsonIgnore]
-    public FaceImageErrorCode CodeType => (FaceImageErrorCode)Code;
+    public FaceImageErrorCode CodeType => Internal.EnumValues.ToDefined<FaceImageErrorCode>(Code);
 }
 
 /// <summary>Rosto já cadastrado que coincidiu com o enviado.</summary>
@@ -72,6 +72,9 @@ public sealed class FaceMatchInfo
 /// <summary>Códigos de erro documentados para fotos e templates faciais.</summary>
 public enum FaceImageErrorCode
 {
+    /// <summary>Código que esta versão da biblioteca não conhece (ex.: de um firmware mais novo); o número fica em <see cref="FaceImageError.Code"/>.</summary>
+    Unknown = 0,
+
     /// <summary>1: erro nos parâmetros (arquivo inválido, usuário inexistente...).</summary>
     InvalidRequest = 1,
 

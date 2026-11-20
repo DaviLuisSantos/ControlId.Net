@@ -111,7 +111,7 @@ public sealed class UserIdentifiedEvent : OnlineIdentificationEvent
     internal UserIdentifiedEvent(OnlineValues v)
         : base(OnlineIdentificationKind.UserIdentified, v)
     {
-        Event = v.Long("event") is { } e ? (AccessEventType)e : null;
+        Event = v.Long("event") is { } e ? Internal.EnumValues.ToDefined<AccessEventType>(e) : null;
         UserId = v.Long("user_id");
         UserName = v.Text("user_name");
         Duress = v.Flag("duress");

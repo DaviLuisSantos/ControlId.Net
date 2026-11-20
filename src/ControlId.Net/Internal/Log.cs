@@ -35,4 +35,17 @@ internal static partial class Log
 
     [LoggerMessage(EventId = 1009, Level = LogLevel.Information, Message = "Circuito de {Device} fechado; o equipamento voltou a responder.")]
     public static partial void CircuitClosed(ILogger logger, string device);
+
+    // Nunca o valor do parâmetro: só seção e nome.
+    [LoggerMessage(EventId = 1010, Level = LogLevel.Information, Message = "{Device} não tem o parâmetro de configuração '{Field}'; ele sai das próximas leituras até um novo login.")]
+    public static partial void ConfigurationFieldMissing(ILogger logger, string device, string field);
+
+    [LoggerMessage(EventId = 1011, Level = LogLevel.Information, Message = "Circuito de {Device} fechado manualmente (ResetCircuit).")]
+    public static partial void CircuitReset(ILogger logger, string device);
+
+    [LoggerMessage(EventId = 1012, Level = LogLevel.Debug, Message = "Logout em {Device} não confirmado ({Reason}); a sessão local foi descartada mesmo assim.")]
+    public static partial void LogoutFailed(ILogger logger, string device, string reason);
+
+    [LoggerMessage(EventId = 1013, Level = LogLevel.Warning, Message = "{Device}: AcceptAnyServerCertificate ligado sem impressão digital; qualquer certificado TLS é aceito e login e senha ficam expostos a interceptação. Fixe ServerCertificateSha256 (obtenha com ControlIdCertificates.GetServerCertificateSha256Async).")]
+    public static partial void AcceptingAnyCertificate(ILogger logger, string device);
 }

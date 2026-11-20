@@ -18,7 +18,7 @@ using ControlId.Internal;
 namespace ControlId.Access;
 
 /// <inheritdoc cref="IAccessClient"/>
-public sealed class AccessClient : IAccessClient
+public sealed class AccessClient : IAccessClient, IControlIdClientDiagnostics
 {
     /// <summary>Tamanho padrão de página das leituras paginadas (<c>Enumerate*Async</c>).</summary>
     public const int DefaultPageSize = 500;
@@ -37,8 +37,11 @@ public sealed class AccessClient : IAccessClient
     private readonly ControlIdTransport _transport;
     private readonly Uri _baseAddress;
 
-    // Parâmetros ("seção.campo") que o firmware deste equipamento não tem, para não pedi-los de novo.
+    // Parâmetros ("seção.campo") que o firmware deste equipamento não tem, para não pedi-los de novo. Vale para uma sessão
+    // (_missingConfigGeneration): um login novo (reinício, atualização de firmware) zera a lista.
     private readonly ConcurrentDictionary<string, byte> _missingConfigFields = new(StringComparer.Ordinal);
+    private readonly object _missingConfigGate = new();
+    private long _missingConfigGeneration;
 
     /// <summary>Cria o cliente. Se <paramref name="httpClient"/> for informado (ex.: via IHttpClientFactory), ele não é descartado por este cliente.</summary>
     public AccessClient(ControlIdDeviceOptions options, HttpClient? httpClient = null)
@@ -69,9 +72,29 @@ public sealed class AccessClient : IAccessClient
     public ControlIdCircuitState CircuitState => _transport.CircuitState;
 
     /// <inheritdoc/>
+    public void ResetCircuit() => _transport.ResetCircuit();
+
+    /// <summary>
+    /// Esquece os parâmetros de configuração que o firmware recusou (<c>Node or attribute not found</c>): a próxima
+    /// leitura de configuração volta a pedir todos. A lista também é zerada sozinha a cada login novo (reinício do
+    /// equipamento, sessão expirada), para pegar parâmetros que uma atualização de firmware trouxe.
+    /// </summary>
+    public void ClearConfigurationFieldCache()
+    {
+        lock (_missingConfigGate)
+        {
+            _missingConfigFields.Clear();
+        }
+    }
+
+    /// <inheritdoc/>
     public Task LoginAsync(CancellationToken cancellationToken = default) => _transport.LoginAsync(cancellationToken);
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Best-effort: a sessão local é descartada antes da requisição, e falha de rede ou timeout não lançam (log 1012, em
+    /// Debug). Só o cancelamento por <paramref name="cancellationToken"/> lança <see cref="OperationCanceledException"/>.
+    /// </remarks>
     public Task LogoutAsync(CancellationToken cancellationToken = default) => _transport.LogoutAsync(cancellationToken);
 
     /// <inheritdoc/>
@@ -476,11 +499,22 @@ public sealed class AccessClient : IAccessClient
         CreateOneAsync("pins", pin, cancellationToken);
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Para tornar administrador, altera o papel existente em <c>user_roles</c> (<c>modify_objects</c>) e só cria o registro
+    /// se nada foi alterado: uma falha no meio nunca deixa o usuário sem o papel que ele já tinha. Para tirar o privilégio,
+    /// apaga o registro (<c>user_roles</c> só guarda quem tem privilégio diferente do padrão).
+    /// </remarks>
     public async Task SetAdministratorAsync(long userId, bool isAdministrator, CancellationToken cancellationToken = default)
     {
-        // user_roles só guarda quem tem privilégio diferente do padrão: remover = voltar a usuário comum.
-        await DestroyObjectsAsync("user_roles", Where.Equal("user_roles", "user_id", userId), cancellationToken).ConfigureAwait(false);
-        if (isAdministrator)
+        var where = Where.Equal("user_roles", "user_id", userId);
+        if (!isAdministrator)
+        {
+            await DestroyObjectsAsync("user_roles", where, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var changed = await ModifyObjectsAsync("user_roles", new Dictionary<string, object> { ["role"] = 1 }, where, cancellationToken).ConfigureAwait(false);
+        if (changed == 0)
         {
             await CreateObjectsAsync("user_roles", new[] { new UserRole { UserId = userId, Role = 1 } }, cancellationToken).ConfigureAwait(false);
         }
@@ -1052,7 +1086,7 @@ public sealed class AccessClient : IAccessClient
 
     /// <inheritdoc/>
     public async Task<VpnStatus> GetVpnStatusAsync(CancellationToken cancellationToken = default) =>
-        (VpnStatus)(await GetJsonAsync<VpnStatusResponse>("get_vpn_status.fcgi", cancellationToken).ConfigureAwait(false)).Status;
+        EnumValues.ToDefined<VpnStatus>((await GetJsonAsync<VpnStatusResponse>("get_vpn_status.fcgi", cancellationToken).ConfigureAwait(false)).Status);
 
     /// <inheritdoc/>
     public Task UploadVpnFileAsync(byte[] file, VpnFileType fileType, CancellationToken cancellationToken = default) =>
@@ -1142,6 +1176,7 @@ public sealed class AccessClient : IAccessClient
 
         // O firmware recusa a requisição inteira se um único parâmetro não existir nele (o iDFace não tem
         // general.catra_timeout, por exemplo). O erro diz qual é: ele sai da lista e a leitura é repetida.
+        SyncMissingConfigFields();
         var body = new Dictionary<string, List<string>>();
         foreach (var section in fields)
         {
@@ -1168,7 +1203,7 @@ public sealed class AccessClient : IAccessClient
             }
             catch (ControlIdException ex) when (FindMissingConfigField(ex, body) is { } missing)
             {
-                _missingConfigFields.TryAdd(missing.Section + "." + missing.Field, 0);
+                RememberMissingConfigField(missing.Section + "." + missing.Field);
                 body[missing.Section].Remove(missing.Field);
                 if (body[missing.Section].Count == 0)
                 {
@@ -1254,6 +1289,12 @@ public sealed class AccessClient : IAccessClient
         SetConfigurationAsync((configuration ?? throw new ArgumentNullException(nameof(configuration))).ToConfiguration(), cancellationToken);
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Não é atômico: são até três requisições (procurar o servidor em <c>devices</c>, criá-lo se não existir e gravar
+    /// <c>online_client</c> e <c>general</c> num único <c>set_configuration</c>). Se uma falhar, o que veio antes fica
+    /// aplicado — por exemplo, o registro do servidor criado sem o modo online ligado. Chamar de novo é seguro: o registro
+    /// com o mesmo endereço é reaproveitado e a configuração é regravada inteira.
+    /// </remarks>
     public async Task<long> ConfigureOnlineModeAsync(OnlineModeConfiguration configuration, CancellationToken cancellationToken = default)
     {
         if (configuration is null)
@@ -1646,6 +1687,41 @@ public sealed class AccessClient : IAccessClient
         if (image.Length >= MaxImageBytes)
         {
             throw new ArgumentException("O equipamento só aceita imagens menores que 1 MB.", paramName);
+        }
+    }
+
+    // A lista de parâmetros ausentes vale para uma sessão: login novo (equipamento reiniciou, firmware atualizado) a zera.
+    private void SyncMissingConfigFields()
+    {
+        var generation = _transport.SessionGeneration;
+        if (Interlocked.Read(ref _missingConfigGeneration) == generation)
+        {
+            return;
+        }
+
+        lock (_missingConfigGate)
+        {
+            if (_missingConfigGeneration != generation)
+            {
+                _missingConfigFields.Clear();
+                Interlocked.Exchange(ref _missingConfigGeneration, generation);
+            }
+        }
+    }
+
+    private void RememberMissingConfigField(string field)
+    {
+        bool added;
+        lock (_missingConfigGate)
+        {
+            // A sessão em que o firmware recusou o parâmetro (a leitura pode ter feito o primeiro login ou um relogin).
+            SyncMissingConfigFields();
+            added = _missingConfigFields.TryAdd(field, 0);
+        }
+
+        if (added)
+        {
+            Log.ConfigurationFieldMissing(_transport.Logger, _transport.Device, field);
         }
     }
 
