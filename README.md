@@ -20,8 +20,8 @@ dependency-injection-friendly library, verified against real devices.
 
 ## Highlights
 
-- **Complete API coverage, enforced by tests.** All 85 endpoints, 37 objects and 34 configuration sections of the access
-  API, plus all 47 commands of the iDClass API. A test fails if any documented endpoint lacks a typed method
+- **Complete API coverage, enforced by tests.** All 180 documented endpoints, 37 objects and 34 configuration
+  sections of the access API, plus all 47 commands of the iDClass API. A test fails if any documented endpoint lacks a typed method
   ([coverage matrix](docs/COBERTURA.md)).
 - **Verified on real hardware.** Discrepancies between the docs and the firmware (wrong endpoint names, typos in JSON
   fields, events that never fire) were found on real iDFace devices and handled in code, each one recorded.

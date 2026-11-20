@@ -28,3 +28,4 @@ muda; ela ganha o status "Substituída" (ou "Complementada", quando a nova só a
 | [0021](0021-callbacks-fechados-por-padrao.md) | Callbacks fechados por padrão | Aceita |
 | [0022](0022-tls-do-rep-validado.md) | TLS do REP validado por padrão | Aceita |
 | [0023](0023-limites-da-fila-de-push.md) | Limites da fila de Push: prazos, validade, tamanho e claim atômico | Aceita |
+| [0024](0024-cliente-de-provisionamento-separado.md) | Cliente de provisionamento separado para chaves HID e código OEM | Aceita |
