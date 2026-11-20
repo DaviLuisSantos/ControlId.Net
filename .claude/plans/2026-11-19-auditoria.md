@@ -265,7 +265,7 @@ ADRs em `docs/adr/` (última: 0020), commits em português e sem coautoria de IA
 - **Onda 2:** T2, T4, T5 — T2/T4 dependem de T1 (e T4 de T3); T5 depende de T6. ✅ Concluída (`8eb80fa`).
 - **Onda 3:** T7, T8, T9. ✅ Concluída (`66c4a7a`): build Release só com RS0016 (226) e RS0017 (4), esperados até a T10;
   testes 799 (net8.0), 832 (net10.0), 721 (net48) e 42 de integração, todos passando; build do Dashboard sem avisos.
-- **Onda 4:** T10. ✅ Concluída (commit pendente do líder): `dotnet build -c Release -warnaserror --no-incremental` com
+- **Onda 4:** T10. ✅ Concluída (`ea7f39b`): `dotnet build -c Release -warnaserror --no-incremental` com
   0 avisos e 0 erros; `dotnet test -c Release --no-build` com 799 (net8.0), 832 (net10.0), 721 (net48) e 42 de integração,
   0 falhas; `dotnet pack -c Release --no-build` passa contra a 0.8.0-alpha.1 só com a supressão do atalho antigo do
   `RepClient` (CP0002 em `net8.0` e `netstandard2.0`, ADR 0022). Nenhuma quebra não intencional acusada.
