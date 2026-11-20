@@ -1,0 +1,38 @@
+name: controlid-docs
+
+# Refaz o dump da documentacao oficial da Access API e abre um PR quando algo mudou.
+# O changelog da Control iD e aditivo; o diff do PR mostra o que entrou e o teste
+# EndpointCoverageGuard acusa endpoints novos sem cobertura.
+on:
+  schedule:
+    - cron: '0 6 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar dependencias do dump
+        run: pip install -r tools/controlid-docs-dump/requirements.txt
+      - name: Gerar o dump
+        run: python tools/controlid-docs-dump/dump_controlid_docs.py --out docs/controlid-api
+      - name: Abrir PR com as mudancas
+        uses: peter-evans/create-pull-request@v7.0.5
+        with:
+          branch: docs/controlid-api-dump
+          commit-message: 'Atualiza o dump da documentacao da Access API'
+          title: 'Atualiza o dump da documentacao da Access API'
+          body: |
+            Dump mensal gerado por `tools/controlid-docs-dump/dump_controlid_docs.py`.
+            Confira o diff de `docs/controlid-api/endpoints.json` e rode
+            `dotnet test tests/ControlId.Net.Tests -f net8.0 --filter EndpointCoverageGuard`.
+          add-paths: docs/controlid-api/**
+          delete-branch: true

@@ -1,5 +1,4 @@
 #nullable enable
-const ControlId.AspNetCore.ControlIdCallbackOptions.DefaultMaxRequestBodySize = 4194304 -> long
 ControlId.AspNetCore.ControlIdCallbackOptions
 ControlId.AspNetCore.ControlIdCallbackOptions.ControlIdCallbackOptions() -> void
 ControlId.AspNetCore.ControlIdCallbackOptions.IsKnownDevice.get -> System.Func<long, bool>?
@@ -10,5 +9,7 @@ ControlId.AspNetCore.ControlIdTokenOptions.AllowTokenFallback.get -> bool
 ControlId.AspNetCore.ControlIdTokenOptions.AllowTokenFallback.set -> void
 ControlId.AspNetCore.ControlIdTokenOptions.PreviousToken.get -> string?
 ControlId.AspNetCore.ControlIdTokenOptions.PreviousToken.set -> void
+ControlId.AspNetCore.IOnlineAccessHandler.OnKioskEnrollmentAsync(ControlId.Access.Online.KioskEnrollmentEvent! enrollment, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+const ControlId.AspNetCore.ControlIdCallbackOptions.DefaultMaxRequestBodySize = 4194304 -> long
 static ControlId.AspNetCore.ControlIdEndpointConventionBuilderExtensions.AllowAnonymousControlIdCallbacks<TBuilder>(this TBuilder builder) -> TBuilder
 static Microsoft.Extensions.DependencyInjection.ControlIdServiceCollectionExtensions.AddControlIdPush(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<ControlId.Access.Push.PushServerOptions!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

@@ -36,6 +36,45 @@ public static class AccessApi
         ["buzzer_buzz"] = Ok,
         ["change_login"] = ChangeLogin,
         ["reboot"] = Reboot,
+        ["face_template_match"] = FaceTemplateMatch,
+        ["face_template_count_distinct"] = FaceTemplateCount,
+        ["template_match"] = TemplateMatch,
+        ["io_state"] = IoState,
+        ["is_identifying"] = _ => Json(new JsonObject { ["is_identifying"] = false }),
+        ["get_catra_info"] = _ => Json(new JsonObject { ["left_turns"] = 0, ["right_turns"] = 0, ["entrance_turns"] = 0, ["exit_turns"] = 0, ["total_turns"] = 0 }),
+        ["get_last_snapshot"] = _ => Json(new JsonObject { ["image_base64"] = Convert.ToBase64String(new byte[] { 0xFF, 0xD8, 0xFF, 0xD9 }) }),
+        ["device_rfid_module"] = _ => Json(new JsonObject { ["module"] = "MIFARE" }),
+        ["get_hid_last_card"] = _ => Json(new JsonObject { ["csn"] = "0A1B2C3D", ["pac"] = "00112233", ["type"] = "iCLASS", ["bits"] = 26, ["custom"] = "0" }),
+        ["get_wiegand_card_read"] = _ => Json(new JsonObject
+        {
+            ["card_read_value"] = "12345678",
+            ["card_read_num_bits"] = 26,
+            ["facility_code"] = "10",
+            ["card_number"] = "5678",
+            ["parities"] = 3,
+            ["last_read_time"] = "2026-01-01 00:00:00",
+        }),
+        ["object_metadata"] = ObjectMetadata,
+        ["object_add"] = ObjectAdd,
+        ["object_remove"] = ObjectRemove,
+        ["object_add_field"] = ObjectAddField,
+        ["object_update_field"] = ObjectUpdateField,
+        ["object_remove_fields"] = ObjectRemoveFields,
+        ["export_object"] = ExportObject,
+        ["export_custom_tables_metadata"] = ExportCustomTablesMetadata,
+        ["get_ntp_server"] = GetNtpServer,
+        ["set_ntp_server"] = SetNtpServer,
+        ["get_ntp_server_status"] = _ => Json(new JsonObject { ["server_status"] = true }),
+        ["check_port_availability"] = _ => Json(new JsonObject { ["status"] = "OK" }),
+        ["get_vpn_ip"] = _ => Json(new JsonObject { ["ip"] = "10.8.0.2" }),
+        ["get_ssl_certificate"] = _ => Text("-----BEGIN CERTIFICATE-----\nSIMULADOR\n-----END CERTIFICATE-----\n"),
+        ["get_802_1X_status"] = _ => Json(new JsonObject { ["status"] = 11 }),
+        ["get_ac_log"] = _ => Text("ac: simulador iniciado\n"),
+        ["get_openvpn_log"] = _ => Text("openvpn: inativo\n"),
+        ["get_wpa_log"] = _ => Text("wpa: inativo\n"),
+        ["get_wpasupplicant_log"] = _ => Text("wpa_supplicant: inativo\n"),
+        ["master_password"] = MasterPassword,
+        ["recovery_password"] = RecoveryPassword,
     };
 
     /// <summary>Comandos atendidos, para o <c>/simulator/state</c> e a documentação.</summary>
@@ -505,6 +544,288 @@ public static class AccessApi
 
         return Json(new JsonObject());
     }
+
+    private static Task<IResult> FaceTemplateMatch(Request r)
+    {
+        _ = RequiredString(r.Json, "face_template");
+        long? userId = r.Json["user_id"] is { } node && ObjectStore.TryGetLong(node, out var id) ? id : null;
+        lock (r.State.Lock)
+        {
+            if (userId is { } wanted && r.State.Objects.Rows("users").Any(u => ObjectStore.TryGetLong(u["id"], out var each) && each == wanted))
+            {
+                return Json(new JsonObject
+                {
+                    ["match"] = true,
+                    ["info"] = new JsonObject { ["match_user_id"] = wanted, ["match_score"] = 900, ["match_similarity"] = 95 },
+                });
+            }
+        }
+
+        return Json(new JsonObject { ["match"] = false });
+    }
+
+    private static Task<IResult> FaceTemplateCount(Request r)
+    {
+        int count;
+        lock (r.State.Lock)
+        {
+            count = r.State.UsersWithImage.Count();
+        }
+
+        return Json(new JsonObject { ["count"] = count });
+    }
+
+    private static Task<IResult> TemplateMatch(Request r)
+    {
+        if (r.Body.Length == 0)
+        {
+            throw new DeviceException("Empty template");
+        }
+
+        return Json(new JsonObject { ["template"] = Convert.ToBase64String(r.Body) });
+    }
+
+    private static Task<IResult> IoState(Request r) =>
+        Json(new JsonObject
+        {
+            ["gpios"] = new JsonArray(new JsonObject
+            {
+                ["index"] = 0,
+                ["role"] = "door_sensor",
+                ["enabled"] = true,
+                ["available"] = true,
+                ["in"] = true,
+                ["value"] = 0,
+                ["idle"] = 0,
+                ["active"] = false,
+            }),
+            ["relays"] = new JsonArray(new JsonObject
+            {
+                ["id"] = 1,
+                ["gpio"] = 0,
+                ["enabled"] = true,
+                ["timeout_ms"] = 3000,
+                ["auto_close"] = true,
+                ["output_mode"] = 0,
+                ["available"] = true,
+                ["active"] = false,
+            }),
+            ["sec_boxes"] = new JsonArray(),
+        });
+
+    private static Task<IResult> ObjectMetadata(Request r)
+    {
+        var filter = r.Json["filter"]?.GetValue<string>();
+        var result = new JsonObject();
+        lock (r.State.Lock)
+        {
+            if (filter != "custom")
+            {
+                result["users"] = new JsonObject
+                {
+                    ["fields"] = new JsonObject
+                    {
+                        ["id"] = new JsonObject { ["type"] = "BIGINT", ["primary key"] = true, ["not null"] = true },
+                        ["name"] = new JsonObject { ["type"] = "TEXT" },
+                    },
+                    ["joins"] = new JsonObject(),
+                };
+            }
+
+            if (filter != "default")
+            {
+                foreach (var table in r.State.CustomTables)
+                {
+                    var fields = new JsonObject { ["id"] = new JsonObject { ["type"] = "BIGINT", ["primary key"] = true, ["not null"] = true } };
+                    foreach (var field in ((JsonArray)table["fields"]!).OfType<JsonObject>())
+                    {
+                        fields[field["column_name"]!.GetValue<string>()] = new JsonObject
+                        {
+                            ["type"] = field["type"]?.GetValue<string>() ?? "TEXT",
+                            ["not null"] = field["constraint"]?.GetValue<string>() == "NOT_NULL",
+                            ["unique"] = field["unique"]?.GetValue<bool>() ?? false,
+                        };
+                    }
+
+                    result[table["object"]!.GetValue<string>()] = new JsonObject { ["fields"] = fields, ["joins"] = new JsonObject() };
+                }
+            }
+        }
+
+        return Json(result);
+    }
+
+    private static Task<IResult> ObjectAdd(Request r)
+    {
+        var json = r.Json;
+        var fields = (json["fields"] as JsonArray ?? throw new DeviceException("Missing 'fields'"))
+            .Select(f => f as JsonObject ?? throw new DeviceException("Invalid field"))
+            .Select(f => (JsonObject)f.DeepClone())
+            .ToList();
+        long? given = json["id"] is { } n && ObjectStore.TryGetLong(n, out var value) ? value : null;
+        long id;
+        lock (r.State.Lock)
+        {
+            id = r.State.AddCustomTable(RequiredString(json, "object"), RequiredString(json, "name"), given, fields);
+        }
+
+        return Json(new JsonObject { ["ids"] = new JsonArray((JsonNode)id) });
+    }
+
+    private static Task<IResult> ObjectRemove(Request r)
+    {
+        lock (r.State.Lock)
+        {
+            r.State.RemoveCustomTables(Ids(r.Json));
+        }
+
+        return Json(new JsonObject());
+    }
+
+    private static Task<IResult> ObjectAddField(Request r)
+    {
+        var json = r.Json;
+        var table = RequiredString(json, "object");
+        var field = (JsonObject)json.DeepClone();
+        field.Remove("object");
+        long id;
+        lock (r.State.Lock)
+        {
+            id = r.State.AddCustomField(table, field);
+        }
+
+        return Json(new JsonObject { ["ids"] = new JsonArray((JsonNode)id) });
+    }
+
+    private static Task<IResult> ObjectUpdateField(Request r)
+    {
+        var json = r.Json;
+        var id = json["id"] is { } n && ObjectStore.TryGetLong(n, out var value) ? value : throw new DeviceException("Missing 'id'");
+        lock (r.State.Lock)
+        {
+            r.State.UpdateCustomField(id, json);
+        }
+
+        return Json(new JsonObject());
+    }
+
+    private static Task<IResult> ObjectRemoveFields(Request r)
+    {
+        List<long> removed;
+        lock (r.State.Lock)
+        {
+            removed = r.State.RemoveCustomFields(Ids(r.Json));
+        }
+
+        return Json(new JsonObject { ["ids"] = new JsonArray(removed.Select(i => (JsonNode)i).ToArray()) });
+    }
+
+    private static Task<IResult> ExportObject(Request r)
+    {
+        var table = RequiredString(r.Json, "object");
+        var requested = r.Json["columns"] is JsonArray c ? c.Select(n => n!.GetValue<string>()).ToList() : null;
+        List<JsonObject> rows;
+        lock (r.State.Lock)
+        {
+            rows = r.State.Objects.Rows(table).Select(x => (JsonObject)x.DeepClone()).ToList();
+        }
+
+        var columns = requested ?? rows.SelectMany(x => x.Select(p => p.Key)).Distinct().ToList();
+        var csv = new System.Text.StringBuilder().AppendLine(string.Join(",", columns));
+        foreach (var row in rows)
+        {
+            csv.AppendLine(string.Join(",", columns.Select(col => Csv(NodeComparer.AsString(row[col])))));
+        }
+
+        return Task.FromResult(Results.Bytes(System.Text.Encoding.UTF8.GetBytes(csv.ToString()), "text/csv"));
+    }
+
+    private static Task<IResult> ExportCustomTablesMetadata(Request r)
+    {
+        var csv = new System.Text.StringBuilder().AppendLine("object,name,column_name,type");
+        lock (r.State.Lock)
+        {
+            foreach (var table in r.State.CustomTables)
+            {
+                foreach (var field in ((JsonArray)table["fields"]!).OfType<JsonObject>())
+                {
+                    csv.AppendLine(string.Join(",", Csv(table["object"]!.GetValue<string>()), Csv(table["name"]!.GetValue<string>()), Csv(field["column_name"]?.GetValue<string>()), Csv(field["type"]?.GetValue<string>())));
+                }
+            }
+        }
+
+        return Task.FromResult(Results.Bytes(System.Text.Encoding.UTF8.GetBytes(csv.ToString()), "text/csv"));
+    }
+
+    private static Task<IResult> GetNtpServer(Request r)
+    {
+        lock (r.State.Lock)
+        {
+            return Json(new JsonObject
+            {
+                ["server1"] = r.State.GetConfiguration("ntp", "server1") ?? "pool.ntp.org",
+                ["server2"] = r.State.GetConfiguration("ntp", "server2") ?? string.Empty,
+            });
+        }
+    }
+
+    private static Task<IResult> SetNtpServer(Request r)
+    {
+        var server1 = RequiredString(r.Json, "server1");
+        lock (r.State.Lock)
+        {
+            r.State.SetConfiguration("ntp", "server1", server1);
+            r.State.SetConfiguration("ntp", "server2", r.Json["server2"]?.GetValue<string>() ?? string.Empty);
+        }
+
+        return Json(new JsonObject());
+    }
+
+    // Sem "password": consulta hash e sal; com "password": grava (o simulador guarda só um marcador).
+    private static Task<IResult> MasterPassword(Request r)
+    {
+        lock (r.State.Lock)
+        {
+            if (r.Json["password"]?.GetValue<string>() is { Length: > 0 })
+            {
+                r.State.SetConfiguration("master_password", "set", "1");
+                return Json(new JsonObject());
+            }
+
+            return Json(new JsonObject { ["hash"] = "00000000000000000000000000000000", ["salt"] = "simulador" });
+        }
+    }
+
+    private static Task<IResult> RecoveryPassword(Request r)
+    {
+        lock (r.State.Lock)
+        {
+            if (r.Json["password"]?.GetValue<string>() is { Length: > 0 })
+            {
+                r.State.SetConfiguration("recovery", "enabled", "1");
+                return Json(new JsonObject());
+            }
+
+            if (r.Json["enabled"] is { } flag)
+            {
+                r.State.SetConfiguration("recovery", "enabled", flag.GetValue<bool>() ? "1" : "0");
+                return Json(new JsonObject());
+            }
+
+            return Json(new JsonObject { ["enabled"] = r.State.GetConfiguration("recovery", "enabled") == "1" });
+        }
+    }
+
+    private static List<long> Ids(JsonObject json) =>
+        (json["ids"] as JsonArray ?? throw new DeviceException("Missing 'ids'"))
+            .Select(n => ObjectStore.TryGetLong(n, out var id) ? id : throw new DeviceException("Invalid id"))
+            .ToList();
+
+    private static string Csv(string? value) =>
+        value is not null && value.IndexOfAny(new[] { ',', '"', '\n' }) >= 0 ? "\"" + value.Replace("\"", "\"\"") + "\"" : value ?? string.Empty;
+
+    private static Task<IResult> Text(string text) =>
+        Task.FromResult(Results.Text(text, "text/plain"));
 
     private static Task<IResult> Ok(Request r) => Json(new JsonObject());
 

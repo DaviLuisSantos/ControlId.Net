@@ -105,6 +105,44 @@ public enum Ieee8021XInnerAuthentication
     Gtc = 2,
 }
 
+/// <summary>Método EAP externo do 802.1X (<c>eap_auth</c>).</summary>
+public enum Ieee8021XEapMethod
+{
+    /// <summary>0: PEAP.</summary>
+    Peap = 0,
+
+    /// <summary>1: TTLS.</summary>
+    Ttls = 1,
+
+    /// <summary>2: TLS.</summary>
+    Tls = 2,
+}
+
+/// <summary>Corpo de <c>configure_802_1X.fcgi</c>. Campos opcionais em <c>null</c> não são enviados.</summary>
+public sealed class Ieee8021XSettings
+{
+    /// <summary>Liga ou desliga a autenticação 802.1X.</summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>Login do suplicante.</summary>
+    public string? Login { get; set; }
+
+    /// <summary>Senha do suplicante (nunca vai para mensagem de erro nem log).</summary>
+    public string? Password { get; set; }
+
+    /// <summary>Autenticação interna (<c>inner_auth</c>).</summary>
+    public Ieee8021XInnerAuthentication InnerAuthentication { get; set; } = Ieee8021XInnerAuthentication.MsChapV2;
+
+    /// <summary>Método EAP externo (<c>eap_auth</c>); <c>null</c> mantém o atual do equipamento.</summary>
+    public Ieee8021XEapMethod? EapMethod { get; set; }
+
+    /// <summary>Usa certificado de cliente (<c>uses_certificate</c>).</summary>
+    public bool? UsesCertificate { get; set; }
+
+    /// <summary>Interface: <c>"1"</c> é a cabeada; qualquer outro valor, a sem fio. Omitido, vale a cabeada.</summary>
+    public string? Interface { get; set; }
+}
+
 /// <summary>Licenças de capacidade do iDFace e do iDFace Max (exigem a senha fornecida pela Control iD na compra).</summary>
 public enum FaceLicense
 {

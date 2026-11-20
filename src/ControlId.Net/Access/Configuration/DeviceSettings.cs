@@ -584,6 +584,26 @@ public sealed class HidSettings : ConfigurationSection
     /// <summary><c>w37_cardid_size</c>: Define número de bits de identificação do formato W37, desconsiderando bits de paridade. Valores: "19", "25" ou "35".</summary>
     [JsonPropertyName("w37_cardid_size")]
     public string? W37CardidSize { get; set; }
+
+    /// <summary><c>card_process</c>: Como o leitor OMNIKEY/HID processa o dado do cartão. Valores: "0" (PACS_ONLY), "1" (CSN_ONLY), "2" (CSN_MIFARE), "3" (CUSTOM_ONLY) ou "4" (CUSTOM_PACS).</summary>
+    [JsonPropertyName("card_process")]
+    public int? CardProcess { get; set; }
+
+    /// <summary><c>custom_use_index</c>: Índice do dado customizado tratado como válido quando <c>card_process</c> é "3" ou "4". Padrão: "0".</summary>
+    [JsonPropertyName("custom_use_index")]
+    public int? CustomUseIndex { get; set; }
+
+    /// <summary><c>toc_crypt_mode</c>: Modo de criptografia do Template on Card ("0" sem criptografia, "1"/"2" criptografado). Apenas iDFace Max HID.</summary>
+    [JsonPropertyName("toc_crypt_mode")]
+    public int? TocCryptMode { get; set; }
+
+    /// <summary><c>toc_crypt_key</c>: Chave de criptografia do Template on Card; vazia, o firmware gera uma a partir do número de série. Apenas iDFace Max HID.</summary>
+    [JsonPropertyName("toc_crypt_key")]
+    public string? TocCryptKey { get; set; }
+
+    /// <summary><c>toc_site_key</c>: Site key do leitor HID usada no Template on Card. Apenas iDFace Max HID.</summary>
+    [JsonPropertyName("toc_site_key")]
+    public string? TocSiteKey { get; set; }
 }
 
 /// <summary>
@@ -600,6 +620,10 @@ public sealed class IdentifierSettings : ConfigurationSection
     /// <summary><c>antipassback_enabled</c>: Habilita ou desabilita a configuração de anti-passback, que bloqueia o acesso de uma mesma pessoa. Valores: "0" ou "1".</summary>
     [JsonPropertyName("antipassback_enabled")]
     public bool? AntipassbackEnabled { get; set; }
+
+    /// <summary><c>two_person_auth_enabled</c>: Habilita a autenticação de 2 pessoas. Apenas iDFace Max HID. Valores: "0" ou "1"; padrão de fábrica "1".</summary>
+    [JsonPropertyName("two_person_auth_enabled")]
+    public bool? TwoPersonAuthEnabled { get; set; }
 
     /// <summary><c>antipassback_mode</c>: Modo de operação do anti-passback, por padrão possui o valor "timed". Valores: "daily_catra" para acesso diário de catraca, "timed_catra" para bloqueio por tempo para catracas e "timed" para bloqueio por tempo em outros dispositivos.</summary>
     [JsonPropertyName("antipassback_mode")]
@@ -938,6 +962,14 @@ public sealed class OsdpSettings : ConfigurationSection
     /// <summary><c>enforce_secure_channel</c>: Habilita o canal seguro obrigatório. Ela pode ter dois valores, "0" para canal desabilitado e "1" para canal habilitado.</summary>
     [JsonPropertyName("enforce_secure_channel")]
     public bool? EnforceSecureChannel { get; set; }
+
+    /// <summary><c>remote_validation_enabled</c>: Validação remota via OSDP; só tem efeito com <c>out_mode</c> "2" (Passthrough). Valores: "0" ou "1".</summary>
+    [JsonPropertyName("remote_validation_enabled")]
+    public bool? RemoteValidationEnabled { get; set; }
+
+    /// <summary><c>remote_validation_timeout_ms</c>: Janela, em milissegundos, para a resposta da validação remota. Padrão: "5000".</summary>
+    [JsonPropertyName("remote_validation_timeout_ms")]
+    public int? RemoteValidationTimeoutMs { get; set; }
 
     /// <summary><c>out_mode</c>: Configura o tipo de saída de dados. Pode ter os valores: 0 para transmissão de ID (Padrão), 1 para transmissão de cartões autorizados, 2 para transmissão de qualquer cartão e 3 para transmissão do cartão do usuário.</summary>
     [JsonPropertyName("out_mode")]

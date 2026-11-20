@@ -18,7 +18,8 @@ public interface IOnlineAccessHandler
     /// <summary>
     /// Decide uma tentativa de acesso. Use <c>switch</c> em <paramref name="identification"/>:
     /// <see cref="UserIdentifiedEvent"/> no modo Pro; <see cref="CardEvent"/>, <see cref="QrCodeEvent"/>,
-    /// <see cref="UhfTagEvent"/>, <see cref="UserIdAndPasswordEvent"/> e <see cref="BiometricEvent"/> no Enterprise.
+    /// <see cref="UhfTagEvent"/>, <see cref="UserIdAndPasswordEvent"/>, <see cref="BiometricEvent"/>, <see cref="PinEvent"/> e
+    /// <see cref="FaceTemplateEvent"/> no Enterprise.
     /// </summary>
     Task<OnlineAuthorization> AuthorizeAsync(OnlineIdentificationEvent identification, CancellationToken cancellationToken);
 
@@ -30,6 +31,12 @@ public interface IOnlineAccessHandler
     /// Nesse modo o resultado vem por aqui, e não pelo Monitor.
     /// </summary>
     Task OnRemoteEnrollAsync(OnlineEnrollEvent enrollment, CancellationToken cancellationToken) => Task.CompletedTask;
+
+    /// <summary>
+    /// Autocadastro facial concluído no próprio equipamento (<c>new_user_enrolled</c>, modo quiosque; V7 e V8).
+    /// A implementação padrão não faz nada.
+    /// </summary>
+    Task OnKioskEnrollmentAsync(KioskEnrollmentEvent enrollment, CancellationToken cancellationToken) => Task.CompletedTask;
 
     /// <summary>
     /// Foto do usuário, pedida pelo equipamento quando a autorização tem <see cref="OnlineAuthorization.UserImage"/>.

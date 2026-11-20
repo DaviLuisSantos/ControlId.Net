@@ -9,7 +9,7 @@ documentados tem um método, modelo ou rota tipados no pacote.
 
 | Item | Cobertura |
 | --- | --- |
-| Endpoints chamados no equipamento | 85 de 85 |
+| Endpoints chamados no equipamento | 116 de 116 (mais 64 documentados e ainda pendentes: `tests/ControlId.Net.Tests/Cobertura/pendentes.txt`) |
 | Rotas que o equipamento chama no seu servidor (Monitor, Push, modo online) | todas, no `ControlId.Net.AspNetCore` |
 | Objetos (`load/create/modify/destroy_objects`) | 37 de 37, com modelo e CRUD tipado |
 | Seções de configuração | 34 seções, 245 parâmetros |
@@ -152,15 +152,50 @@ acrescente-o ao teste.
 | `has_audio_access_messages.fcgi` | POST | `GetAccessAudioStatusAsync()` |
 | `change_idcloud_code.fcgi` | GET | `ChangeIdCloudCodeAsync()` |
 
+### Biometria, schema customizado, rede e leitura de hardware
+
+| Endpoint | HTTP | Método |
+| --- | --- | --- |
+| `face_template_match.fcgi` | POST | `MatchFaceTemplateAsync(faceTemplate, userId)` |
+| `face_template_count_distinct.fcgi` | GET | `CountFaceTemplatesAsync()` |
+| `template_match.fcgi` | POST | `MatchFingerprintTemplatesAsync(templates)` |
+| `object_metadata.fcgi` | POST | `GetObjectMetadataAsync()` |
+| `object_add.fcgi` | POST | `CreateCustomTableAsync(table, label, fields)` |
+| `object_remove.fcgi` | POST | `DeleteCustomTablesAsync(confirmation, tableIds)` |
+| `object_add_field.fcgi` | POST | `AddCustomFieldAsync(table, field)` |
+| `object_update_field.fcgi` | POST | `UpdateCustomFieldAsync(fieldId, field)` |
+| `object_remove_fields.fcgi` | POST | `RemoveCustomFieldsAsync(confirmation, fieldIds)` |
+| `export_object.fcgi` | POST | `ExportObjectCsvAsync(object, columns)` |
+| `export_custom_tables_metadata.fcgi` | GET | `ExportCustomTablesMetadataCsvAsync()` |
+| `get_ntp_server.fcgi` | GET | `GetNtpServerAsync()` |
+| `set_ntp_server.fcgi` | POST | `SetNtpServerAsync(server1, server2)` |
+| `get_ntp_server_status.fcgi` | GET | `GetNtpServerStatusAsync()` |
+| `check_port_availability.fcgi` | POST | `CheckPortAvailabilityAsync(initialPort, finalPort)` |
+| `get_vpn_ip.fcgi` | GET | `GetVpnIpAsync()` |
+| `get_ssl_certificate.fcgi` | GET | `GetSslCertificateAsync()` |
+| `get_802_1X_status.fcgi` | GET | `Get8021XStatusAsync(networkInterface)` |
+| `get_ac_log.fcgi`, `get_openvpn_log.fcgi`, `get_wpa_log.fcgi`, `get_wpasupplicant_log.fcgi` | GET | `GetDeviceLogAsync(DeviceLog)` |
+| `io_state.fcgi` | POST | `GetIoStateAsync()` |
+| `is_identifying.fcgi` | GET | `IsIdentifyingAsync()` |
+| `get_catra_info.fcgi` | GET | `GetTurnstileCountersAsync()` |
+| `get_last_snapshot.fcgi` | GET | `GetLastSnapshotAsync()` |
+| `device_rfid_module.fcgi` | GET | `GetRfidModuleAsync()` |
+| `get_hid_last_card.fcgi` | GET | `GetHidLastCardAsync()` |
+| `get_wiegand_card_read.fcgi` | GET | `GetLastWiegandReadAsync()` |
+| `master_password.fcgi` | POST | `SetMasterPasswordAsync(password)`, `GetMasterPasswordInfoAsync()` |
+| `recovery_password.fcgi` | POST | `SetUpdateModePasswordAsync(password)`, `RemoveUpdateModePasswordAsync()`, `GetUpdateModePasswordStatusAsync()` |
+
+Remover tabela ou campo customizado apaga dados e exige `DataLossConfirmation`. As senhas nunca entram em mensagem de exceção nem em log.
+
 ## Rotas que o equipamento chama no seu servidor
 
 | Funcionalidade | Rotas | No pacote |
 | --- | --- | --- |
 | Monitor | `api/notifications/{dao, door, secbox, catra_event, operation_mode, device_is_alive, access_photo, usb_drive, template, user_image, face_template, card, pin, password}` | `MonitorNotifications.Parse`, `MapControlIdMonitor` |
 | Push | `GET /push`, `POST /result` (comando avulso ou `transactions`) | `PushServer`, `MapControlIdPush` |
-| Modo online: identificação | `new_user_identified`, `new_card`, `new_qrcode`, `new_uhf_tag`, `new_user_id_and_password`, `new_biometric_image`, `new_biometric_template` | `OnlineEvents.Parse`, `MapControlIdOnline` |
-| Modo online: cadastro remoto | `card_create`, `fingerprint_create`, `template_create`, `face_create`, `pin_create`, `password_create` | `OnlineEvents.ParseEnroll`, `IOnlineAccessHandler.OnRemoteEnrollAsync` |
-| Modo online: outros | `new_rex_log`, `GET user_get_image`, `device_is_alive`, `session_is_valid` | `MapControlIdOnline` |
+| Modo online: identificação | `new_user_identified`, `new_card`, `new_qrcode`, `new_uhf_tag`, `new_user_id_and_password`, `new_biometric_image`, `new_biometric_template`, `new_pin`, `new_face_template` | `OnlineEvents.Parse`, `MapControlIdOnline` |
+| Modo online: cadastro remoto | `card_create`, `fingerprint_create`, `template_create`, `face_create`, `pin_create`, `password_create`, `face_template_create`, `tag_create` | `OnlineEvents.ParseEnroll`, `IOnlineAccessHandler.OnRemoteEnrollAsync` |
+| Modo online: outros | `new_rex_log`, `new_user_enrolled` (autocadastro no quiosque, `OnlineEvents.ParseKioskEnrollment` e `IOnlineAccessHandler.OnKioskEnrollmentAsync`), `GET user_get_image`, `device_is_alive`, `session_is_valid` | `MapControlIdOnline` |
 | Streaming | `rtsp://…/main_stream` (não é HTTP) | `GetRtspStreamUri` |
 
 ## Objetos

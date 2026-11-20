@@ -21,6 +21,13 @@ internal static class ReadRetry
         "report_generate", "export_afd", "export_audit_logs", "logo", "has_audio_access_messages",
         "get_audio_access_message", "get_sip_status", "get_pjsip_audio_message",
 
+        // Biometria, schema, rede e hardware (leituras: não alteram o equipamento).
+        "face_template_count_distinct", "face_template_match", "template_match", "object_metadata", "export_object",
+        "export_custom_tables_metadata", "get_ntp_server", "get_ntp_server_status", "check_port_availability",
+        "get_vpn_ip", "get_ssl_certificate", "get_802_1X_status", "get_ac_log", "get_openvpn_log", "get_wpa_log",
+        "get_wpasupplicant_log", "io_state", "is_identifying", "get_catra_info", "get_last_snapshot",
+        "device_rfid_module", "get_hid_last_card", "get_wiegand_card_read",
+
         // REP iDClass.
         "count_users", "export_users_csv", "facial_enroller_state", "get_about", "get_about_facial", "get_afd",
         "get_coil_paper", "get_facial_module_config", "get_idcloud", "get_info", "get_public_key",

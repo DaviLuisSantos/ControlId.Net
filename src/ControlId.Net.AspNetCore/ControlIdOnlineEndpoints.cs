@@ -29,11 +29,13 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
     /// <see cref="OnlineModeConfiguration.ServerAddress"/> (ex.: <c>"/api"</c> para <c>http://servidor:5000/api</c>):
     /// <list type="bullet">
     /// <item>eventos de identificação (<c>new_user_identified</c>, <c>new_card</c>, <c>new_qrcode</c>, <c>new_uhf_tag</c>,
-    /// <c>new_user_id_and_password</c>, <c>new_biometric_image</c>, <c>new_biometric_template</c>) →
-    /// <see cref="IOnlineAccessHandler.AuthorizeAsync"/>;</item>
+    /// <c>new_user_id_and_password</c>, <c>new_biometric_image</c>, <c>new_biometric_template</c>, <c>new_pin</c>,
+    /// <c>new_face_template</c>) → <see cref="IOnlineAccessHandler.AuthorizeAsync"/>;</item>
     /// <item><c>new_rex_log</c> → <see cref="IOnlineAccessHandler.OnExitButtonAsync"/>;</item>
     /// <item>resultados do cadastro remoto (<c>card_create</c>, <c>face_create</c>, <c>fingerprint_create</c>,
-    /// <c>template_create</c>, <c>pin_create</c>, <c>password_create</c>) → <see cref="IOnlineAccessHandler.OnRemoteEnrollAsync"/>;</item>
+    /// <c>template_create</c>, <c>pin_create</c>, <c>password_create</c>, <c>face_template_create</c>, <c>tag_create</c>) →
+    /// <see cref="IOnlineAccessHandler.OnRemoteEnrollAsync"/>;</item>
+    /// <item><c>new_user_enrolled</c> (autocadastro facial no equipamento) → <see cref="IOnlineAccessHandler.OnKioskEnrollmentAsync"/>;</item>
     /// <item><c>GET user_get_image</c> → <see cref="IOnlineAccessHandler.GetUserImageAsync"/>;</item>
     /// <item><c>device_is_alive</c> e <c>session_is_valid</c> → 200, para o equipamento sair da contingência.</item>
     /// </list>
@@ -66,6 +68,7 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
         }
 
         group.MapPost("new_rex_log.fcgi", Measure(HandleExitButtonAsync));
+        group.MapPost("new_user_enrolled.fcgi", Measure(HandleKioskEnrollmentAsync));
         group.MapGet("user_get_image.fcgi", Measure(HandleUserImageAsync));
         group.MapPost("device_is_alive.fcgi", Measure(HandleAliveAsync));
         group.MapPost("session_is_valid.fcgi", Measure(HandleSessionValidAsync));
@@ -220,6 +223,61 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
             CallbackTelemetry.Online, () => handler.OnRemoteEnrollAsync(enrollment, context.RequestAborted)).ConfigureAwait(false);
 
         // A documentação define essas rotas sem retorno.
+        context.Response.StatusCode = StatusCodes.Status200OK;
+    }
+
+    private static async Task HandleKioskEnrollmentAsync(HttpContext context)
+    {
+        var endpoint = context.Request.Path.Value ?? string.Empty;
+        var queryDeviceId = QueryDeviceId(context);
+        var authorizeFirst = !CallbackGuard.NeedsBodyToAuthorize(context);
+        if (authorizeFirst && !CallbackGuard.Authorize(context, queryDeviceId, LoggerCategory))
+        {
+            return;
+        }
+
+        var bytes = await CallbackGuard.ReadBodyAsync(context, LoggerCategory).ConfigureAwait(false);
+        if (bytes is null)
+        {
+            return;
+        }
+
+        KioskEnrollmentEvent enrollment;
+        try
+        {
+            enrollment = OnlineEvents.ParseKioskEnrollment(CallbackBody.ToText(bytes));
+        }
+        catch (ControlId.ControlIdException ex)
+        {
+            if (authorizeFirst || CallbackGuard.Authorize(context, queryDeviceId, LoggerCategory))
+            {
+                Log.InvalidEnrollResult(GetLogger(context), ex, endpoint);
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            }
+
+            return;
+        }
+
+        // O token autentica um equipamento; o cadastro entregue precisa ser dele.
+        var bodyDeviceId = enrollment.DeviceId;
+        var deviceId = queryDeviceId ?? bodyDeviceId;
+        if (!authorizeFirst && !CallbackGuard.Authorize(context, deviceId, LoggerCategory))
+        {
+            return;
+        }
+
+        if (!CallbackGuard.SameDevice(context, queryDeviceId, bodyDeviceId, LoggerCategory)
+            || !CallbackGuard.IsKnownDevice(context, deviceId, LoggerCategory))
+        {
+            return;
+        }
+
+        Touch(context, deviceId);
+        var handler = GetHandler(context);
+        await CallbackTelemetry.MeasureHandlerAsync(
+            CallbackTelemetry.Online, () => handler.OnKioskEnrollmentAsync(enrollment, context.RequestAborted)).ConfigureAwait(false);
+
+        // A documentação define a rota sem retorno.
         context.Response.StatusCode = StatusCodes.Status200OK;
     }
 

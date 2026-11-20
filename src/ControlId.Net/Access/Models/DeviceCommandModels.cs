@@ -50,12 +50,24 @@ public sealed class NetworkSettings
     public bool? SelfSignedCertificate { get; set; }
 
     /// <summary>DNS primário (padrão do equipamento: 8.8.8.8).</summary>
-    [JsonPropertyName("dns_primary")]
+    [JsonPropertyName("primary_dns")]
     public string? DnsPrimary { get; set; }
 
     /// <summary>DNS secundário (padrão do equipamento: 8.8.4.4).</summary>
-    [JsonPropertyName("dns_secondary")]
+    [JsonPropertyName("secondary_dns")]
     public string? DnsSecondary { get; set; }
+
+    /// <summary>Interface a que as configurações se aplicam: <c>"1"</c> é a cabeada; qualquer outro valor, a sem fio. Omitido, vale a cabeada. Apenas firmware V8.</summary>
+    [JsonPropertyName("interface")]
+    public string? Interface { get; set; }
+
+    /// <summary>Habilita DHCP na interface selecionada (endereço, máscara e gateway vêm da rede).</summary>
+    [JsonPropertyName("dhcp_enabled")]
+    public bool? DhcpEnabled { get; set; }
+
+    /// <summary>Força o link cabeado a negociar em 10 Mbps em vez de 100 Mbps.</summary>
+    [JsonPropertyName("ten_mbps")]
+    public bool? TenMbps { get; set; }
 
     private static string Required(string value, string name) =>
         string.IsNullOrWhiteSpace(value) ? throw new ArgumentException("Campo obrigatório.", name) : value;
@@ -119,4 +131,27 @@ public sealed class PasswordHash
     /// <summary>Salt aleatório usado no hash.</summary>
     [JsonPropertyName("salt")]
     public string Salt { get; set; } = string.Empty;
+}
+
+/// <summary>Opções de <c>reset_to_factory_default.fcgi</c> além da confirmação de perda de dados.</summary>
+public sealed class FactoryResetOptions
+{
+    /// <summary>Mantém IP e demais informações de rede (<c>keep_network_info</c>).</summary>
+    public bool KeepNetworkSettings { get; set; }
+
+    /// <summary>Mantém a configuração do equipamento e apaga só os dados de usuário (<c>keep_all_config</c>).</summary>
+    public bool KeepAllConfiguration { get; set; }
+
+    /// <summary>Mantém os parâmetros de comunicação OSDP com a controladora (<c>keep_osdp_info</c>). Apenas firmware V7.</summary>
+    public bool KeepOsdpSettings { get; set; }
+}
+
+/// <summary>Origem da captura de <c>save_screenshot.fcgi</c> que não é a câmera.</summary>
+public enum ScreenFrame
+{
+    /// <summary>Tela do equipamento (<c>screen</c>).</summary>
+    Screen,
+
+    /// <summary>Buffer de exibição (<c>display</c>).</summary>
+    Display,
 }

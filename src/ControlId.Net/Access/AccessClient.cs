@@ -18,7 +18,7 @@ using ControlId.Internal;
 namespace ControlId.Access;
 
 /// <inheritdoc cref="IAccessClient"/>
-public sealed class AccessClient : IAccessClient, IControlIdClientDiagnostics
+public sealed partial class AccessClient : IAccessClient, IControlIdClientDiagnostics
 {
     /// <summary>Tamanho padrão de página das leituras paginadas (<c>Enumerate*Async</c>).</summary>
     public const int DefaultPageSize = 500;
@@ -214,29 +214,54 @@ public sealed class AccessClient : IAccessClient, IControlIdClientDiagnostics
         DeleteByIdAsync("templates", templateId, cancellationToken);
 
     /// <inheritdoc/>
+    public Task<FaceImageResult> SetUserImageAsync(
+        long userId, byte[] image, bool rejectExistingFace = false, DateTimeOffset? timestamp = null, CancellationToken cancellationToken = default) =>
+        SetUserImageAsync(userId, image, new UserImageUploadOptions { RejectExistingFace = rejectExistingFace }, timestamp, cancellationToken);
+
+    /// <inheritdoc/>
     public async Task<FaceImageResult> SetUserImageAsync(
-        long userId, byte[] image, bool rejectExistingFace = false, DateTimeOffset? timestamp = null, CancellationToken cancellationToken = default)
+        long userId, byte[] image, UserImageUploadOptions options, DateTimeOffset? timestamp = null, CancellationToken cancellationToken = default)
     {
+        if (options is null)
+        {
+            throw new ArgumentNullException(nameof(options));
+        }
+
         ValidateImage(image, nameof(image));
         var query = string.Join(
             "&",
             "user_id=" + userId.ToString(CultureInfo.InvariantCulture),
             "timestamp=" + (timestamp ?? DateTimeOffset.UtcNow).ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
-            "match=" + (rejectExistingFace ? "1" : "0"));
+            "match=" + (options.RejectExistingFace ? "1" : "0")) + (options.BypassQualityScore ? "&bypass_quality_score=1" : string.Empty);
         var text = await _transport.PostBytesAsync("user_set_image.fcgi", image, "application/octet-stream", cancellationToken, query).ConfigureAwait(false);
         return ParseFaceResult(text);
     }
 
     /// <inheritdoc/>
+    public Task<IReadOnlyList<FaceImageResult>> SetUserImagesAsync(
+        IEnumerable<UserImage> images, bool rejectExistingFaces = false, CancellationToken cancellationToken = default) =>
+        SetUserImagesAsync(images, new UserImageUploadOptions { RejectExistingFace = rejectExistingFaces }, cancellationToken);
+
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<FaceImageResult>> SetUserImagesAsync(
-        IEnumerable<UserImage> images, bool rejectExistingFaces = false, CancellationToken cancellationToken = default)
+        IEnumerable<UserImage> images, UserImageUploadOptions options, CancellationToken cancellationToken = default)
     {
         if (images is null)
         {
             throw new ArgumentNullException(nameof(images));
         }
 
-        var body = new Dictionary<string, object> { ["match"] = rejectExistingFaces, ["user_images"] = images.ToList() };
+        if (options is null)
+        {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        var body = new Dictionary<string, object> { ["match"] = options.RejectExistingFace, ["user_images"] = images.ToList() };
+        if (options.BypassQualityScore)
+        {
+            body["bypass_quality_score"] = true;
+        }
+
         var text = await _transport.PostRawAsync("user_set_image_list.fcgi", body, cancellationToken).ConfigureAwait(false);
         return ParseResults(text);
     }
@@ -335,7 +360,7 @@ public sealed class AccessClient : IAccessClient, IControlIdClientDiagnostics
 
     /// <inheritdoc/>
     public async Task<IReadOnlyList<FaceImageResult>> EnrollFaceTemplatesAsync(
-        IEnumerable<FaceTemplateEnrollment> templates, bool rejectExistingFaces = false, CancellationToken cancellationToken = default)
+        IEnumerable<FaceTemplateEnrollment> templates, bool rejectExistingFaces = true, CancellationToken cancellationToken = default)
     {
         // A tabela da documentação escreve "face_tempaltes"; o exemplo usa "face_templates".
         var body = new Dictionary<string, object>
@@ -648,6 +673,18 @@ public sealed class AccessClient : IAccessClient, IControlIdClientDiagnostics
     }
 
     /// <inheritdoc/>
+    public async Task<byte[]> CaptureScreenAsync(ScreenFrame frame = ScreenFrame.Screen, CancellationToken cancellationToken = default)
+    {
+        var body = new Dictionary<string, object>
+        {
+            ["frame_type"] = frame == ScreenFrame.Display ? "display" : "screen",
+            ["format_type"] = "png",
+        };
+        var (content, _) = await _transport.PostForBytesAsync("save_screenshot.fcgi", body, cancellationToken).ConfigureAwait(false);
+        return content;
+    }
+
+    /// <inheritdoc/>
     public async Task<string> GenerateReportAsync(ReportRequest request, CancellationToken cancellationToken = default)
     {
         if (request is null)
@@ -660,27 +697,46 @@ public sealed class AccessClient : IAccessClient, IControlIdClientDiagnostics
     }
 
     /// <inheritdoc/>
-    public async Task<string> ExportAfdAsync(
-        long? initialNsr = null, DateTime? initialDate = null, bool portaria671 = true, CancellationToken cancellationToken = default)
+    public Task<string> ExportAfdAsync(
+        long? initialNsr = null, DateTime? initialDate = null, bool portaria671 = true, CancellationToken cancellationToken = default) =>
+        ExportAfdAsync(new AfdExportOptions { InitialNsr = initialNsr, InitialDate = initialDate, Portaria671 = portaria671 }, cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<string> ExportAfdAsync(AfdExportOptions options, CancellationToken cancellationToken = default)
     {
-        if (initialNsr is not null && initialDate is not null)
+        if (options is null)
         {
-            throw new ArgumentException("Filtre por NSR ou por data, não pelos dois.", nameof(initialDate));
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        if (options.InitialNsr is not null && options.InitialDate is not null)
+        {
+            throw new ArgumentException("Filtre por NSR ou por data, não pelos dois.", nameof(options));
         }
 
         var body = new Dictionary<string, object>();
-        if (initialNsr is { } nsr)
+        if (options.InitialNsr is { } nsr)
         {
             body["initial_nsr"] = nsr;
         }
 
-        if (initialDate is { } date)
+        if (options.InitialDate is { } date)
         {
             body["initial_date"] = new Dictionary<string, int> { ["day"] = date.Day, ["month"] = date.Month, ["year"] = date.Year };
         }
 
+        if (options.Limit is { } limit)
+        {
+            body["limit"] = limit;
+        }
+
+        if (options.Offset is { } offset)
+        {
+            body["offset"] = offset;
+        }
+
         var (content, charSet) = await _transport.PostForBytesAsync(
-            "export_afd.fcgi", body, cancellationToken, portaria671 ? "mode=671" : null).ConfigureAwait(false);
+            "export_afd.fcgi", body, cancellationToken, options.Portaria671 ? "mode=671" : null).ConfigureAwait(false);
         return TextDecoding.Decode(content, charSet);
     }
 
@@ -707,6 +763,8 @@ public sealed class AccessClient : IAccessClient, IControlIdClientDiagnostics
             ["time"] = Flag(AuditLogCategories.Time),
             ["online"] = Flag(AuditLogCategories.Online),
             ["menu"] = Flag(AuditLogCategories.Menu),
+            ["boot"] = Flag(AuditLogCategories.Boot),
+            ["push"] = Flag(AuditLogCategories.Push),
         };
 
         var (content, charSet) = await _transport.PostForBytesAsync("export_audit_logs.fcgi", body, cancellationToken).ConfigureAwait(false);
@@ -842,11 +900,30 @@ public sealed class AccessClient : IAccessClient, IControlIdClientDiagnostics
         ResetToFactoryDefaultAsync(DataLossConfirmation.Confirmed, keepNetworkSettings, cancellationToken);
 
     /// <inheritdoc/>
-    public Task ResetToFactoryDefaultAsync(DataLossConfirmation confirmation, bool keepNetworkSettings, CancellationToken cancellationToken = default)
+    public Task ResetToFactoryDefaultAsync(DataLossConfirmation confirmation, bool keepNetworkSettings, CancellationToken cancellationToken = default) =>
+        ResetToFactoryDefaultAsync(confirmation, new FactoryResetOptions { KeepNetworkSettings = keepNetworkSettings }, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task ResetToFactoryDefaultAsync(DataLossConfirmation confirmation, FactoryResetOptions options, CancellationToken cancellationToken = default)
     {
         DataLoss.Require(confirmation, nameof(ResetToFactoryDefaultAsync));
-        return _transport.PostRawAsync(
-            "reset_to_factory_default.fcgi", new Dictionary<string, object> { ["keep_network_info"] = keepNetworkSettings }, cancellationToken);
+        if (options is null)
+        {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        var body = new Dictionary<string, object> { ["keep_network_info"] = options.KeepNetworkSettings };
+        if (options.KeepAllConfiguration)
+        {
+            body["keep_all_config"] = true;
+        }
+
+        if (options.KeepOsdpSettings)
+        {
+            body["keep_osdp_info"] = true;
+        }
+
+        return _transport.PostRawAsync("reset_to_factory_default.fcgi", body, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -1112,17 +1189,43 @@ public sealed class AccessClient : IAccessClient, IControlIdClientDiagnostics
     /// <inheritdoc/>
     public Task Configure8021XAsync(
         bool enabled, string? login = null, string? password = null,
-        Ieee8021XInnerAuthentication innerAuthentication = Ieee8021XInnerAuthentication.MsChapV2, CancellationToken cancellationToken = default)
+        Ieee8021XInnerAuthentication innerAuthentication = Ieee8021XInnerAuthentication.MsChapV2, CancellationToken cancellationToken = default) =>
+        Configure8021XAsync(
+            new Ieee8021XSettings { Enabled = enabled, Login = login, Password = password, InnerAuthentication = innerAuthentication },
+            cancellationToken);
+
+    /// <inheritdoc/>
+    public Task Configure8021XAsync(Ieee8021XSettings settings, CancellationToken cancellationToken = default)
     {
-        var body = new Dictionary<string, object> { ["enabled"] = enabled, ["inner_auth"] = (int)innerAuthentication };
-        if (login is not null)
+        if (settings is null)
         {
-            body["login"] = login;
+            throw new ArgumentNullException(nameof(settings));
         }
 
-        if (password is not null)
+        var body = new Dictionary<string, object> { ["enabled"] = settings.Enabled, ["inner_auth"] = (int)settings.InnerAuthentication };
+        if (settings.Login is not null)
         {
-            body["password"] = password;
+            body["login"] = settings.Login;
+        }
+
+        if (settings.Password is not null)
+        {
+            body["password"] = settings.Password;
+        }
+
+        if (settings.EapMethod is { } eap)
+        {
+            body["eap_auth"] = (int)eap;
+        }
+
+        if (settings.UsesCertificate is { } usesCertificate)
+        {
+            body["uses_certificate"] = usesCertificate;
+        }
+
+        if (settings.Interface is not null)
+        {
+            body["interface"] = settings.Interface;
         }
 
         return _transport.PostRawAsync("configure_802_1X.fcgi", body, cancellationToken);
