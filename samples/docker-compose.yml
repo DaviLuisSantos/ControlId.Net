@@ -3,7 +3,8 @@
 #
 #   docker compose -f samples/docker-compose.yml up --build -d
 #
-# Dashboard em tempo real: http://localhost:8081 (já configura o Monitor do simulador sozinho; use "Identificar").
+# Dashboard em tempo real: http://localhost:8081 (já grava o token dos callbacks e configura o Monitor do simulador
+# sozinho; use "Identificar").
 # Simulador: http://localhost:8080 (estado em /simulator/state). Aspire: http://localhost:18888. OTLP: localhost:4317.
 # O samples/ControlId.Net.Server mostra como ligar o ControlId.Net aos dois (veja o comentário no topo do Program.cs).
 services:
@@ -25,6 +26,12 @@ services:
       Dashboard__DeviceAddress: http://simulator:8080
       Dashboard__MonitorHostname: dashboard
       Dashboard__MonitorPort: "8080"
+      # Senha da API do equipamento: o simulador sobe com admin/admin. Para um equipamento real, não edite aqui:
+      # exporte CONTROLID_DEVICE_PASSWORD (ou ponha num arquivo .env ao lado deste, fora do Git).
+      Dashboard__DevicePassword: ${CONTROLID_DEVICE_PASSWORD:-admin}
+      # Token que o equipamento manda em Authorization: Bearer nos callbacks; o dashboard grava no simulador na partida e
+      # exige na rota do Monitor. Valor de demonstração: troque por CONTROLID_CALLBACK_TOKEN fora do ambiente local.
+      Dashboard__CallbackToken: ${CONTROLID_CALLBACK_TOKEN:-token-de-demonstracao-do-compose-troque-em-producao}
     ports:
       - "8081:8080"
 

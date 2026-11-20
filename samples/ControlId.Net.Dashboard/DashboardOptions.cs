@@ -1,10 +1,19 @@
 namespace ControlId.Dashboard;
 
-/// <summary>Configuração do dashboard (seção <c>Dashboard</c>; variáveis <c>Dashboard__*</c>).</summary>
+/// <summary>
+/// Configuração do dashboard (seção <c>Dashboard</c>; variáveis <c>Dashboard__*</c>). Validada na partida: a senha do
+/// equipamento não tem padrão e vem de fora do appsettings.json (variável de ambiente ou user-secrets).
+/// </summary>
 public sealed class DashboardOptions
 {
+    /// <summary>Nome da seção de configuração.</summary>
+    public const string SectionName = "Dashboard";
+
     /// <summary>Nome do equipamento no <c>IControlIdClientFactory</c>.</summary>
     public const string DeviceName = "equipamento";
+
+    /// <summary>Tamanho mínimo do token dos callbacks.</summary>
+    public const int MinCallbackTokenLength = 16;
 
     /// <summary>Endereço do equipamento ou do simulador.</summary>
     public string DeviceAddress { get; set; } = "http://localhost:8080";
@@ -12,8 +21,19 @@ public sealed class DashboardOptions
     /// <summary>Usuário da interface web do equipamento.</summary>
     public string DeviceLogin { get; set; } = "admin";
 
-    /// <summary>Senha da interface web do equipamento.</summary>
-    public string DevicePassword { get; set; } = "admin";
+    /// <summary>
+    /// Senha da interface web do equipamento. Sem padrão: informe por <c>Dashboard__DevicePassword</c> ou
+    /// <c>dotnet user-secrets set Dashboard:DevicePassword ...</c> (o simulador usa <c>admin</c>).
+    /// </summary>
+    public string DevicePassword { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Token Bearer que o equipamento manda nos callbacks (gravado nele na partida com <c>ConfigureCallbackSecurityAsync</c>
+    /// e exigido na rota do Monitor). Vazio: o dashboard gera um aleatório a cada execução. Mínimo de
+    /// <see cref="MinCallbackTokenLength"/> caracteres. Atenção: o token vale para todos os callbacks do equipamento
+    /// (Push, Online e Monitor); outro servidor que use o mesmo equipamento precisa do mesmo token.
+    /// </summary>
+    public string CallbackToken { get; set; } = string.Empty;
 
     /// <summary>
     /// Nome ou IP pelo qual o equipamento alcança este dashboard (vai para a configuração do Monitor).

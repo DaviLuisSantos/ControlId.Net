@@ -14,11 +14,15 @@ public sealed class DeviceService(
     DashboardState state,
     IOptions<DashboardOptions> options)
 {
-    /// <summary>Aponta o Monitor do equipamento para este dashboard.</summary>
-    public Task ConfigureMonitorAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Grava no equipamento o token dos callbacks (<c>curl_bearer_token</c>, firmware 6.22.3+) e aponta o Monitor para este
+    /// dashboard. O token vai primeiro: assim a primeira notificação já chega com <c>Authorization: Bearer</c>.
+    /// </summary>
+    public async Task ConfigureMonitorAsync(CancellationToken cancellationToken)
     {
         var settings = options.Value;
-        return Client.ConfigureMonitorAsync(
+        await Client.ConfigureCallbackSecurityAsync(settings.CallbackToken, cancellationToken: cancellationToken);
+        await Client.ConfigureMonitorAsync(
             new MonitorConfiguration
             {
                 Hostname = settings.MonitorHostname,

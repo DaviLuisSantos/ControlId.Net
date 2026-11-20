@@ -1,6 +1,11 @@
 // Uso:
 //   dotnet run --project samples/ControlId.Net.Sample -- access http://192.168.0.129 admin admin
-//   dotnet run --project samples/ControlId.Net.Sample -- rep https://192.168.0.130 admin admin
+//   dotnet run --project samples/ControlId.Net.Sample -- cert https://192.168.0.130
+//   dotnet run --project samples/ControlId.Net.Sample -- rep https://192.168.0.130 admin admin AB:CD:...
+//
+// O REP usa HTTPS com certificado autoassinado, e o RepClient valida o TLS: rode "cert" uma vez numa rede confiável,
+// confira a impressão digital SHA-256 (ex.: no navegador) e passe-a no comando "rep". Sem ela, só um certificado
+// válido para o .NET é aceito.
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -14,7 +19,7 @@ internal static class Program
     {
         if (args.Length < 2)
         {
-            Console.WriteLine("Uso: <access|rep> <url> [login] [senha]");
+            Console.WriteLine("Uso: access <url> [login] [senha] | cert <url> | rep <url> [login] [senha] [sha256-do-certificado]");
             return 1;
         }
 
@@ -26,7 +31,8 @@ internal static class Program
             return args[0] switch
             {
                 "access" => await RunAccessAsync(args[1], login, password),
-                "rep" => await RunRepAsync(args[1], login, password),
+                "cert" => await PrintCertificateAsync(args[1]),
+                "rep" => await RunRepAsync(args[1], login, password, args.Length > 4 ? args[4] : null),
                 _ => 1,
             };
         }
@@ -67,9 +73,17 @@ internal static class Program
         return 0;
     }
 
-    private static async Task<int> RunRepAsync(string url, string login, string password)
+    private static async Task<int> PrintCertificateAsync(string url)
     {
-        using var client = new RepClient(url, login, password, RepMode.Portaria671);
+        var sha256 = await ControlIdCertificates.GetServerCertificateSha256Async(new Uri(url));
+        Console.WriteLine($"SHA-256 do certificado de {url}: {sha256}");
+        Console.WriteLine("Confira esse valor antes de usá-lo: a partir daí, só esse certificado é aceito.");
+        return 0;
+    }
+
+    private static async Task<int> RunRepAsync(string url, string login, string password, string? certificateSha256)
+    {
+        using var client = new RepClient(url, login, password, RepMode.Portaria671, serverCertificateSha256: certificateSha256);
 
         var about = await client.GetAboutAsync();
         var system = await client.GetSystemInformationAsync();
