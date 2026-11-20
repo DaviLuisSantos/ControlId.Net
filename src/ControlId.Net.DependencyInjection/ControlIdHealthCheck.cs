@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
@@ -8,16 +9,19 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace ControlId.DependencyInjection;
 
-/// <summary>Opções do health check dos equipamentos (<c>AddControlIdDevices</c>).</summary>
+/// <summary>Opções do health check dos equipamentos (<c>AddControlIdDevices</c> e <c>AddControlIdDeviceChecks</c>).</summary>
 public sealed class ControlIdHealthCheckOptions
 {
-    /// <summary>Prazo de cada equipamento para responder. Padrão: 5 segundos.</summary>
+    /// <summary>Prazo de cada equipamento para responder. Padrão: 5 segundos. Precisa ser positivo.</summary>
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(5);
 
-    /// <summary>Acima deste tempo de resposta, o equipamento conta como lento (<see cref="HealthStatus.Degraded"/>). Padrão: 2 segundos.</summary>
+    /// <summary>
+    /// Acima deste tempo de resposta, o equipamento conta como lento (<see cref="HealthStatus.Degraded"/>). Padrão: 2 segundos.
+    /// Não pode ser negativo; zero faz toda resposta contar como lenta.
+    /// </summary>
     public TimeSpan SlowThreshold { get; set; } = TimeSpan.FromSeconds(2);
 
-    /// <summary>Equipamentos verificados ao mesmo tempo. Padrão: 8.</summary>
+    /// <summary>Equipamentos verificados ao mesmo tempo no check agregado. Padrão: 8.</summary>
     public int MaxParallelism { get; set; } = ControlIdDevices.DefaultMaxParallelism;
 
     /// <summary>
@@ -26,6 +30,28 @@ public sealed class ControlIdHealthCheckOptions
     /// e vale só para equipamentos que já tiveram contato. Padrão: <c>null</c> (não verifica).
     /// </summary>
     public TimeSpan? MaxContactAge { get; set; }
+
+    /// <summary>
+    /// Exige pelo menos um equipamento registrado. Padrão: <c>true</c>: sem nenhum <c>AddControlIdAccess*</c>/<c>AddControlIdRep*</c>
+    /// (ex.: seção de configuração com o nome errado), o check agregado devolve o <c>failureStatus</c> do registro, e
+    /// <c>AddControlIdDeviceChecks</c> registra um check <c>{namePrefix}:none</c> com esse status. Com <c>false</c>, zero
+    /// equipamentos é <see cref="HealthStatus.Healthy"/>.
+    /// </summary>
+    public bool RequireDevices { get; set; } = true;
+
+    /// <summary>
+    /// Por quanto tempo o resultado da sonda de cada equipamento é reaproveitado. Padrão: <see cref="TimeSpan.Zero"/> (sem cache:
+    /// toda verificação consulta o equipamento). O cache é compartilhado entre o check agregado e os por equipamento: com os
+    /// dois registrados, uma verificação faz uma requisição por equipamento. Também evita sondar a cada chamada de um
+    /// <c>/health</c> consultado com frequência. Não pode ser negativo.
+    /// </summary>
+    public TimeSpan CacheDuration { get; set; } = TimeSpan.Zero;
+
+    /// <summary>
+    /// Prazo total do check agregado (<c>AddControlIdDevices</c>): ao vencer, os equipamentos que ainda não responderam contam
+    /// como falha e o resultado sai com o que já se sabe. Padrão: 30 segundos. Precisa ser positivo.
+    /// </summary>
+    public TimeSpan TotalTimeout { get; set; } = TimeSpan.FromSeconds(30);
 }
 
 /// <summary>
@@ -36,63 +62,83 @@ public sealed class ControlIdHealthCheckOptions
 /// <list type="bullet">
 /// <item>Todos responderam no prazo e rápido: <see cref="HealthStatus.Healthy"/>.</item>
 /// <item>Algum falhou ou passou de <see cref="ControlIdHealthCheckOptions.SlowThreshold"/>: <see cref="HealthStatus.Degraded"/>.</item>
-/// <item>Todos falharam: o <c>failureStatus</c> do registro (padrão <see cref="HealthStatus.Unhealthy"/>).</item>
+/// <item>Todos falharam, ou nenhum registrado com <see cref="ControlIdHealthCheckOptions.RequireDevices"/>: o <c>failureStatus</c>
+/// do registro (padrão <see cref="HealthStatus.Unhealthy"/>).</item>
 /// </list>
 /// O resultado de cada equipamento vai em <see cref="HealthCheckResult.Data"/>, com a chave <c>access:{nome}</c> ou
 /// <c>rep:{nome}</c> (o nome vazio do equipamento único aparece como <c>default</c>).
 /// </remarks>
 internal sealed class ControlIdHealthCheck : IHealthCheck
 {
-    private readonly IControlIdClientFactory _devices;
-    private readonly ControlIdHealthCheckOptions _options;
+    internal const string NoDevicesMessage =
+        "Nenhum equipamento Control iD registrado. Registre com AddControlIdAccess*/AddControlIdRep* (confira o nome da seção de " +
+        "configuração) ou desligue ControlIdHealthCheckOptions.RequireDevices.";
 
-    public ControlIdHealthCheck(IControlIdClientFactory devices, ControlIdHealthCheckOptions options)
+    // Null quando nenhum AddControlIdAccess*/AddControlIdRep* foi chamado (a fábrica nem é registrada).
+    private readonly IControlIdClientFactory? _devices;
+    private readonly ControlIdHealthCheckOptions _options;
+    private readonly ControlIdProbeCache _cache;
+
+    public ControlIdHealthCheck(IControlIdClientFactory? devices, ControlIdHealthCheckOptions options, ControlIdProbeCache cache)
     {
         _devices = devices;
         _options = options;
+        _cache = cache;
     }
 
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
-        var access = _devices.RunOnAccessDevicesAsync(
-            (device, ct) => WithTimeoutAsync(token => device.GetSystemInformationAsync(token), ct), _options.MaxParallelism, cancellationToken);
-        var rep = _devices.RunOnRepDevicesAsync(
-            (device, ct) => WithTimeoutAsync(token => device.GetAboutAsync(token), ct), _options.MaxParallelism, cancellationToken);
+        var devices = _devices;
+        var targets = devices is null
+            ? new List<(string Kind, string Device)>()
+            : devices.AccessDeviceNames.Select(n => (Kind: ControlIdProbe.AccessKind, Device: n))
+                .Concat(devices.RepDeviceNames.Select(n => (Kind: ControlIdProbe.RepKind, Device: n)))
+                .ToList();
 
-        var results = (await access.ConfigureAwait(false)).Select(r => ("access", (DeviceResult)r))
-            .Concat((await rep.ConfigureAwait(false)).Select(r => ("rep", (DeviceResult)r)))
-            .ToList();
-
-        if (results.Count == 0)
+        if (devices is null || targets.Count == 0)
         {
-            return HealthCheckResult.Healthy("Nenhum equipamento registrado.");
+            return _options.RequireDevices
+                ? new HealthCheckResult(context.Registration.FailureStatus, NoDevicesMessage)
+                : HealthCheckResult.Healthy("Nenhum equipamento registrado.");
+        }
+
+        (ControlIdProbeResult Result, bool Shared)[] results;
+        using (var total = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+        using (var slots = new SemaphoreSlim(_options.MaxParallelism, _options.MaxParallelism))
+        {
+            total.CancelAfter(_options.TotalTimeout);
+            results = await Task.WhenAll(targets.Select(t => CheckOneAsync(devices, t.Kind, t.Device, slots, total.Token, cancellationToken)))
+                .ConfigureAwait(false);
         }
 
         var data = new Dictionary<string, object>(StringComparer.Ordinal);
         var failed = 0;
         var slow = 0;
-        foreach (var (kind, result) in results)
+        for (var i = 0; i < targets.Count; i++)
         {
-            var key = kind + ":" + (result.Device.Length == 0 ? "default" : result.Device);
+            var (kind, device) = targets[i];
+            var (result, shared) = results[i];
+            var key = kind + ":" + (device.Length == 0 ? "default" : device);
             var ms = ((long)result.Elapsed.TotalMilliseconds).ToString(CultureInfo.InvariantCulture);
+            var suffix = shared ? " (cache)" : string.Empty;
             if (!result.Succeeded)
             {
                 failed++;
-                data[key] = $"falhou em {ms} ms: {result.Error!.Message}";
+                data[key] = $"falhou em {ms} ms: {result.Error!.Message}{suffix}";
             }
             else if (result.Elapsed > _options.SlowThreshold)
             {
                 slow++;
-                data[key] = $"lento: {ms} ms";
+                data[key] = $"lento: {ms} ms{suffix}";
             }
             else
             {
-                data[key] = $"ok: {ms} ms";
+                data[key] = $"ok: {ms} ms{suffix}";
             }
         }
 
-        var summary = $"{results.Count - failed} de {results.Count} equipamentos respondendo" + (slow > 0 ? $", {slow} lentos" : string.Empty) + ".";
-        if (failed == results.Count)
+        var summary = $"{targets.Count - failed} de {targets.Count} equipamentos respondendo" + (slow > 0 ? $", {slow} lentos" : string.Empty) + ".";
+        if (failed == targets.Count)
         {
             return new HealthCheckResult(context.Registration.FailureStatus, summary, data: data);
         }
@@ -102,18 +148,52 @@ internal sealed class ControlIdHealthCheck : IHealthCheck
             : HealthCheckResult.Healthy(summary, data);
     }
 
-    // O prazo vale por equipamento: um que não responde vira falha só dele, sem cancelar a verificação dos outros.
-    private async Task<T> WithTimeoutAsync<T>(Func<CancellationToken, Task<T>> probe, CancellationToken cancellationToken)
+    // Um equipamento: espera a vez (MaxParallelism), obtém o cliente e sonda (ou reaproveita a sonda do cache).
+    // Falha ao obter o cliente e o prazo total vencido ficam só no resultado dele.
+    private async Task<(ControlIdProbeResult Result, bool Shared)> CheckOneAsync(
+        IControlIdClientFactory devices,
+        string kind,
+        string device,
+        SemaphoreSlim slots,
+        CancellationToken total,
+        CancellationToken cancellationToken)
     {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(_options.Timeout);
+        var stopwatch = Stopwatch.StartNew();
+        var acquired = false;
         try
         {
-            return await probe(timeout.Token).ConfigureAwait(false);
+            await slots.WaitAsync(total).ConfigureAwait(false);
+            acquired = true;
+            stopwatch.Restart();
+            object client = kind == ControlIdProbe.AccessKind ? devices.GetAccessClient(device) : devices.GetRepClient(device);
+            return await _cache.GetAsync(
+                ControlIdProbe.Key(kind, device),
+                _options.CacheDuration,
+                ct => ControlIdProbe.RunAsync(client, _options.Timeout, ct),
+                total).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (total.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
-            throw new TimeoutException($"Sem resposta em {_options.Timeout.TotalSeconds.ToString(CultureInfo.InvariantCulture)} s.");
+            var seconds = _options.TotalTimeout.TotalSeconds.ToString(CultureInfo.InvariantCulture);
+            return (new ControlIdProbeResult(stopwatch.Elapsed, new TimeoutException($"Prazo total de {seconds} s do health check esgotado.")), false);
+        }
+        catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
+        {
+            return (new ControlIdProbeResult(stopwatch.Elapsed, ex), false);
+        }
+        finally
+        {
+            if (acquired)
+            {
+                slots.Release();
+            }
         }
     }
+}
+
+/// <summary>Check registrado por <c>AddControlIdDeviceChecks</c> quando não há equipamentos e <see cref="ControlIdHealthCheckOptions.RequireDevices"/> está ligado.</summary>
+internal sealed class ControlIdNoDevicesHealthCheck : IHealthCheck
+{
+    public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new HealthCheckResult(context.Registration.FailureStatus, ControlIdHealthCheck.NoDevicesMessage));
 }

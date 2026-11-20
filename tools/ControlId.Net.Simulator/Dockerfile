@@ -7,7 +7,8 @@
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY Directory.Build.props ./
+# Configuração de build da raiz: SDK (global.json), propriedades comuns e versões centrais dos pacotes.
+COPY global.json Directory.Build.props Directory.Packages.props ./
 COPY tools/ControlId.Net.Simulator/ControlId.Net.Simulator.csproj tools/ControlId.Net.Simulator/
 RUN dotnet restore tools/ControlId.Net.Simulator/ControlId.Net.Simulator.csproj
 COPY tools/ControlId.Net.Simulator/ tools/ControlId.Net.Simulator/

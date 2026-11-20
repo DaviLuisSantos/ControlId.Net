@@ -1,0 +1,12 @@
+ControlId.Net.AspNetCore: ControlId.AspNetCore.ControlIdCallbackOptions
+ControlId.Net.AspNetCore: ControlId.AspNetCore.ControlIdCallbackOptions.ControlIdCallbackOptions() -> void
+ControlId.Net.AspNetCore: ControlId.AspNetCore.ControlIdCallbackOptions.IsKnownDevice.get -> System.Func<long, bool>?
+ControlId.Net.AspNetCore: ControlId.AspNetCore.ControlIdCallbackOptions.IsKnownDevice.set -> void
+ControlId.Net.AspNetCore: ControlId.AspNetCore.ControlIdCallbackOptions.MaxRequestBodySize.get -> long
+ControlId.Net.AspNetCore: ControlId.AspNetCore.ControlIdCallbackOptions.MaxRequestBodySize.set -> void
+ControlId.Net.AspNetCore: const ControlId.AspNetCore.ControlIdCallbackOptions.DefaultMaxRequestBodySize = 4194304 -> long
+ControlId.Net.AspNetCore: ControlId.AspNetCore.ControlIdTokenOptions.AllowTokenFallback.get -> bool
+ControlId.Net.AspNetCore: ControlId.AspNetCore.ControlIdTokenOptions.AllowTokenFallback.set -> void
+ControlId.Net.AspNetCore: ControlId.AspNetCore.ControlIdTokenOptions.PreviousToken.get -> string?
+ControlId.Net.AspNetCore: ControlId.AspNetCore.ControlIdTokenOptions.PreviousToken.set -> void
+ControlId.Net.AspNetCore: static ControlId.AspNetCore.ControlIdEndpointConventionBuilderExtensions.AllowAnonymousControlIdCallbacks<TBuilder>(this TBuilder builder) -> TBuilder

@@ -6,6 +6,15 @@
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
 
+    <!--
+      NU1900 ("não foi possível consultar as vulnerabilidades") só indica falta de rede ou fonte fora do ar; com -warnaserror
+      derrubaria o build offline. Vulnerabilidades encontradas (NU1901 a NU1904) continuam sendo erro.
+      WarningsNotAsErrors vale para TreatWarningsAsErrors; o -warnaserror da linha de comando só respeita
+      MSBuildWarningsNotAsErrors.
+    -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1900</WarningsNotAsErrors>
+    <MSBuildWarningsNotAsErrors>$(MSBuildWarningsNotAsErrors);NU1900</MSBuildWarningsNotAsErrors>
+
     <Authors>Davi Luis</Authors>
     <Copyright>Copyright (c) 2026 Davi Luis</Copyright>
     <RepositoryUrl>https://github.com/DaviLuisSantos/ControlId.Net</RepositoryUrl>

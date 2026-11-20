@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
@@ -38,30 +37,43 @@ internal sealed class ControlIdDeviceChecksRegistration : IConfigureOptions<Heal
 
     public void Configure(HealthCheckServiceOptions options)
     {
-        if (_registry is null)
+        var access = _registry?.AccessDevices.ToArray() ?? Array.Empty<string>();
+        var rep = _registry?.RepDevices.ToArray() ?? Array.Empty<string>();
+        if (access.Length == 0 && rep.Length == 0)
         {
+            if (_options.RequireDevices)
+            {
+                options.Registrations.Add(new HealthCheckRegistration(
+                    _prefix + ":none", _ => new ControlIdNoDevicesHealthCheck(), _failureStatus, _tags));
+            }
+
             return;
         }
 
-        foreach (var name in _registry.AccessDevices.ToArray())
+        foreach (var name in access)
         {
-            Add(options, "access", name);
+            Add(options, ControlIdProbe.AccessKind, name);
         }
 
-        foreach (var name in _registry.RepDevices.ToArray())
+        foreach (var name in rep)
         {
-            Add(options, "rep", name);
+            Add(options, ControlIdProbe.RepKind, name);
         }
     }
 
     private void Add(HealthCheckServiceOptions options, string kind, string device)
     {
         var checkName = $"{_prefix}:{kind}:{(device.Length == 0 ? "default" : device)}";
-        var isAccess = kind == "access";
+        var isAccess = kind == ControlIdProbe.AccessKind;
         options.Registrations.Add(new HealthCheckRegistration(
             checkName,
             sp => new ControlIdDeviceHealthCheck(
-                sp.GetRequiredService<IControlIdClientFactory>(), isAccess, device, _options, sp.GetService<DeviceContactTracker>()),
+                sp.GetRequiredService<IControlIdClientFactory>(),
+                isAccess,
+                device,
+                _options,
+                sp.GetService<DeviceContactTracker>(),
+                sp.GetRequiredService<ControlIdProbeCache>()),
             _failureStatus,
             _tags));
     }
@@ -78,19 +90,22 @@ internal sealed class ControlIdDeviceHealthCheck : IHealthCheck
     private readonly string _device;
     private readonly ControlIdHealthCheckOptions _options;
     private readonly DeviceContactTracker? _tracker;
+    private readonly ControlIdProbeCache _cache;
 
     public ControlIdDeviceHealthCheck(
         IControlIdClientFactory devices,
         bool isAccess,
         string device,
         ControlIdHealthCheckOptions options,
-        DeviceContactTracker? tracker)
+        DeviceContactTracker? tracker,
+        ControlIdProbeCache cache)
     {
         _devices = devices;
         _isAccess = isAccess;
         _device = device;
         _options = options;
         _tracker = tracker;
+        _cache = cache;
     }
 
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
@@ -115,36 +130,39 @@ internal sealed class ControlIdDeviceHealthCheck : IHealthCheck
             return new HealthCheckResult(failure, "Circuito aberto: equipamento sem resposta, sem nova requisição.", data: data);
         }
 
-        var started = Stopwatch.GetTimestamp();
-        string? deviceId = null;
-        try
-        {
-            if (_isAccess)
-            {
-                var info = await WithTimeoutAsync(ct => ((IAccessClient)client).GetSystemInformationAsync(ct), cancellationToken).ConfigureAwait(false);
-                data["serial"] = info.Serial ?? string.Empty;
-                data["firmware"] = info.Version ?? string.Empty;
-                data["deviceId"] = info.DeviceId ?? string.Empty;
-                deviceId = info.DeviceId;
-            }
-            else
-            {
-                var about = await WithTimeoutAsync(ct => ((IRepClient)client).GetAboutAsync(ct), cancellationToken).ConfigureAwait(false);
-                data["serial"] = about.SerialNumber ?? string.Empty;
-                data["firmware"] = about.FirmwareVersion.ToString(CultureInfo.InvariantCulture);
-            }
-        }
-        catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
-        {
-            var failedMs = ElapsedMs(started);
-            data["latencyMs"] = failedMs;
-            data["circuit"] = CurrentCircuit(client).ToString();
-            return new HealthCheckResult(failure, $"Falhou em {failedMs} ms: {ex.Message}", ex, data);
-        }
+        // Com CacheDuration, a sonda é compartilhada com o check agregado e os outros checks deste equipamento.
+        var (probe, shared) = await _cache.GetAsync(
+            ControlIdProbe.Key(_isAccess ? ControlIdProbe.AccessKind : ControlIdProbe.RepKind, _device),
+            _options.CacheDuration,
+            ct => ControlIdProbe.RunAsync(client, _options.Timeout, ct),
+            cancellationToken).ConfigureAwait(false);
 
-        var elapsed = ElapsedMs(started);
+        var elapsed = (long)probe.Elapsed.TotalMilliseconds;
         data["latencyMs"] = elapsed;
         data["circuit"] = CurrentCircuit(client).ToString();
+        if (shared)
+        {
+            data["cached"] = true;
+        }
+
+        if (!probe.Succeeded)
+        {
+            return new HealthCheckResult(failure, $"Falhou em {elapsed} ms: {probe.Error!.Message}", probe.Error, data);
+        }
+
+        string? deviceId = null;
+        if (probe.Access is { } info)
+        {
+            data["serial"] = info.Serial ?? string.Empty;
+            data["firmware"] = info.Version ?? string.Empty;
+            data["deviceId"] = info.DeviceId ?? string.Empty;
+            deviceId = info.DeviceId;
+        }
+        else if (probe.Rep is { } about)
+        {
+            data["serial"] = about.SerialNumber ?? string.Empty;
+            data["firmware"] = about.FirmwareVersion.ToString(CultureInfo.InvariantCulture);
+        }
 
         var contactStale = false;
         if (_isAccess && _tracker is not null && long.TryParse(deviceId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id))
@@ -158,7 +176,7 @@ internal sealed class ControlIdDeviceHealthCheck : IHealthCheck
             }
         }
 
-        if (elapsed > (long)_options.SlowThreshold.TotalMilliseconds)
+        if (probe.Elapsed > _options.SlowThreshold)
         {
             return HealthCheckResult.Degraded($"Lento: {elapsed} ms.", data: data);
         }
@@ -175,20 +193,4 @@ internal sealed class ControlIdDeviceHealthCheck : IHealthCheck
         _ => ControlIdCircuitState.Closed,
     };
 
-    private static long ElapsedMs(long started) =>
-        (long)((Stopwatch.GetTimestamp() - started) * 1000.0 / Stopwatch.Frequency);
-
-    private async Task<T> WithTimeoutAsync<T>(Func<CancellationToken, Task<T>> probe, CancellationToken cancellationToken)
-    {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(_options.Timeout);
-        try
-        {
-            return await probe(timeout.Token).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            throw new TimeoutException($"Sem resposta em {_options.Timeout.TotalSeconds.ToString(CultureInfo.InvariantCulture)} s.");
-        }
-    }
 }

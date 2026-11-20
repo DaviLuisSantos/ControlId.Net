@@ -8,11 +8,28 @@ namespace ControlId.Access.Push;
 
 /// <summary>
 /// <see cref="IPushCommandStore"/> em memória (padrão do <see cref="PushServer"/>): rápido, mas os envios pendentes
-/// se perdem quando o processo reinicia.
+/// se perdem quando o processo reinicia. Só guarda equipamentos com envios: a fila que esvazia é descartada, então
+/// consultas de <c>deviceId</c> desconhecidos não ocupam memória. Implementa <see cref="IPushCommandStoreMaintenance"/>.
 /// </summary>
-public sealed class InMemoryPushCommandStore : IPushCommandStore
+public sealed class InMemoryPushCommandStore : IPushCommandStore, IPushCommandStoreMaintenance
 {
     private readonly ConcurrentDictionary<long, DeviceQueue> _devices = new();
+    private readonly Func<DateTimeOffset> _clock;
+
+    /// <summary>Cria o store vazio.</summary>
+    public InMemoryPushCommandStore()
+        : this(static () => DateTimeOffset.UtcNow)
+    {
+    }
+
+    /// <summary>Cria o store com o relógio de <see cref="PushEnvelope.DeliveredAt"/> (testes).</summary>
+    internal InMemoryPushCommandStore(Func<DateTimeOffset> clock)
+    {
+        _clock = clock ?? throw new ArgumentNullException(nameof(clock));
+    }
+
+    /// <summary>Equipamentos com fila guardada (testes).</summary>
+    internal int DeviceCount => _devices.Count;
 
     /// <inheritdoc />
     public Task AddAsync(PushEnvelope envelope, CancellationToken cancellationToken)
@@ -27,19 +44,31 @@ public sealed class InMemoryPushCommandStore : IPushCommandStore
         copy.Uuid = null;
         copy.DeliveredAt = null;
 
-        var queue = _devices.GetOrAdd(envelope.DeviceId, _ => new DeviceQueue());
-        lock (queue)
+        while (true)
         {
-            queue.Pending.AddLast(copy);
-        }
+            var queue = _devices.GetOrAdd(envelope.DeviceId, static _ => new DeviceQueue());
+            lock (queue)
+            {
+                // A fila pode ter sido descartada (esvaziou) entre o GetOrAdd e o lock: tenta de novo com uma nova.
+                if (queue.Discarded)
+                {
+                    continue;
+                }
 
-        return Task.CompletedTask;
+                queue.Pending.AddLast(copy);
+                return Task.CompletedTask;
+            }
+        }
     }
 
     /// <inheritdoc />
     public Task<PushTake> TakeNextAsync(long deviceId, string? uuid, CancellationToken cancellationToken)
     {
-        var queue = _devices.GetOrAdd(deviceId, _ => new DeviceQueue());
+        if (!_devices.TryGetValue(deviceId, out var queue))
+        {
+            return Task.FromResult(default(PushTake));
+        }
+
         PushEnvelope? orphan;
         PushEnvelope? next = null;
         lock (queue)
@@ -53,9 +82,11 @@ public sealed class InMemoryPushCommandStore : IPushCommandStore
                 next = first.Value;
                 next.Status = PushEnvelopeStatus.InFlight;
                 next.Uuid = uuid;
-                next.DeliveredAt = DateTimeOffset.UtcNow;
+                next.DeliveredAt = _clock();
                 queue.InFlight = next;
             }
+
+            DiscardIfEmpty(deviceId, queue);
         }
 
         return Task.FromResult(new PushTake(orphan is null ? null : Copy(orphan), next is null ? null : Copy(next)));
@@ -78,6 +109,7 @@ public sealed class InMemoryPushCommandStore : IPushCommandStore
             }
 
             queue.InFlight = null;
+            DiscardIfEmpty(deviceId, queue);
             return Task.FromResult<PushEnvelope?>(Copy(current));
         }
     }
@@ -85,13 +117,15 @@ public sealed class InMemoryPushCommandStore : IPushCommandStore
     /// <inheritdoc />
     public Task<bool> RemoveAsync(Guid id, CancellationToken cancellationToken)
     {
-        foreach (var queue in _devices.Values)
+        foreach (var pair in _devices)
         {
+            var queue = pair.Value;
             lock (queue)
             {
                 if (queue.InFlight is { } inFlight && inFlight.Id == id)
                 {
                     queue.InFlight = null;
+                    DiscardIfEmpty(pair.Key, queue);
                     return Task.FromResult(true);
                 }
 
@@ -100,6 +134,7 @@ public sealed class InMemoryPushCommandStore : IPushCommandStore
                     if (node.Value.Id == id)
                     {
                         queue.Pending.Remove(node);
+                        DiscardIfEmpty(pair.Key, queue);
                         return Task.FromResult(true);
                     }
                 }
@@ -123,6 +158,53 @@ public sealed class InMemoryPushCommandStore : IPushCommandStore
         }
     }
 
+    /// <inheritdoc />
+    public Task<IReadOnlyList<PushEnvelope>> RemoveExpiredAsync(DateTimeOffset pendingCreatedBefore, DateTimeOffset inFlightDeliveredBefore, CancellationToken cancellationToken)
+    {
+        var removed = new List<PushEnvelope>();
+        foreach (var pair in _devices)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var queue = pair.Value;
+            lock (queue)
+            {
+                if (queue.InFlight is { } inFlight && (inFlight.DeliveredAt ?? inFlight.CreatedAt) < inFlightDeliveredBefore)
+                {
+                    queue.InFlight = null;
+                    removed.Add(Copy(inFlight));
+                }
+
+                var node = queue.Pending.First;
+                while (node is not null)
+                {
+                    var following = node.Next;
+                    if (node.Value.CreatedAt < pendingCreatedBefore)
+                    {
+                        queue.Pending.Remove(node);
+                        removed.Add(Copy(node.Value));
+                    }
+
+                    node = following;
+                }
+
+                DiscardIfEmpty(pair.Key, queue);
+            }
+        }
+
+        return Task.FromResult<IReadOnlyList<PushEnvelope>>(removed);
+    }
+
+    // Chamado com o lock da fila: tira do dicionário a fila sem nenhum envio. Só remove esta instância (outra pode ter
+    // entrado no lugar), e a marca impede que um AddAsync que já a pegou grave numa fila fora do dicionário.
+    private void DiscardIfEmpty(long deviceId, DeviceQueue queue)
+    {
+        if (queue.Pending.Count == 0 && queue.InFlight is null && !queue.Discarded)
+        {
+            queue.Discarded = true;
+            ((ICollection<KeyValuePair<long, DeviceQueue>>)_devices).Remove(new KeyValuePair<long, DeviceQueue>(deviceId, queue));
+        }
+    }
+
     // O store guarda a própria cópia: o chamador não altera o estado interno por referência.
     private static PushEnvelope Copy(PushEnvelope source) =>
         new(source.Id, source.DeviceId, source.Batch, source.Endpoints, source.Payload, source.CreatedAt)
@@ -137,5 +219,8 @@ public sealed class InMemoryPushCommandStore : IPushCommandStore
         public LinkedList<PushEnvelope> Pending { get; } = new();
 
         public PushEnvelope? InFlight { get; set; }
+
+        /// <summary>Fila tirada do dicionário: não recebe mais envios.</summary>
+        public bool Discarded { get; set; }
     }
 }

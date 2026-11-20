@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using ControlId.Access;
 using ControlId.Access.Push;
+using ControlId.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
@@ -44,7 +45,7 @@ public sealed class PushStoreEndToEndTests
         builder.Logging.SetMinimumLevel(LogLevel.Critical);
         builder.Services.AddSingleton(second);
         await using var server = builder.Build();
-        server.MapControlIdPush();
+        server.MapControlIdPush().AllowAnonymousControlIdCallbacks();
         await server.StartAsync();
         var address = new Uri(server.Services.GetRequiredService<IServer>().Features.GetRequiredFeature<IServerAddressesFeature>().Addresses.First());
 

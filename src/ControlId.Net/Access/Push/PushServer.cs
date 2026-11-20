@@ -8,6 +8,8 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using ControlId.Internal;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ControlId.Access.Push;
 
@@ -28,33 +30,95 @@ namespace ControlId.Access.Push;
 /// deixou sem resultado (órfão) falha e nunca é reenviado. O resultado de um envio que ninguém espera
 /// (<see cref="EnqueueAsync"/>, ou pendente de uma instância anterior) vai ao <see cref="IPushResultHandler"/>.
 /// </para>
+/// <para>
+/// Prazos e limites ficam em <see cref="PushServerOptions"/>: prazo do <see cref="SendAsync"/>, validade dos pendentes,
+/// tamanho da fila por equipamento e prazo do handler. Uma falha do <see cref="IPushResultHandler"/> é logada e nunca
+/// chega à resposta do equipamento.
+/// </para>
 /// </summary>
 public sealed class PushServer
 {
+    // Gates em faixas: memória fixa qualquer que seja o deviceId da query. Equipamentos na mesma faixa (raro) dividem
+    // o gate e são atendidos em série, o que só custa um pouco de espera; um mesmo equipamento continua sempre em série.
+    internal const int GateCount = 256;
+
+    // Prazo para tirar do store um envio cancelado ou vencido, feito em segundo plano.
+    private static readonly TimeSpan BackgroundRemoveTimeout = TimeSpan.FromSeconds(10);
+
     private readonly IPushCommandStore _store;
     private readonly IPushResultHandler? _unclaimedResultHandler;
-    private readonly ConcurrentDictionary<long, SemaphoreSlim> _gates = new();
+    private readonly ILogger _logger;
+    private readonly Func<DateTimeOffset> _clock;
+    private readonly Func<TimeSpan, CancellationTokenSource> _deadlineFactory;
+    private readonly TimeSpan? _commandTimeout;
+    private readonly TimeSpan? _commandTtl;
+    private readonly TimeSpan? _inFlightTimeout;
+    private readonly int _maxPendingPerDevice;
+    private readonly int _maxTrackedDevices;
+    private readonly bool _requireUuid;
+    private readonly TimeSpan _resultHandlerTimeout;
+    private readonly SemaphoreSlim[] _gates = CreateGates();
     private readonly ConcurrentDictionary<long, DateTimeOffset> _lastSeen = new();
     private readonly ConcurrentDictionary<Guid, TaskCompletionSource<IReadOnlyList<PushResult>>> _waiters = new();
 
-    /// <summary>Cria o servidor com a fila em memória.</summary>
+    // Envios cujo waiter já desistiu (cancelamento ou CommandTimeout) e que ainda podem estar no store: o resultado ou
+    // a falha deles é descartado em vez de ir ao handler.
+    private readonly ConcurrentDictionary<Guid, byte> _abandoned = new();
+    private int _trackedDevices;
+    private int _trackingLimitLogged;
+
+    /// <summary>Cria o servidor com a fila em memória e as opções padrão.</summary>
     public PushServer()
         : this(new InMemoryPushCommandStore())
     {
     }
 
-    /// <summary>Cria o servidor sobre um <paramref name="store"/> (fila durável, por exemplo).</summary>
+    /// <summary>Cria o servidor sobre um <paramref name="store"/> (fila durável, por exemplo), com as opções padrão.</summary>
     /// <param name="store">Fila de envios. Não a compartilhe com outra instância ativa.</param>
     /// <param name="unclaimedResultHandler">Recebe o resultado dos envios que nenhuma tarefa espera, ou <c>null</c> para descartá-los.</param>
     public PushServer(IPushCommandStore store, IPushResultHandler? unclaimedResultHandler = null)
+        : this(store, new PushServerOptions(), unclaimedResultHandler)
     {
-        _store = store ?? throw new ArgumentNullException(nameof(store));
-        _unclaimedResultHandler = unclaimedResultHandler;
     }
 
+    /// <summary>Cria o servidor sobre um <paramref name="store"/> com prazos e limites próprios.</summary>
+    /// <param name="store">Fila de envios. Não a compartilhe com outra instância ativa.</param>
+    /// <param name="options">Prazos e limites; lidos agora (alterações posteriores não têm efeito).</param>
+    /// <param name="unclaimedResultHandler">Recebe o resultado dos envios que nenhuma tarefa espera, ou <c>null</c> para descartá-los.</param>
+    /// <exception cref="ArgumentOutOfRangeException">Algum valor de <paramref name="options"/> é inválido.</exception>
+    public PushServer(IPushCommandStore store, PushServerOptions options, IPushResultHandler? unclaimedResultHandler = null)
+    {
+        _store = store ?? throw new ArgumentNullException(nameof(store));
+        if (options is null)
+        {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        options.Validate();
+        _unclaimedResultHandler = unclaimedResultHandler;
+        _logger = options.LoggerFactory?.CreateLogger(ControlIdTelemetry.LoggerCategory) ?? NullLogger.Instance;
+        _clock = options.Clock ?? (static () => DateTimeOffset.UtcNow);
+        _deadlineFactory = options.CommandDeadlineFactory ?? (static timeout => new CancellationTokenSource(timeout));
+        _commandTimeout = options.CommandTimeout;
+        _commandTtl = options.CommandTtl;
+        _inFlightTimeout = options.InFlightTimeout;
+        _maxPendingPerDevice = options.MaxPendingPerDevice;
+        _maxTrackedDevices = options.MaxTrackedDevices;
+        _requireUuid = options.RequireUuid;
+        _resultHandlerTimeout = options.ResultHandlerTimeout;
+    }
+
+    /// <summary>Equipamentos com a última consulta registrada (testes).</summary>
+    internal int TrackedDeviceCount => Volatile.Read(ref _trackedDevices);
+
+    /// <summary>Tarefas de <see cref="SendAsync"/>/<see cref="SendBatchAsync"/> aguardando (testes).</summary>
+    internal int WaiterCount => _waiters.Count;
+
     /// <summary>
-    /// Enfileira o comando e espera o equipamento executá-lo. Sem consultas do equipamento, a tarefa não termina:
-    /// use <paramref name="cancellationToken"/> para impor um prazo. Cancelar antes da entrega tira o comando da fila.
+    /// Enfileira o comando e espera o equipamento executá-lo. A espera termina com o resultado, com
+    /// <see cref="PushServerOptions.CommandTimeout"/> (<see cref="TimeoutException"/>) ou com <paramref name="cancellationToken"/>;
+    /// nos dois últimos casos o comando sai da fila. Lança <see cref="PushQueueFullException"/> se a fila do equipamento
+    /// estiver cheia (<see cref="PushServerOptions.MaxPendingPerDevice"/>).
     /// </summary>
     public async Task<PushResult> SendAsync(long deviceId, PushCommand command, CancellationToken cancellationToken = default)
     {
@@ -70,6 +134,7 @@ public sealed class PushServer
     /// <summary>
     /// Envia vários comandos numa única consulta do equipamento (objeto <c>transactions</c>) e devolve um resultado
     /// por comando, na mesma ordem. Falhas de um comando não impedem os demais: confira <see cref="PushResult.Success"/>.
+    /// Prazo, cancelamento e limite da fila como em <see cref="SendAsync"/>.
     /// <para>
     /// Nem todo firmware aceita lotes: o iDFace 6.9.12 trata o corpo como um comando só e responde
     /// "Invalid member 'endpoint'", que chega como erro em todos os resultados. Nesse caso, envie um a um com <see cref="SendAsync"/>.
@@ -80,7 +145,8 @@ public sealed class PushServer
 
     /// <summary>
     /// Enfileira o comando sem esperar o resultado e devolve o identificador do envio. O resultado chega ao
-    /// <see cref="IPushResultHandler"/> (<see cref="PushCompletion.CommandId"/> é o valor devolvido).
+    /// <see cref="IPushResultHandler"/> (<see cref="PushCompletion.CommandId"/> é o valor devolvido). Lança
+    /// <see cref="PushQueueFullException"/> se a fila do equipamento estiver cheia.
     /// </summary>
     public Task<Guid> EnqueueAsync(long deviceId, PushCommand command, CancellationToken cancellationToken = default)
     {
@@ -99,7 +165,10 @@ public sealed class PushServer
     /// <summary>Atalhos tipados (load/create/modify/destroy objects, ações) para um equipamento.</summary>
     public PushDevice Device(long deviceId) => new(this, deviceId);
 
-    /// <summary>Última consulta do equipamento a <c>/push</c>, ou <c>null</c> se ele nunca apareceu (só nesta instância).</summary>
+    /// <summary>
+    /// Última consulta do equipamento a <c>/push</c>, ou <c>null</c> se ele nunca apareceu (só nesta instância) ou se
+    /// apareceu depois de atingido <see cref="PushServerOptions.MaxTrackedDevices"/>.
+    /// </summary>
     public DateTimeOffset? GetLastSeen(long deviceId) =>
         _lastSeen.TryGetValue(deviceId, out var seen) ? seen : null;
 
@@ -113,42 +182,82 @@ public sealed class PushServer
 
     /// <summary>
     /// Trata <c>GET /push?deviceId=..&amp;uuid=..</c>. Devolve o JSON do próximo envio, ou string vazia
-    /// se não houver nada (responda 200 com esse corpo).
+    /// se não houver nada (responda 200 com esse corpo). Envios pendentes mais velhos que
+    /// <see cref="PushServerOptions.CommandTtl"/> são descartados (falham como expirados) e o seguinte é entregue.
+    /// Com <see cref="PushServerOptions.RequireUuid"/>, uma consulta sem <paramref name="uuid"/> devolve vazio.
     /// </summary>
     public async Task<string> HandlePushAsync(long deviceId, string? uuid, CancellationToken cancellationToken = default)
     {
-        _lastSeen[deviceId] = DateTimeOffset.UtcNow;
+        if (_requireUuid && string.IsNullOrEmpty(uuid))
+        {
+            PushLog.UuidMissing(_logger, "/push", deviceId);
+            return string.Empty;
+        }
 
-        PushTake take;
-        var gate = GetGate(deviceId);
-        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        Track(deviceId);
+
+        PushEnvelope? next = null;
+        PushEnvelope? orphan = null;
+        List<PushEnvelope>? expired = null;
         try
         {
-            // O equipamento só volta a /push depois de enviar o /result. Se o envio anterior ficou
-            // sem resultado (reinício, queda de rede), ele não vai chegar mais.
-            take = await _store.TakeNextAsync(deviceId, uuid, cancellationToken).ConfigureAwait(false);
+            var gate = GetGate(deviceId);
+            await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                // O equipamento só volta a /push depois de enviar o /result. Se o envio anterior ficou
+                // sem resultado (reinício, queda de rede), ele não vai chegar mais.
+                while (true)
+                {
+                    var take = await _store.TakeNextAsync(deviceId, uuid, cancellationToken).ConfigureAwait(false);
+                    orphan ??= take.Orphan;
+
+                    if (take.Next is { } candidate && IsExpired(candidate))
+                    {
+                        // Velho demais para executar: sai da fila e o seguinte é tentado. Só conta como expirado depois
+                        // de removido; se a remoção falhar, ele vira órfão na próxima consulta.
+                        await _store.RemoveAsync(candidate.Id, cancellationToken).ConfigureAwait(false);
+                        (expired ??= new List<PushEnvelope>()).Add(candidate);
+                        continue;
+                    }
+
+                    next = take.Next;
+                    break;
+                }
+            }
+            finally
+            {
+                gate.Release();
+            }
         }
         finally
         {
-            gate.Release();
+            // Mesmo que o store falhe no meio, quem já saiu da fila é avisado. Os avisos nunca lançam.
+            if (orphan is not null)
+            {
+                await FailAsync(
+                    orphan,
+                    PushOutcome.Orphaned,
+                    $"O equipamento {deviceId} pediu um novo comando sem devolver o resultado de '{orphan.Description}'.",
+                    "nova consulta sem resultado").ConfigureAwait(false);
+            }
+
+            if (expired is not null)
+            {
+                foreach (var envelope in expired)
+                {
+                    await FailExpiredAsync(envelope).ConfigureAwait(false);
+                }
+            }
         }
 
-        if (take.Orphan is { } orphan)
+        if (next is null)
         {
-            var message = $"O equipamento {deviceId} pediu um novo comando sem devolver o resultado de '{orphan.Description}'.";
-            if (_waiters.TryRemove(orphan.Id, out var orphanWaiter))
-            {
-                orphanWaiter.TrySetException(new ControlIdException(message));
-            }
-            else if (_unclaimedResultHandler is not null)
-            {
-                // Envio sem tarefa esperando (EnqueueAsync, ou perdido num reinício): avisa pelo handler. Nunca é reenviado.
-                var completion = new PushCompletion(orphan.Id, deviceId, Array.Empty<PushResult>(), message);
-                await _unclaimedResultHandler.HandleAsync(completion, cancellationToken).ConfigureAwait(false);
-            }
+            return string.Empty;
         }
 
-        return take.Next?.Payload ?? string.Empty;
+        Telemetry.RecordPush(PushOutcome.Delivered);
+        return next.Payload;
     }
 
     /// <summary>Versão síncrona de <see cref="HandlePushAsync"/> (bloqueia sobre ela; prefira a assíncrona).</summary>
@@ -157,7 +266,9 @@ public sealed class PushServer
 
     /// <summary>
     /// Trata <c>POST /result?deviceId=..</c> com o corpo enviado pelo equipamento (responda 200 vazio).
-    /// Devolve <c>false</c> se não havia envio aguardando esse resultado.
+    /// Devolve <c>false</c> se não havia envio aguardando esse resultado (ou, com <see cref="PushServerOptions.RequireUuid"/>,
+    /// se não veio <c>uuid</c> na query nem no corpo). Depois que o envio sai do store, <paramref name="cancellationToken"/>
+    /// não interrompe mais a entrega do resultado, e uma falha do <see cref="IPushResultHandler"/> é logada sem lançar.
     /// </summary>
     public async Task<bool> HandleResultAsync(long deviceId, string? uuid, string body, CancellationToken cancellationToken = default)
     {
@@ -176,6 +287,12 @@ public sealed class PushServer
         catch (JsonException ex)
         {
             invalid = new ControlIdException($"Resultado de Push inválido do equipamento {deviceId}.", responseBody: body, innerException: ex);
+        }
+
+        if (_requireUuid && string.IsNullOrEmpty(uuid))
+        {
+            PushLog.UuidMissing(_logger, "/result", deviceId);
+            return false;
         }
 
         PushEnvelope? envelope;
@@ -205,6 +322,7 @@ public sealed class PushServer
 
         if (_waiters.TryRemove(envelope.Id, out var waiter))
         {
+            Telemetry.RecordPush(PushOutcome.Completed);
             if (results is not null)
             {
                 waiter.TrySetResult(results);
@@ -214,10 +332,11 @@ public sealed class PushServer
                 waiter.TrySetException(invalid!);
             }
         }
-        else if (_unclaimedResultHandler is not null)
+        else if (!_abandoned.ContainsKey(envelope.Id))
         {
+            Telemetry.RecordPush(PushOutcome.Completed);
             var completion = new PushCompletion(envelope.Id, deviceId, results ?? Array.Empty<PushResult>(), invalid?.Message);
-            await _unclaimedResultHandler.HandleAsync(completion, cancellationToken).ConfigureAwait(false);
+            await InvokeHandlerAsync(completion).ConfigureAwait(false);
         }
 
         return true;
@@ -226,6 +345,166 @@ public sealed class PushServer
     /// <summary>Versão síncrona de <see cref="HandleResultAsync"/> (bloqueia sobre ela; prefira a assíncrona).</summary>
     public bool HandleResult(long deviceId, string? uuid, string body) =>
         HandleResultAsync(deviceId, uuid, body).GetAwaiter().GetResult();
+
+    /// <summary>
+    /// Varre o store e remove os envios vencidos de todos os equipamentos: pendentes mais velhos que
+    /// <see cref="PushServerOptions.CommandTtl"/> e entregues sem resultado há mais de <see cref="PushServerOptions.InFlightTimeout"/>.
+    /// Cada envio removido falha: a tarefa de <see cref="SendAsync"/> com <see cref="ControlIdException"/>, ou o
+    /// <see cref="IPushResultHandler"/> com <see cref="PushCompletion.Error"/> preenchido. Devolve quantos foram removidos;
+    /// <c>0</c> se o store não implementa <see cref="IPushCommandStoreMaintenance"/> ou se os dois prazos estão desligados.
+    /// O pacote <c>ControlId.Net.AspNetCore</c> chama este método a cada <see cref="PushServerOptions.PurgeInterval"/>.
+    /// </summary>
+    public async Task<int> PurgeExpiredAsync(CancellationToken cancellationToken = default)
+    {
+        if (_store is not IPushCommandStoreMaintenance maintenance || (_commandTtl is null && _inFlightTimeout is null))
+        {
+            return 0;
+        }
+
+        var now = _clock();
+        var removed = await maintenance.RemoveExpiredAsync(Before(now, _commandTtl), Before(now, _inFlightTimeout), cancellationToken).ConfigureAwait(false);
+        if (removed is null || removed.Count == 0)
+        {
+            return 0;
+        }
+
+        foreach (var envelope in removed)
+        {
+            if (envelope.Status == PushEnvelopeStatus.InFlight)
+            {
+                await FailAsync(
+                    envelope,
+                    PushOutcome.Orphaned,
+                    $"O equipamento {envelope.DeviceId} não devolveu o resultado de '{envelope.Description}' dentro de InFlightTimeout; o envio foi descartado.",
+                    "InFlightTimeout").ConfigureAwait(false);
+            }
+            else
+            {
+                await FailExpiredAsync(envelope).ConfigureAwait(false);
+            }
+        }
+
+        PushLog.Purged(_logger, removed.Count);
+        return removed.Count;
+    }
+
+    private static DateTimeOffset Before(DateTimeOffset now, TimeSpan? span)
+    {
+        if (span is not { } value)
+        {
+            return DateTimeOffset.MinValue;
+        }
+
+        return value >= now - DateTimeOffset.MinValue ? DateTimeOffset.MinValue : now - value;
+    }
+
+    private bool IsExpired(PushEnvelope envelope) =>
+        _commandTtl is { } ttl && _clock() - envelope.CreatedAt > ttl;
+
+    private Task FailExpiredAsync(PushEnvelope envelope) =>
+        FailAsync(
+            envelope,
+            PushOutcome.Expired,
+            $"O envio '{envelope.Description}' para o equipamento {envelope.DeviceId} expirou na fila sem ser entregue (CommandTtl).",
+            reason: null);
+
+    // Falha um envio que saiu do store sem resultado: a tarefa de quem espera ou, sem ela, o handler. Nunca lança.
+    private async Task FailAsync(PushEnvelope envelope, string outcome, string message, string? reason)
+    {
+        if (_abandoned.ContainsKey(envelope.Id))
+        {
+            // Quem esperava já desistiu (cancelamento ou CommandTimeout): nada a avisar.
+            return;
+        }
+
+        Telemetry.RecordPush(outcome);
+        if (reason is null)
+        {
+            PushLog.CommandExpired(_logger, envelope.Id, envelope.DeviceId);
+        }
+        else
+        {
+            PushLog.CommandOrphaned(_logger, envelope.Id, envelope.DeviceId, reason);
+        }
+
+        if (_waiters.TryRemove(envelope.Id, out var waiter))
+        {
+            waiter.TrySetException(new ControlIdException(message));
+        }
+        else if (_unclaimedResultHandler is not null)
+        {
+            // Envio sem tarefa esperando (EnqueueAsync, ou perdido num reinício): avisa pelo handler. Nunca é reenviado.
+            await InvokeHandlerAsync(new PushCompletion(envelope.Id, envelope.DeviceId, Array.Empty<PushResult>(), message)).ConfigureAwait(false);
+        }
+    }
+
+    // Chama o handler com prazo próprio, sem o token da requisição do equipamento. Exceção ou prazo vencido vira log 1101.
+    private async Task InvokeHandlerAsync(PushCompletion completion)
+    {
+        if (_unclaimedResultHandler is not { } handler)
+        {
+            return;
+        }
+
+        using var timeout = new CancellationTokenSource(_resultHandlerTimeout);
+        try
+        {
+            var task = handler.HandleAsync(completion, timeout.Token) ?? Task.CompletedTask;
+            if (!task.IsCompleted)
+            {
+                // Um handler que ignora o token também é cortado: a espera termina no prazo e o handler segue sozinho.
+                var expired = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                using (timeout.Token.Register(static state => ((TaskCompletionSource<bool>)state!).TrySetResult(true), expired))
+                {
+                    if (await Task.WhenAny(task, expired.Task).ConfigureAwait(false) != task && !task.IsCompleted)
+                    {
+                        _ = task.ContinueWith(static t => _ = t.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                        throw new TimeoutException($"O IPushResultHandler não terminou em {_resultHandlerTimeout.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture)} s (ResultHandlerTimeout).");
+                    }
+                }
+            }
+
+            await task.ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            PushLog.ResultHandlerFailed(_logger, completion.CommandId, completion.DeviceId, ex);
+        }
+    }
+
+    // Registra a consulta. Equipamentos novos só entram até MaxTrackedDevices: a query não faz a memória crescer sem limite.
+    private void Track(long deviceId)
+    {
+        var now = _clock();
+        if (_lastSeen.ContainsKey(deviceId))
+        {
+            _lastSeen[deviceId] = now;
+            return;
+        }
+
+        if (Interlocked.Increment(ref _trackedDevices) > _maxTrackedDevices)
+        {
+            Interlocked.Decrement(ref _trackedDevices);
+            if (Interlocked.Exchange(ref _trackingLimitLogged, 1) == 0)
+            {
+                PushLog.TrackingLimitReached(_logger, _maxTrackedDevices);
+            }
+
+            if (_lastSeen.ContainsKey(deviceId))
+            {
+                _lastSeen[deviceId] = now;
+            }
+
+            return;
+        }
+
+        if (!_lastSeen.TryAdd(deviceId, now))
+        {
+            // Outra consulta do mesmo equipamento entrou antes: a vaga não é usada.
+            Interlocked.Decrement(ref _trackedDevices);
+            _lastSeen[deviceId] = now;
+        }
+    }
 
     private static PushResult ParseSingleResult(long deviceId, string endpoint, JsonElement root)
     {
@@ -365,9 +644,84 @@ public sealed class PushServer
         var waiter = new TaskCompletionSource<IReadOnlyList<PushResult>>(TaskCreationOptions.RunContinuationsAsynchronously);
         var id = await AddCoreAsync(deviceId, commands, batch, waiter, cancellationToken).ConfigureAwait(false);
 
-        using (cancellationToken.Register(() => _ = CancelAsync(deviceId, id, waiter, cancellationToken)))
+        using var deadline = _commandTimeout is { } timeout ? _deadlineFactory(timeout) : null;
+        using var timeoutRegistration = deadline is null
+            ? default
+            : deadline.Token.Register(() => Abandon(
+                deviceId,
+                id,
+                PushOutcome.Timeout,
+                () => waiter.TrySetException(new TimeoutException(
+                    $"O equipamento {deviceId} não devolveu o resultado de '{Describe(commands, batch)}' em {_commandTimeout!.Value.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture)} s (CommandTimeout); o comando saiu da fila."))));
+        using var cancelRegistration = cancellationToken.Register(() => Abandon(
+            deviceId,
+            id,
+            PushOutcome.Cancelled,
+            () => waiter.TrySetCanceled(cancellationToken)));
+
+        return await waiter.Task.ConfigureAwait(false);
+    }
+
+    private static string Describe(IReadOnlyList<PushCommand> commands, bool batch) =>
+        batch ? $"lote de {commands.Count} comandos" : commands[0].Endpoint;
+
+    // Quem espera desistiu (cancelamento ou CommandTimeout): a tarefa falha já e o envio sai do store em segundo plano.
+    // A remoção começa antes da falha, então um store que responde na hora já está limpo quando a tarefa termina; um store
+    // lento ou travado não segura a tarefa.
+    private void Abandon(long deviceId, Guid id, string outcome, Action fail)
+    {
+        // Marca antes de tirar o waiter: um /result concorrente que não achar o waiter vê a marca e não chama o handler.
+        _abandoned[id] = 0;
+        if (!_waiters.TryRemove(id, out _))
         {
-            return await waiter.Task.ConfigureAwait(false);
+            // O resultado (ou outra falha) chegou antes.
+            _abandoned.TryRemove(id, out _);
+            return;
+        }
+
+        Telemetry.RecordPush(outcome);
+        _ = RemoveAbandonedAsync(deviceId, id);
+        fail();
+    }
+
+    private async Task RemoveAbandonedAsync(long deviceId, Guid id)
+    {
+        try
+        {
+            await RemoveFromStoreAsync(deviceId, id, takeGate: true).ConfigureAwait(false);
+        }
+        finally
+        {
+            _abandoned.TryRemove(id, out _);
+        }
+    }
+
+    // Remoção de melhor esforço, com prazo próprio. Nunca lança: a falha vira log 1106.
+    private async Task RemoveFromStoreAsync(long deviceId, Guid id, bool takeGate)
+    {
+        try
+        {
+            using var timeout = new CancellationTokenSource(BackgroundRemoveTimeout);
+            if (!takeGate)
+            {
+                await _store.RemoveAsync(id, timeout.Token).ConfigureAwait(false);
+                return;
+            }
+
+            var gate = GetGate(deviceId);
+            await gate.WaitAsync(timeout.Token).ConfigureAwait(false);
+            try
+            {
+                await _store.RemoveAsync(id, timeout.Token).ConfigureAwait(false);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }
+        catch (Exception ex)
+        {
+            PushLog.CancelRemoveFailed(_logger, id, deviceId, ex);
         }
     }
 
@@ -394,7 +748,7 @@ public sealed class PushServer
         }
 
         var id = Guid.NewGuid();
-        var envelope = new PushEnvelope(id, deviceId, batch, commands.Select(c => c.Endpoint).ToList(), payload, DateTimeOffset.UtcNow);
+        var envelope = new PushEnvelope(id, deviceId, batch, commands.Select(c => c.Endpoint).ToList(), payload, _clock());
 
         if (waiter is not null)
         {
@@ -407,7 +761,24 @@ public sealed class PushServer
             await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                await _store.AddAsync(envelope, cancellationToken).ConfigureAwait(false);
+                // Contagem e inclusão sob o mesmo gate: envios concorrentes ao mesmo equipamento não passam do limite.
+                if (_maxPendingPerDevice > 0
+                    && await _store.CountAsync(deviceId, cancellationToken).ConfigureAwait(false) >= _maxPendingPerDevice)
+                {
+                    Telemetry.RecordPush(PushOutcome.Rejected);
+                    throw new PushQueueFullException(deviceId, _maxPendingPerDevice);
+                }
+
+                try
+                {
+                    await _store.AddAsync(envelope, cancellationToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // O store pode ter gravado antes de falhar (ou de ver o cancelamento): desfaz no que der.
+                    await RemoveFromStoreAsync(deviceId, id, takeGate: false).ConfigureAwait(false);
+                    throw;
+                }
             }
             finally
             {
@@ -420,37 +791,24 @@ public sealed class PushServer
             throw;
         }
 
+        Telemetry.RecordPush(PushOutcome.Enqueued);
         return id;
     }
 
-    // Tira o envio do store (pendente ou em andamento) e só então cancela a tarefa de quem espera.
-    private async Task CancelAsync(long deviceId, Guid id, TaskCompletionSource<IReadOnlyList<PushResult>> waiter, CancellationToken cancellationToken)
+    private static SemaphoreSlim[] CreateGates()
     {
-        try
+        var gates = new SemaphoreSlim[GateCount];
+        for (var i = 0; i < gates.Length; i++)
         {
-            var gate = GetGate(deviceId);
-            await gate.WaitAsync(CancellationToken.None).ConfigureAwait(false);
-            try
-            {
-                await _store.RemoveAsync(id, CancellationToken.None).ConfigureAwait(false);
-            }
-            finally
-            {
-                gate.Release();
-            }
+            gates[i] = new SemaphoreSlim(1, 1);
         }
-        catch (Exception)
-        {
-            // Falha do store ao remover: o cancelamento de quem espera segue assim mesmo.
-        }
-        finally
-        {
-            _waiters.TryRemove(id, out _);
-            waiter.TrySetCanceled(cancellationToken);
-        }
+
+        return gates;
     }
 
-    private SemaphoreSlim GetGate(long deviceId) => _gates.GetOrAdd(deviceId, _ => new SemaphoreSlim(1, 1));
+    internal static int GateIndex(long deviceId) => (int)((uint)deviceId.GetHashCode() % GateCount);
+
+    private SemaphoreSlim GetGate(long deviceId) => _gates[GateIndex(deviceId)];
 
     private sealed class PushTransaction
     {
