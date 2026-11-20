@@ -93,11 +93,11 @@ public sealed class EfPushStoreConcurrencyTests : IDisposable
         Assert.Equal(total, taken.Count);
         Assert.Equal(index.Keys.OrderBy(id => id), taken.OrderBy(id => id));
 
-        // Quem entregou entregou na ordem da fila (as consultas de um servidor passam em série pelo store).
+        // Quem entregou entregou na ordem da fila (as consultas de um servidor passam em série pelo store). Não se exige que
+        // os dois servidores entreguem algo: numa máquina rápida, um deles pode esvaziar a fila enquanto o outro espera o
+        // banco, e isso não é defeito (a CI do Linux mostrou esse caso).
         AssertIncreasing(storeA.Taken.Select(id => index[id]));
         AssertIncreasing(storeB.Taken.Select(id => index[id]));
-        Assert.NotEmpty(storeA.Taken);
-        Assert.NotEmpty(storeB.Taken);
 
         // Esvazia o que ficou em andamento: nada pendente, e cada órfão foi reportado por uma só instância, uma vez.
         Assert.Equal(string.Empty, await serverA.HandlePushAsync(Device, "fim"));
