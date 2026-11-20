@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ControlId.Access;
-using ControlId.Rep;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
@@ -186,11 +185,7 @@ internal sealed class ControlIdDeviceHealthCheck : IHealthCheck
             : HealthCheckResult.Healthy($"Ok: {elapsed} ms.", data);
     }
 
-    private static ControlIdCircuitState CurrentCircuit(object client) => client switch
-    {
-        AccessClient a => a.CircuitState,
-        RepClient r => r.CircuitState,
-        _ => ControlIdCircuitState.Closed,
-    };
+    private static ControlIdCircuitState CurrentCircuit(object client) =>
+        client is IControlIdClientDiagnostics diagnostics ? diagnostics.CircuitState : ControlIdCircuitState.Closed;
 
 }

@@ -13,7 +13,7 @@ using ControlId.Rep.Afd;
 namespace ControlId.Rep;
 
 /// <inheritdoc cref="IRepClient"/>
-public sealed class RepClient : IRepClient
+public sealed class RepClient : IRepClient, IControlIdClientDiagnostics
 {
     private const int MaxPageSize = 100;
     private readonly ControlIdTransport _transport;
@@ -31,14 +31,22 @@ public sealed class RepClient : IRepClient
         Mode = mode;
     }
 
-    /// <summary>Atalho: <c>new RepClient("https://192.168.0.129")</c>. Aceita o certificado autoassinado do REP.</summary>
-    public RepClient(string baseAddress, string login = "admin", string password = "admin", RepMode mode = RepMode.Portaria671)
+    /// <summary>
+    /// Atalho: <c>new RepClient("https://192.168.0.129", serverCertificateSha256: "AB:CD:...")</c>. O certificado TLS é
+    /// validado: o REP iDClass usa um certificado autoassinado, então informe a impressão digital SHA-256 dele em
+    /// <paramref name="serverCertificateSha256"/> (obtenha com <see cref="ControlIdCertificates.GetServerCertificateSha256Async"/>
+    /// e confira no equipamento). Sem ela, só passa um certificado válido para o .NET. Para aceitar qualquer certificado,
+    /// use o construtor com <see cref="ControlIdDeviceOptions"/> e <see cref="ControlIdDeviceOptions.AcceptAnyServerCertificate"/>.
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="serverCertificateSha256"/> não é um SHA-256 em hexadecimal.</exception>
+    public RepClient(
+        string baseAddress, string login = "admin", string password = "admin", RepMode mode = RepMode.Portaria671, string? serverCertificateSha256 = null)
         : this(new ControlIdDeviceOptions
         {
             BaseAddress = new Uri(baseAddress),
             Login = login,
             Password = password,
-            AcceptAnyServerCertificate = true,
+            ServerCertificateSha256 = serverCertificateSha256,
         }, mode)
     {
     }
@@ -46,11 +54,20 @@ public sealed class RepClient : IRepClient
     /// <inheritdoc/>
     public RepMode Mode { get; }
 
+    /// <summary>Sessão atual, ou <c>null</c> se ainda não logou.</summary>
+    public string? Session => _transport.Session;
+
     /// <summary>
     /// Estado do circuit breaker deste equipamento (<see cref="ControlIdDeviceOptions.CircuitBreakerFailureThreshold"/>).
     /// Sempre <see cref="ControlIdCircuitState.Closed"/> com o circuit breaker desligado.
     /// </summary>
     public ControlIdCircuitState CircuitState => _transport.CircuitState;
+
+    /// <inheritdoc/>
+    public void ResetCircuit() => _transport.ResetCircuit();
+
+    // Testes.
+    internal ControlIdTransport Transport => _transport;
 
     private string? ModeQuery => Mode == RepMode.Portaria671 ? "mode=671" : null;
 
@@ -58,6 +75,10 @@ public sealed class RepClient : IRepClient
     public Task LoginAsync(CancellationToken cancellationToken = default) => _transport.LoginAsync(cancellationToken);
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Best-effort: a sessão local é descartada antes da requisição, e falha de rede ou timeout não lançam (log 1012, em
+    /// Debug). Só o cancelamento por <paramref name="cancellationToken"/> lança <see cref="OperationCanceledException"/>.
+    /// </remarks>
     public Task LogoutAsync(CancellationToken cancellationToken = default) => _transport.LogoutAsync(cancellationToken);
 
     /// <inheritdoc/>

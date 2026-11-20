@@ -45,6 +45,9 @@ public sealed class VpnInformation
 /// <summary>Estado do OpenVPN (<c>get_vpn_status.fcgi</c>).</summary>
 public enum VpnStatus
 {
+    /// <summary>Código que esta versão da biblioteca não conhece (ex.: de um firmware mais novo). Vale -1 porque o 0 já é <see cref="Connected"/>.</summary>
+    Unknown = -1,
+
     /// <summary>0: conectado.</summary>
     Connected = 0,
 

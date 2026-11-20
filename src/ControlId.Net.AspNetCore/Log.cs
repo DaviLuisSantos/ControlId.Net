@@ -49,4 +49,16 @@ internal static partial class Log
         Level = LogLevel.Warning,
         Message = "Callback {Route} recusado com 413: corpo acima de {Limit} bytes (ControlIdCallbackOptions.MaxRequestBodySize).")]
     public static partial void CallbackBodyTooLarge(ILogger logger, string route, long limit);
+
+    [LoggerMessage(
+        EventId = 2011,
+        Level = LogLevel.Error,
+        Message = "IPushResultHandler {HandlerType} falhou ao tratar o envio {CommandId} do equipamento {DeviceId}; os demais handlers seguem.")]
+    public static partial void PushResultHandlerFailed(ILogger logger, Exception exception, string handlerType, Guid commandId, long deviceId);
+
+    [LoggerMessage(EventId = 2012, Level = LogLevel.Error, Message = "A varredura do Push (PurgeExpiredAsync) falhou; nova tentativa no próximo intervalo.")]
+    public static partial void PushPurgeFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 2013, Level = LogLevel.Information, Message = "Varredura automática do Push desligada (PushServerOptions.PurgeInterval = null).")]
+    public static partial void PushPurgeDisabled(ILogger logger);
 }

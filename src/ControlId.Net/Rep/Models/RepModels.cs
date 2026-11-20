@@ -22,11 +22,20 @@ public sealed class RepAbout
     [JsonPropertyName("isFacial")] public bool IsFacial { get; set; }
 
     /// <summary>
-    /// Revisão da API, como o changelog da documentação a numera: <see cref="FirmwareVersion"/> em hexadecimal (260 → 104).
-    /// A 101 trouxe a Portaria 671, a 102 as APIs faciais e a 104 o CNPJ alfanumérico e o <c>headerTop</c> do AFD.
+    /// Revisão da API, como o changelog da documentação a numera: <see cref="FirmwareVersion"/> em hexadecimal lido como
+    /// decimal (260 = 0x104 → 104). A 101 trouxe a Portaria 671, a 102 as APIs faciais e a 104 o CNPJ alfanumérico e o
+    /// <c>headerTop</c> do AFD. Nunca lança: se o hexadecimal tiver letras (ex.: 0x10A), devolve -1 e o texto fica em
+    /// <see cref="ApiRevisionText"/>.
     /// </summary>
     [JsonIgnore]
-    public int ApiRevision => int.Parse(FirmwareVersion.ToString("X", System.Globalization.CultureInfo.InvariantCulture), System.Globalization.CultureInfo.InvariantCulture);
+    public int ApiRevision =>
+        int.TryParse(ApiRevisionText, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var revision)
+            ? revision
+            : -1;
+
+    /// <summary>Revisão da API como texto: <see cref="FirmwareVersion"/> em hexadecimal maiúsculo (ex.: <c>"104"</c>, <c>"10A"</c>).</summary>
+    [JsonIgnore]
+    public string ApiRevisionText => FirmwareVersion.ToString("X", System.Globalization.CultureInfo.InvariantCulture);
 }
 
 /// <summary>Resposta de <c>get_system_information.fcgi</c>.</summary>

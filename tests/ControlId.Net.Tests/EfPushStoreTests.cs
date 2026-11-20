@@ -17,6 +17,9 @@ public sealed class EfPushStoreTests : PushStoreContractTests, IDisposable
 
     protected override IPushCommandStore CreateStore() => NewProvider().GetRequiredService<IPushCommandStore>();
 
+    /// <summary>O store EF implementa a varredura: os testes de manutenção do contrato valem para ele.</summary>
+    protected override bool RequiresMaintenance => true;
+
     /// <summary>Provedor novo sobre o mesmo arquivo: simula o reinício do processo.</summary>
     private ServiceProvider NewProvider()
     {
@@ -108,6 +111,37 @@ public sealed class EfPushStoreTests : PushStoreContractTests, IDisposable
         }
 
         Assert.Equal(new[] { first.Id, second.Id, third.Id }, order);
+    }
+
+    [Fact]
+    public void Resolving_the_store_without_a_context_factory_explains_what_to_register()
+    {
+        var services = new ServiceCollection();
+        services.AddControlIdPushEntityFrameworkStore<TestContext>();
+        using var provider = services.BuildServiceProvider();
+
+        var ex = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IPushCommandStore>());
+
+        Assert.Contains("IDbContextFactory<TestContext>", ex.Message);
+        Assert.Contains("AddDbContextFactory<TestContext>", ex.Message);
+    }
+
+    [Fact]
+    public async Task Server_purges_expired_envelopes_through_the_store()
+    {
+        var handler = new RecordingHandler();
+        var store = CreateStore();
+        var server = new PushServer(store, new PushServerOptions { CommandTtl = TimeSpan.FromHours(1), InFlightTimeout = null }, handler);
+        var old = NewEnvelope(7, "old", createdAt: DateTimeOffset.UtcNow.AddHours(-2));
+        await store.AddAsync(old, CancellationToken.None);
+        await server.EnqueueAsync(7, PushCommand.Reboot());
+
+        Assert.Equal(1, await server.PurgeExpiredAsync());
+
+        var completion = Assert.Single(handler.Completions);
+        Assert.Equal(old.Id, completion.CommandId);
+        Assert.NotNull(completion.Error);
+        Assert.Equal(1, await server.GetPendingCountAsync(7));
     }
 
     [Fact]

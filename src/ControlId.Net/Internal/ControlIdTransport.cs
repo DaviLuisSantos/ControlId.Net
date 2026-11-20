@@ -37,6 +37,9 @@ internal sealed class ControlIdTransport : IDisposable
     private readonly string _device;
     private string? _session;
 
+    // Muda a cada sessão nova (login explícito, primeiro uso, relogin após 401): quem guarda algo por sessão compara.
+    private long _sessionGeneration;
+
     // Cópia própria: change_login atualiza estas credenciais sem alterar o objeto de opções do chamador.
     private volatile Credentials _credentials;
 
@@ -53,7 +56,13 @@ internal sealed class ControlIdTransport : IDisposable
         _deviceTags = Telemetry.DeviceTags(options.BaseAddress);
         _throttle = new RequestSlots(options.MaxConcurrentRequests, _deviceTags);
         _circuit = new CircuitBreaker(
-            options.CircuitBreakerFailureThreshold, options.CircuitBreakerBreakDuration, _deviceTags, _logger, _device, options.CircuitClock);
+            options.CircuitBreakerFailureThreshold, options.CircuitBreakerBreakDuration, _deviceTags, _logger, _device, options.CircuitClock, options.Timeout);
+
+        // Vale também para o HttpClient do pacote de DI, configurado a partir destas opções.
+        if (options.AcceptAnyServerCertificate && CertificatePinning.Normalize(options.ServerCertificateSha256) is null)
+        {
+            Log.AcceptingAnyCertificate(_logger, _device);
+        }
 
         if (httpClient is null)
         {
@@ -61,6 +70,7 @@ internal sealed class ControlIdTransport : IDisposable
             HttpHandlers.LimitConnections(handler, options.MaxConcurrentRequests);
             CertificatePinning.Configure(handler, options.ServerCertificateSha256, options.AcceptAnyServerCertificate);
 
+            OwnedHandler = handler;
             _http = new HttpClient(handler, disposeHandler: true) { Timeout = options.Timeout };
             _ownsHttpClient = true;
         }
@@ -70,18 +80,39 @@ internal sealed class ControlIdTransport : IDisposable
         }
     }
 
+    /// <summary>Opções com que o transporte foi criado (testes).</summary>
+    internal ControlIdDeviceOptions Options => _options;
+
+    /// <summary>Handler criado pelo próprio transporte, ou <c>null</c> se o <see cref="HttpClient"/> veio de fora (testes).</summary>
+    internal HttpClientHandler? OwnedHandler { get; }
+
+    /// <summary>Logger do equipamento (categoria <see cref="ControlIdTelemetry.LoggerCategory"/>), para os clientes.</summary>
+    public ILogger Logger => _logger;
+
+    /// <summary><c>host:porta</c> do equipamento, como aparece nos logs.</summary>
+    public string Device => _device;
+
     /// <summary>Sessão atual, ou <c>null</c> se ainda não logou.</summary>
     public string? Session => Volatile.Read(ref _session);
 
+    /// <summary>
+    /// Número da sessão atual: muda a cada login (explícito, sob demanda ou refeito após HTTP 401, como depois de o
+    /// equipamento reiniciar). 0 antes do primeiro login.
+    /// </summary>
+    public long SessionGeneration => Interlocked.Read(ref _sessionGeneration);
+
     /// <summary>Estado do circuit breaker deste equipamento (<c>Closed</c> se estiver desligado).</summary>
     public ControlIdCircuitState CircuitState => _circuit.State;
+
+    /// <summary>Fecha o circuit breaker na hora (log 1011).</summary>
+    public void ResetCircuit() => _circuit.Reset();
 
     public async Task LoginAsync(CancellationToken cancellationToken)
     {
         await _loginLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            Volatile.Write(ref _session, await RequestSessionAsync(cancellationToken).ConfigureAwait(false));
+            SetSession(await RequestSessionAsync(cancellationToken).ConfigureAwait(false));
         }
         finally
         {
@@ -89,6 +120,10 @@ internal sealed class ControlIdTransport : IDisposable
         }
     }
 
+    /// <summary>
+    /// Encerra a sessão. Best-effort: a sessão local é descartada antes; falha de rede ou timeout vira log 1012 (Debug) e
+    /// retorno normal. Só o cancelamento de quem chamou lança.
+    /// </summary>
     public async Task LogoutAsync(CancellationToken cancellationToken)
     {
         var session = Interlocked.Exchange(ref _session, null);
@@ -103,12 +138,21 @@ internal sealed class ControlIdTransport : IDisposable
         {
             using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
+        catch (HttpRequestException)
+        {
+            Log.LogoutFailed(_logger, _device, "falha de rede");
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Timeout do HttpClient (TaskCanceledException sem o token de quem chamou).
+            Log.LogoutFailed(_logger, _device, "timeout");
+        }
         finally
         {
             _throttle.Release();
         }
 
-        // Logout é best-effort: o equipamento não retorna corpo e uma sessão já expirada não é erro.
+        // O equipamento não retorna corpo e uma sessão já expirada não é erro.
     }
 
     /// <summary>Passa a usar novas credenciais nos próximos logins (após <c>change_login.fcgi</c>).</summary>
@@ -197,7 +241,7 @@ internal sealed class ControlIdTransport : IDisposable
                 _throttle.Release();
                 _circuit.Failure(probe);
                 Log.CommunicationFailed(_logger, _device, scope.Command, ex);
-                failure = new ControlIdException($"Falha de comunicação com {_options.BaseAddress} ao chamar '{endpoint}'.", innerException: ex);
+                failure = CommunicationFailure(endpoint, ex);
                 response = null!;
             }
             catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
@@ -399,7 +443,7 @@ internal sealed class ControlIdTransport : IDisposable
             if (current is null)
             {
                 current = await RequestSessionAsync(cancellationToken).ConfigureAwait(false);
-                Volatile.Write(ref _session, current);
+                SetSession(current);
             }
 
             return current;
@@ -408,6 +452,40 @@ internal sealed class ControlIdTransport : IDisposable
         {
             _loginLock.Release();
         }
+    }
+
+    // Chamar com o _loginLock.
+    private void SetSession(string session)
+    {
+        Interlocked.Increment(ref _sessionGeneration);
+        Volatile.Write(ref _session, session);
+    }
+
+    // Falha de rede: com o certificado TLS recusado, a mensagem diz como fixar a impressão digital.
+    private ControlIdException CommunicationFailure(string endpoint, HttpRequestException exception)
+    {
+        var message = $"Falha de comunicação com {_options.BaseAddress} ao chamar '{endpoint}'.";
+        if (IsCertificateFailure(exception))
+        {
+            message += " O certificado TLS do equipamento foi recusado: fixe a impressão digital em ControlIdDeviceOptions.ServerCertificateSha256"
+                + " (obtenha o valor com ControlIdCertificates.GetServerCertificateSha256Async).";
+        }
+
+        return new ControlIdException(message, innerException: exception);
+    }
+
+    private static bool IsCertificateFailure(Exception exception)
+    {
+        for (var current = exception.InnerException; current is not null; current = current.InnerException)
+        {
+            if (current is System.Security.Authentication.AuthenticationException
+                || current is WebException { Status: WebExceptionStatus.TrustFailure or WebExceptionStatus.SecureChannelFailure })
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private async Task<string> RequestSessionAsync(CancellationToken cancellationToken)
@@ -511,7 +589,7 @@ internal sealed class ControlIdTransport : IDisposable
         {
             _circuit.Failure(probe);
             Log.CommunicationFailed(_logger, _device, Telemetry.CommandName(endpoint), ex);
-            throw new ControlIdException($"Falha de comunicação com {_options.BaseAddress} ao chamar '{endpoint}'.", innerException: ex);
+            throw CommunicationFailure(endpoint, ex);
         }
         catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
