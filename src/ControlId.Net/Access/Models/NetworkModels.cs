@@ -160,4 +160,7 @@ public enum FaceLicense
 
     /// <summary>iDFace Max: Pro 100 mil faces (<c>upgrade_hundred_thousand_face_templates</c>).</summary>
     Pro100k,
+
+    /// <summary>iDFace Max: Pro 20 mil faces, com foto de cadastro (<c>upgrade_twenty_thousand_face_templates</c>); só firmware V7.</summary>
+    Pro20k,
 }

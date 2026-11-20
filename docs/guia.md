@@ -156,6 +156,55 @@ await device.RebootAsync();
 
 Via Push: `PushCommand.ShowMessage`, `PushCommand.Buzz` e `PushCommand.Reboot`.
 
+### Recursos específicos de produto
+
+Wi-Fi, certificados EAP, mídia da tela, SecBox, OSDP e calibração da câmera têm métodos próprios. Cada um diz no
+summary em que produto e firmware existe; a lista completa está na [cobertura](COBERTURA.md).
+
+```csharp
+await device.SetWifiSourceAsync(WifiSource.Internal);
+var redes = await device.ScanWifiAsync();
+var resultado = await device.SetWifiSettingsAsync(redes[0].Ssid!, "senha-da-rede");   // a senha não vai para logs
+
+await device.SendSlideshowImageAsync("promo.jpg", File.ReadAllBytes("promo.jpg"));
+await device.SetStreamingLogoAsync(File.ReadAllBytes("logo.png"));
+
+if (await device.DeviceHasSecBoxAsync() && await device.UpdateSecBoxFirmwareAsync())
+{
+    await device.WaitSecBoxFirmwareUpdateAsync();                                       // consulta o status até terminar
+}
+
+await device.StartCameraCalibrationAsync();
+var calibracao = await device.WaitCameraCalibrationAsync();
+```
+
+Esquecer a rede Wi-Fi, apagar todos os slides e trocar ou zerar a chave do SecBox exigem
+`DataLossConfirmation.Confirmed`. Segredos (`psk`, `scbk`, chave privada EAP, segredo do dual sided) saem mascarados no
+`ToString` dos modelos.
+
+### Chaves do leitor HID e código OEM
+
+Operações que podem inutilizar um leitor ou mudar a marca do equipamento ficam fora do `IAccessClient`, num cliente
+criado só a pedido ([ADR 0024](adr/0024-cliente-de-provisionamento-separado.md)). Ele usa a mesma conexão e sessão:
+
+```csharp
+var provisionamento = device.CreateProvisioningClient();
+
+// Hierarquia do OMNIKEY: KEK padrão, depois KEKs intermediárias e chaves de cartão (modo plain: passe a KEK atual).
+await provisionamento.InjectHidDefaultKekAsync(novaKek, kekDeFabrica, keyId: "4445464B45593031");
+await provisionamento.InjectHidMediaKeyAsync("030101", "03F000", "FFFFFFFFFFFF", novaKek);
+var info = await provisionamento.GetHidKeyInfoAsync("030101");                        // a chave nunca volta
+
+await provisionamento.ResetHidConfigAsync(DataLossConfirmation.Confirmed);
+await provisionamento.WaitHidConfigResetAsync();
+
+var oem = await provisionamento.GetOemCodeAsync();
+await provisionamento.SetOemApprovedFirmwareAsync(oem, licenca, "7.14.0");
+```
+
+Esses métodos seguem a documentação oficial e ainda não foram testados num leitor HID real: comece por um leitor de
+bancada.
+
 ### Configurações
 
 Cada seção documentada tem uma classe tipada em `ControlId.Access.Configuration`:
@@ -198,9 +247,9 @@ await device.DeleteObjectAsync<ScheduledUnlock>(3);
 
 ### Endpoints sem método próprio
 
-A API tem muitos comandos que ainda não têm método tipado (cadastro remoto, mensagem na tela, rede, logotipo,
-reinício...). Todos podem ser chamados pelos métodos genéricos, que valem para `AccessClient` e `RepClient`
-(interface `IControlIdClient`) e mantêm a sessão e o re-login automáticos:
+Todo endpoint documentado tem método tipado. Para um comando que chegou num firmware novo, ou que a biblioteca
+decidiu não cobrir (`dual_sided_query`, `tests.fcgi`), use os métodos genéricos, que valem para `AccessClient` e
+`RepClient` (interface `IControlIdClient`) e mantêm a sessão e o re-login automáticos:
 
 ```csharp
 await device.SendRawAsync("message_to_screen", new { message = "Bem-vindo!", timeout = 5000 });

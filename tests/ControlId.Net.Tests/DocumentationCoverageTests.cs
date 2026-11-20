@@ -14,6 +14,8 @@ namespace ControlId.Tests;
 public class DocumentationCoverageTests
 {
     private static readonly byte[] Bytes = { 1, 2, 3 };
+    private static readonly byte[] Jpeg = { 0xFF, 0xD8, 0xFF, 0xE0, 1 };
+    private static readonly byte[] Png = { 0x89, 0x50, 0x4E, 0x47, 1 };
 
     public static TheoryData<string, string> Endpoints()
     {
@@ -172,6 +174,82 @@ public class DocumentationCoverageTests
         // Senhas de sistema
         ("master_password.fcgi", "POST", c => c.SetMasterPasswordAsync("senha-mestra")),
         ("recovery_password.fcgi", "POST", c => c.SetUpdateModePasswordAsync("123456")),
+
+        // Onda 3: Wi-Fi e certificados EAP
+        ("set_wifi_source.fcgi", "POST", c => c.SetWifiSourceAsync(WifiSource.Internal)),
+        ("wifi_scan.fcgi", "POST", c => c.ScanWifiAsync()),
+        ("set_wifi_settings.fcgi", "POST", c => c.SetWifiSettingsAsync("rede", "senha")),
+        ("get_wifi_data.fcgi", "POST", c => c.GetWifiDataAsync()),
+        ("forget_wifi_connected_network.fcgi", "POST", c => c.ForgetWifiConnectedNetworkAsync(DataLossConfirmation.Confirmed)),
+        ("check_ip_conflict.fcgi", "POST", c => c.CheckIpConflictAsync(NetworkInterfaceKind.Wired, "10.0.0.9")),
+        ("eap_802_1X_certificate_change.fcgi", "POST", c => c.UploadEapCaCertificateAsync(Bytes)),
+        ("eap_802_1X_certificate_change_wifi.fcgi", "POST", c => c.UploadEapCaCertificateWifiAsync(Bytes)),
+        ("eap_tls_802_1X_certificate_change.fcgi", "POST", c => c.UploadEapTlsClientCertificateAsync(Bytes)),
+        ("eap_tls_802_1X_private_key_change.fcgi", "POST", c => c.UploadEapTlsPrivateKeyAsync(Bytes)),
+        ("eap_tls_802_1X_private_key_persist.fcgi", "POST", c => c.PersistEapTlsPrivateKeyAsync()),
+        ("get_eap_tls_csr_file.fcgi", "POST", c => c.GetEapTlsCsrAsync()),
+
+        // Onda 3: mídia de tela
+        ("send_slideshow_images.fcgi", "POST", c => c.SendSlideshowImageAsync("a.jpg", Jpeg)),
+        ("get_slideshow_images_list.fcgi", "GET", c => c.GetSlideshowImagesAsync()),
+        ("get_slideshow_image.fcgi", "GET", c => c.GetSlideshowImageAsync("a.jpg")),
+        ("delete_slideshow_image.fcgi", "POST", c => c.DeleteSlideshowImageAsync("a.jpg")),
+        ("remove_slideshow_images.fcgi", "POST", c => c.RemoveAllSlideshowImagesAsync(DataLossConfirmation.Confirmed)),
+        ("set_kiosk_icon.fcgi", "POST", c => c.SetKioskIconAsync("a.png", Png)),
+        ("get_kiosk_icon.fcgi", "GET", c => c.GetKioskIconAsync("a.png")),
+        ("delete_kiosk_icon.fcgi", "POST", c => c.DeleteKioskIconAsync("a.png")),
+        ("get_kiosk_icons_list.fcgi", "GET", c => c.GetKioskIconsAsync()),
+        ("set_phone_icon.fcgi", "POST", c => c.SetPhoneIconAsync(Png)),
+        ("get_phone_icon.fcgi", "GET", c => c.GetPhoneIconAsync()),
+        ("remove_phone_icon.fcgi", "POST", c => c.RemovePhoneIconAsync()),
+        ("make_sip_conference.fcgi", "POST", c => c.MakeSipConferenceAsync()),
+        ("set_streaming_logo.fcgi", "POST", c => c.SetStreamingLogoAsync(Png)),
+        ("get_streaming_logo.fcgi", "GET", c => c.GetStreamingLogoAsync()),
+        ("remove_streaming_logo.fcgi", "POST", c => c.RemoveStreamingLogoAsync()),
+
+        // Onda 3: SecBox e dual sided
+        ("device_has_secbox.fcgi", "GET", c => c.DeviceHasSecBoxAsync()),
+        ("secbox_is_active.fcgi", "GET", c => c.IsSecBoxActiveAsync()),
+        ("secbox_serial_number.fcgi", "GET", c => c.GetSecBoxSerialNumberAsync()),
+        ("update_secbox_firmware_version.fcgi", "GET", c => c.GetSecBoxFirmwareVersionAsync()),
+        ("update_secbox_firmware.fcgi", "POST", c => c.UpdateSecBoxFirmwareAsync()),
+        ("update_secbox_firmware_status.fcgi", "GET", c => c.GetSecBoxFirmwareUpdateStatusAsync()),
+        ("change_crypto_key_default.fcgi", "POST", c => c.ChangeSecBoxCryptoKeyToDefaultAsync(DataLossConfirmation.Confirmed)),
+        ("change_crypto_key_random.fcgi", "POST", c => c.ChangeSecBoxCryptoKeyToRandomAsync(DataLossConfirmation.Confirmed)),
+        ("reset_crypto_key.fcgi", "POST", c => c.ResetSecBoxCryptoKeyAsync(DataLossConfirmation.Confirmed)),
+        ("set_dual_sided_secret.fcgi", "POST", c => c.SetDualSidedSecretAsync(new string('a', 64))),
+        ("get_dual_sided_status.fcgi", "POST", c => c.GetDualSidedStatusAsync()),
+
+        // Onda 3: OSDP e calibração da câmera
+        ("get_osdp_installation_mode.fcgi", "GET", c => c.GetOsdpInstallationModeAsync()),
+        ("osdp_scbk.fcgi", "POST", c => c.GetOsdpScbkAsync()),
+        ("osdp_get_connection_status.fcgi", "POST", c => c.GetOsdpConnectionStatusAsync(1)),
+        ("osdp_get_output_capabilities.fcgi", "POST", c => c.GetOsdpOutputCapabilitiesAsync(1)),
+        ("osdp_set_secure_key.fcgi", "POST", c => c.SetOsdpSecureKeyAsync(1, 1, new string('a', 32))),
+        ("osdp_set_secure_type.fcgi", "POST", c => c.SetOsdpSecureTypeAsync(1, 1, OsdpSecureType.SecureOnly)),
+        ("osdp_refresh.fcgi", "POST", c => c.RefreshOsdpAsync()),
+        ("remote_camera_calibration.fcgi", "POST", c => c.StartCameraCalibrationAsync()),
+        ("cancel_remote_camera_calibration.fcgi", "POST", c => c.CancelCameraCalibrationAsync()),
+        ("camera_calibration_status.fcgi", "POST", c => c.GetCameraCalibrationStatusAsync()),
+
+        // Onda 3: licenças, modo Pro e redirecionamento
+        ("upgrade_twenty_thousand_face_templates.fcgi", "POST", c => c.ApplyFaceLicenseAsync(FaceLicense.Pro20k, "x")),
+        ("upgrade_ten_thousand_templates.fcgi", "POST", c => c.UpgradeFingerprintCapacityAsync("x")),
+        ("set_pro_operation_mode_and_reboot.fcgi", "POST", c => c.SetProOperationModeAndRebootAsync("10k")),
+        ("request_redirect.fcgi", "POST", c => c.RedirectRequestAsync(RedirectTarget.ByDeviceId(1), "get_configuration")),
+
+        // Onda 4: cliente de provisionamento (ADR 0024)
+        ("hid_inject_default_kek.fcgi", "POST", c => c.CreateProvisioningClient().InjectHidDefaultKekAsync("AA")),
+        ("hid_inject_custom_kek.fcgi", "POST", c => c.CreateProvisioningClient().InjectHidCustomKekAsync("03F001", "03F000", "AA")),
+        ("hid_inject_media_key.fcgi", "POST", c => c.CreateProvisioningClient().InjectHidMediaKeyAsync("030101", "03F001", "AA")),
+        ("hid_get_key_info.fcgi", "POST", c => c.CreateProvisioningClient().GetHidKeyInfoAsync("03F000")),
+        ("hid_set_oid.fcgi", "POST", c => c.CreateProvisioningClient().SetHidOidAsync("1.1.1.2.3.5", true)),
+        ("hid_get_oid.fcgi", "POST", c => c.CreateProvisioningClient().GetHidOidAsync("1.1.1.2.3.5")),
+        ("hid_reset_config.fcgi", "POST", c => c.CreateProvisioningClient().GetHidConfigResetStatusAsync()),
+        ("get_oem_code.fcgi", "GET", c => c.CreateProvisioningClient().GetOemCodeAsync()),
+        ("set_oem_code.fcgi", "POST", c => c.CreateProvisioningClient().SetOemCodeAsync("MYOEM", "x")),
+        ("get_oem_downgrade_approved_versions.fcgi", "POST", c => c.CreateProvisioningClient().GetOemDowngradeApprovedVersionsAsync()),
+        ("set_oem_approved_fw.fcgi", "POST", c => c.CreateProvisioningClient().SetOemApprovedFirmwareAsync("MYOEM", "x", "7.14.0")),
     };
 
     [Theory]

@@ -176,6 +176,18 @@ public sealed class DeviceState
         return removed;
     }
 
+    /// <summary>Imagens do slideshow da tela (<c>send_slideshow_images</c>), por nome de arquivo.</summary>
+    public Dictionary<string, byte[]> Slideshow { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>Ícones do quiosque (<c>set_kiosk_icon</c>), por nome de arquivo.</summary>
+    public Dictionary<string, byte[]> KioskIcons { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>Ícone do telefone (<c>set_phone_icon</c>); <c>null</c> sem ícone.</summary>
+    public byte[]? PhoneIcon { get; set; }
+
+    /// <summary>Logotipo do streaming (<c>set_streaming_logo</c>); <c>null</c> sem logotipo.</summary>
+    public byte[]? StreamingLogo { get; set; }
+
     public int DoorCount => _doorOpenUntil.Length;
 
     public bool IsDoorOpen(int door, DateTimeOffset now) =>
@@ -206,6 +218,10 @@ public sealed class DeviceState
         _login = _options.Login;
         _password = _options.Password;
         ScreenMessage = null;
+        Slideshow.Clear();
+        KioskIcons.Clear();
+        PhoneIcon = null;
+        StreamingLogo = null;
 
         SetConfiguration("general", "language", "pt_BR");
         SetConfiguration("general", "beep_enabled", "1");

@@ -65,6 +65,9 @@ public sealed partial class AccessClient : IAccessClient, IControlIdClientDiagno
     /// <summary>Sessão atual, ou <c>null</c> se ainda não logou.</summary>
     public string? Session => _transport.Session;
 
+    // Compartilhado com o AccessProvisioningClient, que usa a mesma conexão e sessão (ADR 0024).
+    internal ControlIdTransport Transport => _transport;
+
     /// <summary>
     /// Estado do circuit breaker deste equipamento (<see cref="ControlIdDeviceOptions.CircuitBreakerFailureThreshold"/>).
     /// Sempre <see cref="ControlIdCircuitState.Closed"/> com o circuit breaker desligado.
@@ -1249,6 +1252,7 @@ public sealed partial class AccessClient : IAccessClient, IControlIdClientDiagno
             FaceLicense.Pro30k => "upgrade_thirty_thousand_face_templates.fcgi",
             FaceLicense.Pro50k => "upgrade_fifty_thousand_face_templates.fcgi",
             FaceLicense.Pro100k => "upgrade_hundred_thousand_face_templates.fcgi",
+            FaceLicense.Pro20k => "upgrade_twenty_thousand_face_templates.fcgi",
             _ => throw new ArgumentOutOfRangeException(nameof(license)),
         };
 

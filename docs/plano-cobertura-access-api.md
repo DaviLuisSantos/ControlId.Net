@@ -157,7 +157,7 @@ tenta adivinhar a versão do firmware.
 
 ---
 
-## Onda 3 — Específicos de produto (P3, 53 endpoints)
+## Onda 3 — Específicos de produto (P3, 53 endpoints) (concluída em 2026-11-20)
 
 Cada grupo pode virar um PR. A ordem sugerida vai de mais clientes afetados para menos.
 
@@ -178,7 +178,7 @@ Cada grupo pode virar um PR. A ordem sugerida vai de mais clientes afetados para
 
 ---
 
-## Onda 4 — Sensíveis, com opt-in (P3, 11 endpoints)
+## Onda 4 — Sensíveis, com opt-in (P3, 11 endpoints) (concluída em 2026-11-20, sem teste em hardware)
 
 Um erro aqui pode deixar leitores ou equipamentos inutilizáveis em campo. A proposta é um cliente separado, por exemplo
 `AccessClient.Provisioning` ou um `IAccessProvisioningClient` no DI, que só existe quando o integrador pede.
@@ -197,7 +197,7 @@ Um erro aqui pode deixar leitores ou equipamentos inutilizáveis em campo. A pro
 | `dual_sided_query` | rota entre dois equipamentos, assinada com o segredo compartilhado; a doc diz que não é para integrações |
 | `tests.fcgi` | coleta de testes de fábrica, só na coleção Postman, sem página na documentação |
 
-Os dois continuam acessíveis por `SendRawAsync`. Registrar a decisão num ADR curto, junto com a Onda 4.
+Os dois continuam acessíveis por `SendRawAsync`. Decisão registrada na ADR 0024, junto com a Onda 4: o cliente ficou `IAccessProvisioningClient`, criado por `client.CreateProvisioningClient()` sobre a mesma sessão.
 
 ---
 
