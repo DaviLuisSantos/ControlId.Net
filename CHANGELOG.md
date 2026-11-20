@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+## [0.10.0-alpha.1] - 2026-11-20
+
+Cobertura completa da [documentação da Access API](docs/controlid-api/README.md): os 180 endpoints documentados têm método tipado, e um teste falha quando surge um novo sem cobertura. Tem mudanças que quebram: veja **Changed**.
+
 ### Fixed
 - **DNS ignorado pelo equipamento**: `DnsSettings` serializava `dns_primary` e `dns_secondary`; os nomes que o equipamento lê são `primary_dns` e `secondary_dns`.
 
@@ -286,7 +290,8 @@ Cobertura completa da documentação pública da API de acesso (veja [docs/COBER
 - `RepClient.GetAfdFileFromNsrAsync`/`GetAfdFileFromDateAsync`/`GetAfdFileAsync` devolvem o AFD interpretado.
 - `RepClient` (REP iDClass): about, informações do sistema, data/hora, usuários (PIS/CPF) e download de AFD (incluindo modo Portaria 671).
 
-[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.9.0-alpha.1...HEAD
+[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.10.0-alpha.1...HEAD
+[0.10.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.9.0-alpha.1...v0.10.0-alpha.1
 [0.9.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.8.0-alpha.1...v0.9.0-alpha.1
 [0.8.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.7.0-alpha.1...v0.8.0-alpha.1
 [0.7.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.6.0-alpha.1...v0.7.0-alpha.1
