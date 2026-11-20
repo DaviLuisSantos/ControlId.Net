@@ -1,1 +1,14 @@
 #nullable enable
+const ControlId.AspNetCore.ControlIdCallbackOptions.DefaultMaxRequestBodySize = 4194304 -> long
+ControlId.AspNetCore.ControlIdCallbackOptions
+ControlId.AspNetCore.ControlIdCallbackOptions.ControlIdCallbackOptions() -> void
+ControlId.AspNetCore.ControlIdCallbackOptions.IsKnownDevice.get -> System.Func<long, bool>?
+ControlId.AspNetCore.ControlIdCallbackOptions.IsKnownDevice.set -> void
+ControlId.AspNetCore.ControlIdCallbackOptions.MaxRequestBodySize.get -> long
+ControlId.AspNetCore.ControlIdCallbackOptions.MaxRequestBodySize.set -> void
+ControlId.AspNetCore.ControlIdTokenOptions.AllowTokenFallback.get -> bool
+ControlId.AspNetCore.ControlIdTokenOptions.AllowTokenFallback.set -> void
+ControlId.AspNetCore.ControlIdTokenOptions.PreviousToken.get -> string?
+ControlId.AspNetCore.ControlIdTokenOptions.PreviousToken.set -> void
+static ControlId.AspNetCore.ControlIdEndpointConventionBuilderExtensions.AllowAnonymousControlIdCallbacks<TBuilder>(this TBuilder builder) -> TBuilder
+static Microsoft.Extensions.DependencyInjection.ControlIdServiceCollectionExtensions.AddControlIdPush(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<ControlId.Access.Push.PushServerOptions!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

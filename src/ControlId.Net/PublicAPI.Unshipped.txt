@@ -1,1 +1,46 @@
 #nullable enable
+*REMOVED*ControlId.Rep.RepClient.RepClient(string! baseAddress, string! login = "admin", string! password = "admin", ControlId.Rep.RepMode mode = ControlId.Rep.RepMode.Portaria671) -> void
+ControlId.Access.AccessClient.ClearConfigurationFieldCache() -> void
+ControlId.Access.AccessClient.ResetCircuit() -> void
+ControlId.Access.AccessEventType.Unknown = 0 -> ControlId.Access.AccessEventType
+ControlId.Access.AlarmCause.Unknown = -1 -> ControlId.Access.AlarmCause
+ControlId.Access.DeviceContactTracker.DeviceContactTracker(int maxDevices) -> void
+ControlId.Access.FaceImageErrorCode.Unknown = 0 -> ControlId.Access.FaceImageErrorCode
+ControlId.Access.Push.InMemoryPushCommandStore.RemoveExpiredAsync(System.DateTimeOffset pendingCreatedBefore, System.DateTimeOffset inFlightDeliveredBefore, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<ControlId.Access.Push.PushEnvelope!>!>!
+ControlId.Access.Push.IPushCommandStoreMaintenance
+ControlId.Access.Push.IPushCommandStoreMaintenance.RemoveExpiredAsync(System.DateTimeOffset pendingCreatedBefore, System.DateTimeOffset inFlightDeliveredBefore, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<ControlId.Access.Push.PushEnvelope!>!>!
+ControlId.Access.Push.PushQueueFullException
+ControlId.Access.Push.PushQueueFullException.DeviceId.get -> long
+ControlId.Access.Push.PushQueueFullException.Limit.get -> int
+ControlId.Access.Push.PushQueueFullException.PushQueueFullException(long deviceId, int limit) -> void
+ControlId.Access.Push.PushServer.PurgeExpiredAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+ControlId.Access.Push.PushServer.PushServer(ControlId.Access.Push.IPushCommandStore! store, ControlId.Access.Push.PushServerOptions! options, ControlId.Access.Push.IPushResultHandler? unclaimedResultHandler = null) -> void
+ControlId.Access.Push.PushServerOptions
+ControlId.Access.Push.PushServerOptions.CommandTimeout.get -> System.TimeSpan?
+ControlId.Access.Push.PushServerOptions.CommandTimeout.set -> void
+ControlId.Access.Push.PushServerOptions.CommandTtl.get -> System.TimeSpan?
+ControlId.Access.Push.PushServerOptions.CommandTtl.set -> void
+ControlId.Access.Push.PushServerOptions.InFlightTimeout.get -> System.TimeSpan?
+ControlId.Access.Push.PushServerOptions.InFlightTimeout.set -> void
+ControlId.Access.Push.PushServerOptions.LoggerFactory.get -> Microsoft.Extensions.Logging.ILoggerFactory?
+ControlId.Access.Push.PushServerOptions.LoggerFactory.set -> void
+ControlId.Access.Push.PushServerOptions.MaxPendingPerDevice.get -> int
+ControlId.Access.Push.PushServerOptions.MaxPendingPerDevice.set -> void
+ControlId.Access.Push.PushServerOptions.MaxTrackedDevices.get -> int
+ControlId.Access.Push.PushServerOptions.MaxTrackedDevices.set -> void
+ControlId.Access.Push.PushServerOptions.PurgeInterval.get -> System.TimeSpan?
+ControlId.Access.Push.PushServerOptions.PurgeInterval.set -> void
+ControlId.Access.Push.PushServerOptions.PushServerOptions() -> void
+ControlId.Access.Push.PushServerOptions.RequireUuid.get -> bool
+ControlId.Access.Push.PushServerOptions.RequireUuid.set -> void
+ControlId.Access.Push.PushServerOptions.ResultHandlerTimeout.get -> System.TimeSpan
+ControlId.Access.Push.PushServerOptions.ResultHandlerTimeout.set -> void
+ControlId.Access.VpnStatus.Unknown = -1 -> ControlId.Access.VpnStatus
+ControlId.IControlIdClientDiagnostics
+ControlId.IControlIdClientDiagnostics.CircuitState.get -> ControlId.ControlIdCircuitState
+ControlId.IControlIdClientDiagnostics.ResetCircuit() -> void
+ControlId.IControlIdClientDiagnostics.Session.get -> string?
+ControlId.Rep.RepAbout.ApiRevisionText.get -> string!
+ControlId.Rep.RepClient.RepClient(string! baseAddress, string! login = "admin", string! password = "admin", ControlId.Rep.RepMode mode = ControlId.Rep.RepMode.Portaria671, string? serverCertificateSha256 = null) -> void
+ControlId.Rep.RepClient.ResetCircuit() -> void
+ControlId.Rep.RepClient.Session.get -> string?

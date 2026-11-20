@@ -156,3 +156,85 @@ Prioridade: **P1** corrigir antes da 0.8.0 estável · **P2** próxima iteraçã
 6. Serialização com source generator (fase 2 do ADR 0015) para desbloquear Native AOT.
 7. Fatiamento de `IAccessClient` e base comum `AccessClient`/`RepClient` na próxima major.
 8. `global.json`, gerenciamento central de pacotes e limites de cobertura/mutação na CI.
+
+---
+
+## Situação (2026-11-19)
+
+Correções feitas na branch `auditoria-2026-11`, pelo plano `.claude/plans/2026-11-19-auditoria.md`, em quatro ondas:
+`a623d2f` (onda 1: T0, T1, T3, T6), `8eb80fa` (onda 2: T2, T4, T5), `66c4a7a` (onda 3: T7, T8, T9) e a onda 4 (T10: API
+pública, ADRs 0021–0023 e documentação). As mudanças que quebram estão no [CHANGELOG](../CHANGELOG.md), com a migração.
+
+### P1
+
+| Achado | Situação |
+| --- | --- |
+| 1. Callbacks abertos por padrão | Resolvido: T3 (`a623d2f`), fechados por padrão com `AllowAnonymousControlIdCallbacks()` explícito; samples na T7 e ponta a ponta na T9 (`66c4a7a`); [ADR 0021](adr/0021-callbacks-fechados-por-padrao.md) |
+| 2. Falha do `IPushResultHandler` perde o próximo comando | Resolvido: T1 (`a623d2f`), handler isolado com prazo próprio e log 1101; ponta a ponta na T9 |
+| 3. Memória ilimitada por `deviceId`; fila sem limite nem validade | Resolvido: T1 (`a623d2f`: 256 gates fixos, `MaxTrackedDevices`, `MaxPendingPerDevice`, `CommandTtl`), T3 (`a623d2f`: limite de corpo e `IsKnownDevice`), T2 (`8eb80fa`: varredura no EF) |
+| 4. `SendAsync` sem prazo; `InFlight` eterno | Resolvido: T1 (`a623d2f`: `CommandTimeout`, `InFlightTimeout`, `PurgeExpiredAsync`), T2 e T4 (`8eb80fa`: varredura no EF e serviço de fundo) |
+| 5. `new RepClient(string)` desliga a validação TLS | Resolvido: T6 (`a623d2f`: `ControlIdRepOptions.AcceptAnyServerCertificate = false`) e T5 (`8eb80fa`: atalho com `serverCertificateSha256`, log 1013); [ADR 0022](adr/0022-tls-do-rep-validado.md) |
+
+### P2
+
+| Achado | Situação |
+| --- | --- |
+| 6. Online autentica um equipamento e entrega outro | Resolvido: T3 (`a623d2f`), `device_id` divergente → 403 |
+| 7. Corpo antes da autorização, sem limite e sem rate limiting | Resolvido: T3 (`a623d2f`), autorização antes do corpo com token único e limite de 4 MiB. O rate limiting fica com o ASP.NET Core (`RequireRateLimiting`), documentado no guia e aplicado no sample (T7, `66c4a7a`) |
+| 8. Handlers do Monitor sem isolamento | Resolvido: T3 (`a623d2f`) |
+| 9. Token (ordem, queda no global, rotação) | Resolvido: T3 (`a623d2f`): `Bearer` conferido antes de `DeviceToken`, `AllowTokenFallback = false`, `PreviousToken` |
+| 10. Cancelamento não atômico | Resolvido: T1 (`a623d2f`) |
+| 11. EF sem claim atômico | Resolvido: T2 (`8eb80fa`), sem mudança de esquema; [ADR 0023](adr/0023-limites-da-fila-de-push.md). `SendAsync` entre instâncias continua fora do escopo (ver abaixo) |
+| 12. Configuração inválida só no primeiro uso | Resolvido: T6 (`a623d2f`), validação na partida e seção vazia lança no registro; `Map*` sem `Add*` lança (T3) |
+| 13. Health check `Healthy` com zero equipamentos | Resolvido: T6 (`a623d2f`), `RequireDevices = true` e check `:none` |
+| 14. Health check sem cache e sem prazo agregado; `Degraded` → 200; sonda dobrada | Resolvido: T6 (`a623d2f`), `CacheDuration` compartilhado e `TotalTimeout`. `Degraded` → 503 é configuração da aplicação (`ResultStatusCodes`), mostrada no guia e no sample (T7) |
+| 15. `RepAbout.ApiRevision` lança | Resolvido: T5 (`8eb80fa`), `-1` e `ApiRevisionText` |
+| 16. Enums sem `Unknown` | Resolvido: T5 (`8eb80fa`) |
+| 17. Leitura de configuração tolerante demais | Em parte: T5 (`8eb80fa`), cache limpo a cada login e por `ClearConfigurationFieldCache()`, campo retirado informado pelo log 1010. Devolver os campos ausentes no resultado e distinguir valor fora do formato de ausente não entraram no plano (mudariam o tipo de retorno) |
+| 18. `LogoutAsync` lança `HttpRequestException` | Resolvido: T5 (`8eb80fa`), log 1012 |
+| 19. Retry, relogin e circuito duplicados no transporte | Resolvido: T8 (`66c4a7a`), caminho único com teste de paridade |
+| 20. Operações compostas não atômicas | Em parte: T5 (`8eb80fa`), `SetAdministratorAsync` sem apagar antes (a confirmar em hardware); `ConfigureOnlineModeAsync` só ganhou a documentação da aplicação parcial |
+| 21. Flags com três codificações | Fora do escopo: exige teste em equipamento real |
+| 22. Fachada grande | Em parte: T5 (`8eb80fa`), `IControlIdClientDiagnostics` com `Session`, `CircuitState` e `ResetCircuit()`. O fatiamento de `IAccessClient` e a base comum dos clientes ficam para o plano rumo à 1.0 |
+
+### P3
+
+| Achado | Situação |
+| --- | --- |
+| Circuit breaker sem `Reset()`, sonda sem prazo, log sob o lock | Resolvido: T5 (`8eb80fa`) |
+| Pareamento por `uuid` tolerante | Resolvido: T1 (`a623d2f`), `RequireUuid` (desligado por padrão) |
+| `GET /push` sem `Cache-Control: no-store` | Resolvido: T3 (`a623d2f`), também em `/result` |
+| Handler de resultado scoped capturado pelo singleton | Resolvido: T4 (`8eb80fa`), um escopo por resultado |
+| Sample Dashboard | Resolvido: T7 (`66c4a7a`) |
+| Telemetria só de saída | Resolvido: T3 (`a623d2f`), métricas `controlid.server.callback.requests` e `controlid.server.callback.handler.duration` (os spans de entrada vêm da instrumentação do ASP.NET Core) |
+| OpenAPI sem metadado | Fora do escopo |
+| CPF/CNPJ como número no REP | Fora do escopo: exige equipamento real |
+
+### Build, CI e testes
+
+| Achado | Situação |
+| --- | --- |
+| NU1900 vira erro sem rede | Resolvido: T0 (`a623d2f`) |
+| Sem `global.json` e sem `Directory.Packages.props` | Resolvido: T0 (`a623d2f`), também `nuget.config` só com o nuget.org. `packages.lock.json` não entrou no plano |
+| Avisos como erro só na CI | Mantido: a CI continua com `-warnaserror`, e o CONTRIBUTING pede o mesmo comando localmente; `TreatWarningsAsErrors` em Release não entrou no plano |
+| Cobertura sem mínimo; Stryker com `break: 0` | Resolvido: T0 (`a623d2f`), mínimo de 89% de linhas e `break: 60` |
+| Esperas por `Task.Delay` nos testes | Fora do escopo (reescrita dos testes antigos); os testes novos usam relógio falso ou ganchos internos |
+| Testes que faltavam | Resolvidos: handler que lança, flood de `deviceId` e TTL (T1), duas instâncias EF no mesmo banco (T2), divergência de `device_id` (T3), sonda abandonada (T5), zero equipamentos (T6), ponta a ponta (T9) |
+
+### Adições sugeridas
+
+| Sugestão | Situação |
+| --- | --- |
+| 1. `PushServerOptions`, varredura e métricas de fila | Feito (T1, T4), com a métrica `controlid.push.commands` por desfecho; medidores de profundidade e idade da fila não entraram |
+| 2. Entrega de resultados por `Channel` (outbox) | Não entrou no plano |
+| 3. Callbacks fail-closed, rate limiting e limite de corpo | Feito (T3); rate limiting pelo ASP.NET Core, documentado |
+| 4. `ValidateOnStart` e checagem de serviços no `Map*` | Feito (T6, T3) |
+| 5. `IControlIdClientDiagnostics` e telemetria de entrada | Feito (T5, T3) |
+| 6. Serialização com source generator (AOT) | Fora do escopo |
+| 7. Fatiamento de `IAccessClient` | Fora do escopo (plano 1.0) |
+| 8. `global.json`, gerenciamento central de pacotes e limites na CI | Feito (T0) |
+
+Fora do escopo, pela seção do plano: fatiar `IAccessClient` e criar a base comum `AccessClient`/`RepClient` (plano 1.0);
+unificar flags `0/1`, ler de volta o token gravado e CPF/CNPJ numérico (exigem equipamento real); tarefas do `SendAsync`
+esperando entre instâncias; metadados de OpenAPI; serialização com source generator; reescrita dos testes antigos que
+usam `Task.Delay`.

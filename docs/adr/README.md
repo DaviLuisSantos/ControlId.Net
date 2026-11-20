@@ -1,7 +1,7 @@
 # Decisões de arquitetura
 
 Cada arquivo registra uma decisão: o contexto, o que foi decidido e as consequências. Uma decisão não é apagada quando
-muda; ela ganha o status "Substituída" e aponta para a nova.
+muda; ela ganha o status "Substituída" (ou "Complementada", quando a nova só acrescenta) e aponta para a nova.
 
 | # | Decisão | Status |
 | --- | --- | --- |
@@ -9,7 +9,7 @@ muda; ela ganha o status "Substituída" e aponta para a nova.
 | [0002](0002-actions-so-na-publicacao.md) | GitHub Actions só ao lançar versão | Substituída pela 0009 |
 | [0003](0003-sem-strong-naming.md) | Sem strong naming | Aceita |
 | [0004](0004-confirmacao-para-operacoes-destrutivas.md) | Confirmação explícita para apagar dados sem volta | Aceita |
-| [0005](0005-certificado-fixado-opcional.md) | Certificado fixado como opção, sem mudar o padrão | Aceita |
+| [0005](0005-certificado-fixado-opcional.md) | Certificado fixado como opção, sem mudar o padrão | Aceita; complementada pela 0022 |
 | [0006](0006-governanca-da-api-publica.md) | Validação de pacote e registro da API pública | Aceita |
 | [0007](0007-configuracao-tolerante-a-parametros-ausentes.md) | Leitura de configuração tolerante a parâmetros que o modelo não tem | Aceita |
 | [0008](0008-exclusao-em-lotes.md) | Exclusão em lotes, encerrando no lote incompleto | Aceita |
@@ -23,5 +23,8 @@ muda; ela ganha o status "Substituída" e aponta para a nova.
 | [0016](0016-logs-por-options.md) | Logs pelo ILoggerFactory, escolhido nas options ou no container | Aceita |
 | [0017](0017-circuit-breaker-proprio.md) | Circuit breaker próprio por equipamento | Aceita |
 | [0018](0018-health-check-por-equipamento.md) | Health check por equipamento, com último contato | Aceita |
-| [0019](0019-token-bearer-nos-callbacks.md) | Token Bearer nas rotas de callback | Aceita |
-| [0020](0020-fila-de-push-duravel.md) | Fila de Push durável (`IPushCommandStore`) | Aceita |
+| [0019](0019-token-bearer-nos-callbacks.md) | Token Bearer nas rotas de callback | Aceita; complementada pela 0021 |
+| [0020](0020-fila-de-push-duravel.md) | Fila de Push durável (`IPushCommandStore`) | Aceita; complementada pela 0023 |
+| [0021](0021-callbacks-fechados-por-padrao.md) | Callbacks fechados por padrão | Aceita |
+| [0022](0022-tls-do-rep-validado.md) | TLS do REP validado por padrão | Aceita |
+| [0023](0023-limites-da-fila-de-push.md) | Limites da fila de Push: prazos, validade, tamanho e claim atômico | Aceita |

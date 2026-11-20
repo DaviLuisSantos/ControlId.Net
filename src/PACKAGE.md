@@ -12,7 +12,8 @@ Portaria 671/2021. [Guia completo em português](https://github.com/DaviLuisSant
 | --- | --- |
 | `ControlId.Net` | `AccessClient`, `RepClient`, AFD parser, Push and Monitor models |
 | `ControlId.Net.DependencyInjection` | `AddControlIdAccess` / `AddControlIdRep`, many devices from `appsettings.json` |
-| `ControlId.Net.AspNetCore` | Push, Monitor and Online mode endpoints for ASP.NET Core (net8.0+) |
+| `ControlId.Net.AspNetCore` | Push, Monitor and Online mode endpoints for ASP.NET Core (net8.0+), closed by default (Bearer token) |
+| `ControlId.Net.Push.EntityFrameworkCore` | Durable Push command queue on EF Core (net10.0) |
 
 ## Quick start
 
@@ -31,7 +32,10 @@ var logs = await device.GetAccessLogsAsync(afterId: 0, limit: 100);
 using ControlId.Rep;
 using ControlId.Rep.Afd;
 
-using var rep = new RepClient("https://192.168.0.130", mode: RepMode.Portaria671);
+// TLS is validated: pin the fingerprint of the self-signed certificate
+// (read it once with ControlIdCertificates.GetServerCertificateSha256Async).
+using var rep = new RepClient("https://192.168.0.130", mode: RepMode.Portaria671,
+    serverCertificateSha256: "AB:CD:EF:...");
 
 AfdFile afd = await rep.GetAfdFileFromNsrAsync(1);
 foreach (var punch in afd.Punches)
@@ -40,12 +44,19 @@ foreach (var punch in afd.Punches)
 }
 ```
 
+```csharp
+// ASP.NET Core: callbacks answer 401 without a token; write the same token to the device with ConfigureCallbackSecurityAsync.
+builder.Services.AddControlIdMonitor<AccessLogHandler>();
+app.MapControlIdMonitor().RequireControlIdToken(callbackToken);
+```
+
 ## Links
 
 - [Project page, architecture and roadmap](https://github.com/DaviLuisSantos/ControlId.Net)
 - [Usage guide (Portuguese)](https://github.com/DaviLuisSantos/ControlId.Net/blob/main/docs/guia.md)
 - [API coverage matrix](https://github.com/DaviLuisSantos/ControlId.Net/blob/main/docs/COBERTURA.md)
-- [Changelog](https://github.com/DaviLuisSantos/ControlId.Net/blob/main/CHANGELOG.md)
+- [Changelog, including breaking changes and how to migrate](https://github.com/DaviLuisSantos/ControlId.Net/blob/main/CHANGELOG.md)
+- [Security notes](https://github.com/DaviLuisSantos/ControlId.Net/blob/main/SECURITY.md)
 
 Independent project, not affiliated with Control iD. "Control iD", "iDAccess", "iDFlex", "iDFace" and "iDClass" are
 trademarks of Control iD. Licensed under MIT.

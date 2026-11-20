@@ -8,8 +8,9 @@ Obrigado pelo interesse. O escopo do pacote é: **o que o equipamento Control iD
 - SDK do .NET 10 (compila todos os alvos) e, no Windows, o .NET Framework 4.8 para os testes `net48`.
 - `dotnet build` e `dotnet test` na raiz. Em Linux ou macOS: `dotnet test -f net8.0` (e `-f net10.0`).
 
-A CI roda em todo pull request: build sem avisos, testes em `net8.0`, `net10.0` e `net48` e validação da API pública
-([ADR 0009](docs/adr/0009-ci-em-push-e-pull-request.md)). Rode `dotnet test` antes de enviar para não depender dela.
+A CI roda em todo pull request: build sem avisos, testes em `net8.0`, `net10.0` e `net48`, validação da API pública e
+cobertura mínima de linhas ([ADR 0009](docs/adr/0009-ci-em-push-e-pull-request.md)). Rode `dotnet test` antes de enviar
+para não depender dela.
 
 ## O que um PR precisa ter
 
@@ -23,7 +24,10 @@ A CI roda em todo pull request: build sem avisos, testes em `net8.0`, `net10.0` 
   versão publicada, o `dotnet pack` falha; quebras intencionais vão em `CompatibilitySuppressions.xml`, com o motivo.
 - **Documentação**: XML em português nos membros públicos; o `docs/guia.md` e o `docs/COBERTURA.md` quando mudar o que o pacote
   cobre.
-- **Nenhum aviso novo** no build (`dotnet build --no-incremental`).
+- **Dependências**: as versões dos pacotes ficam só no `Directory.Packages.props` (gerenciamento central); os `.csproj`
+  têm `<PackageReference Include="..." />` sem `Version`. Para trocar uma versão, altere o `Directory.Packages.props`. O
+  SDK é fixado no `global.json`, e o `nuget.config` usa só o nuget.org.
+- **Nenhum aviso** no build: a CI usa `dotnet build -c Release -warnaserror --no-incremental`; rode o mesmo antes de enviar.
 
 ## Testes em equipamento real
 
