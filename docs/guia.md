@@ -181,6 +181,10 @@ var monitor = await device.GetConfigurationAsync("monitor", new[] { "hostname", 
 await device.SetConfigurationAsync(new { general = new { beep_enabled = "1" } }); // valores sempre em texto
 ```
 
+Um parâmetro que o modelo não tem fica `null` na leitura tipada: o cliente o tira da lista, repete a leitura e lembra
+dele para não pedir de novo (log 1010, com o nome `seção.campo`). Essa lista é zerada a cada novo login (o equipamento
+reiniciou ou foi atualizado) e com `device.ClearConfigurationFieldCache()`.
+
 ### Qualquer objeto, tipado
 
 Todos os objetos da documentação têm modelo e funcionam com o CRUD genérico:
@@ -239,8 +243,10 @@ using ControlId.AspNetCore;
 builder.Services.AddControlIdPush();                      // PushServer singleton
 builder.Services.AddControlIdMonitor<MeuHandler>();       // ou AddControlIdMonitor((notificacao, ct) => ...)
 
-app.MapControlIdPush();                                   // GET /push e POST /result
-app.MapControlIdMonitor();                                // POST /api/notifications/{endpoint}
+var token = builder.Configuration["ControlId:CallbackToken"]!;   // o mesmo gravado no equipamento
+
+app.MapControlIdPush().RequireControlIdToken(token);      // GET /push e POST /result
+app.MapControlIdMonitor().RequireControlIdToken(token);   // POST /api/notifications/{endpoint}
 
 public sealed class MeuHandler : IMonitorNotificationHandler   // scoped: pode receber DbContext etc.
 {
@@ -259,8 +265,12 @@ public sealed class MeuHandler : IMonitorNotificationHandler   // scoped: pode r
 }
 ```
 
-Os dois `Map...` devolvem o `RouteGroupBuilder`, então dá para encadear `RequireHost`, filtros etc.
-O equipamento espera a resposta HTTP do Monitor: mantenha o handler curto ou jogue o trabalho numa fila.
+As rotas são **fechadas por padrão**: sem `RequireControlIdToken`, respondem 401. O token vai para o equipamento com
+`ConfigureCallbackSecurityAsync`; detalhes, rotação e limites em [Callbacks: token, limites e rate limiting](#callbacks-token-limites-e-rate-limiting).
+Os dois `Map...` devolvem o `RouteGroupBuilder`, então dá para encadear `RequireRateLimiting`, `RequireHost`, filtros etc.
+`MapControlIdPush` sem `AddControlIdPush()` lança `InvalidOperationException` já no mapeamento.
+O equipamento espera a resposta HTTP do Monitor: mantenha o handler curto ou jogue o trabalho numa fila. Vários
+handlers rodam todos, mesmo que um lance (a resposta é 500 no fim, e a falha vira o log 2008).
 
 Em qualquer lugar da aplicação, comande o equipamento pelo `PushServer` injetado. Cada chamada espera o
 equipamento buscar o comando e responder:
@@ -280,12 +290,51 @@ var resultados = await push.Device(deviceId).SendBatchAsync(new[]
 ```
 
 Qualquer endpoint da API pode ir via Push com `new PushCommand("endpoint", body)`.
-Sempre passe um `CancellationToken` com prazo: se o equipamento estiver offline, o comando fica na fila até ele aparecer.
+Se o equipamento estiver offline, o comando fica na fila até ele aparecer, mas a tarefa não espera para sempre: sem
+resposta em 5 minutos (`CommandTimeout`), o envio sai da fila e a chamada falha com `TimeoutException`. Um prazo menor
+no `CancellationToken` vale também; o que vencer primeiro.
 `push.GetLastSeen(deviceId)` informa a última consulta de cada equipamento.
 
-Sem ASP.NET Core, use `MonitorNotifications.Parse(rota, corpo)`, `PushServer.HandlePush(deviceId, uuid)` e
-`PushServer.HandleResult(deviceId, uuid, corpo)` nas rotas do seu servidor HTTP.
+Sem ASP.NET Core, use `MonitorNotifications.Parse(rota, corpo)`, `PushServer.HandlePushAsync(deviceId, uuid)` e
+`PushServer.HandleResultAsync(deviceId, uuid, corpo)` nas rotas do seu servidor HTTP, e proteja-as você mesmo.
 O sample `samples/ControlId.Net.Server` tem um servidor completo.
+
+### Prazos e limites do Push
+
+`PushServerOptions` define os prazos e limites da fila ([ADR 0023](adr/0023-limites-da-fila-de-push.md)):
+
+```csharp
+builder.Services.AddControlIdPush(o =>
+{
+    o.CommandTimeout = TimeSpan.FromSeconds(30);   // SendAsync sem resposta: TimeoutException e sai da fila (padrão 5 min)
+    o.CommandTtl = TimeSpan.FromHours(1);          // pendente mais velho não é entregue (padrão 24 h)
+});
+
+// Sem ASP.NET Core:
+var push = new PushServer(store, new PushServerOptions { CommandTimeout = TimeSpan.FromSeconds(30), LoggerFactory = loggerFactory });
+```
+
+| Opção | Padrão | O que faz |
+| --- | --- | --- |
+| `CommandTimeout` | 5 min | Prazo de `SendAsync`/`SendBatchAsync`, contado do enfileiramento. Não vale para `EnqueueAsync` |
+| `CommandTtl` | 24 h | Pendente mais velho que isso não é entregue: sai da fila e falha como expirado (log 1102) |
+| `InFlightTimeout` | 10 min | Envio entregue sem resultado; usado pela varredura |
+| `MaxPendingPerDevice` | 1.000 | Fila máxima por equipamento; acima, `PushQueueFullException` (`0` desliga) |
+| `MaxTrackedDevices` | 10.000 | Equipamentos acompanhados em `GetLastSeen` (log 1104 ao atingir) |
+| `RequireUuid` | `false` | `/push` e `/result` sem `uuid` são recusados: um resultado atrasado ou repetido não completa outro envio |
+| `ResultHandlerTimeout` | 30 s | Prazo de cada chamada ao `IPushResultHandler` |
+| `PurgeInterval` | 1 min | Intervalo da varredura automática do pacote ASP.NET Core |
+
+- `null` desliga os prazos opcionais. Os valores são lidos uma vez, quando o `PushServer` é criado; valor inválido lança
+  na criação, e com `AddControlIdPush` o host nem sobe.
+- A **varredura** (`PurgeExpiredAsync`) remove pendentes vencidos e envios sem resultado há mais de `InFlightTimeout`,
+  falhando a tarefa que espera ou chamando o `IPushResultHandler` com `Error`. O `AddControlIdPush` registra um serviço de
+  fundo que varre a cada `PurgeInterval`. Sem ASP.NET Core, chame você mesmo, por exemplo num timer:
+  `int removidos = await push.PurgeExpiredAsync(ct);` (store próprio precisa implementar `IPushCommandStoreMaintenance`).
+- O `IPushResultHandler` nunca derruba `/push` nem `/result`: exceção ou prazo vencido vira o log 1101, e o próximo
+  comando é entregue normalmente.
+- Métrica `controlid.push.commands`, com a tag `controlid.push.outcome` (`enqueued`, `delivered`, `completed`, `orphaned`,
+  `expired`, `cancelled`, `rejected`, `timeout`).
 
 ### Modo online (Pro e Enterprise)
 
@@ -311,7 +360,7 @@ No servidor (pacote `ControlId.Net.AspNetCore`):
 
 ```csharp
 builder.Services.AddControlIdOnline<RegrasDeAcesso>();
-app.MapControlIdOnline("/api");   // o mesmo caminho do ServerAddress
+app.MapControlIdOnline("/api").RequireControlIdToken(token);   // o mesmo caminho do ServerAddress
 
 public sealed class RegrasDeAcesso(MeuDbContext db) : IOnlineAccessHandler
 {
@@ -339,6 +388,7 @@ public sealed class RegrasDeAcesso(MeuDbContext db) : IOnlineAccessHandler
 ```
 
 - O equipamento espera a resposta por no máximo `RequestTimeout` (até 5 s). Exceção ou demora contam como falha; depois de `MaxRequestAttempts` falhas ele entra em **contingência** e decide sozinho com os dados locais, até o servidor voltar (`device_is_alive`, já respondido pelas rotas).
+- Em `*_create.fcgi` e `new_rex_log.fcgi`, um `device_id` na query diferente do corpo é recusado com 403 (log 2007).
 - `client.AuthorizeRemotelyAsync(...)` libera um acesso em tempo real a partir do servidor (`remote_user_authorization`).
 - Sem ASP.NET Core: `OnlineEvents.Parse(rota, campos, corpo)` interpreta a requisição, `authorization.ToResponseJson()` gera a resposta e `OnlineEvents.ParseEnroll(rota, json)` lê os resultados de cadastro remoto.
 
@@ -347,8 +397,10 @@ public sealed class RegrasDeAcesso(MeuDbContext db) : IOnlineAccessHandler
 ```csharp
 using ControlId.Rep;
 
-// O REP usa HTTPS com certificado autoassinado; esse construtor já aceita o certificado.
-using var rep = new RepClient("https://192.168.0.130", mode: RepMode.Portaria671);
+// O REP usa HTTPS com certificado autoassinado, e o cliente valida o TLS: informe a impressão digital SHA-256 do
+// certificado (veja "Certificado do REP" abaixo). Sem ela, o certificado de fábrica é recusado.
+using var rep = new RepClient("https://192.168.0.130", mode: RepMode.Portaria671,
+    serverCertificateSha256: "AB:CD:EF:...");
 
 var info = await rep.GetSystemInformationAsync();
 string afdTexto = await rep.GetAfdFromNsrAsync(info.LastNsr - 100);   // texto cru
@@ -400,6 +452,7 @@ await rep.SetCoilPaperAsync(300);                            // bobina nova
 
 RepAbout sobre = await rep.GetAboutAsync();
 Console.WriteLine(sobre.ApiRevision);                        // 104: revisão da API, como a documentação a numera
+Console.WriteLine(sobre.ApiRevisionText);                    // o mesmo em texto; revisões com A–F (ex.: "10A") dão ApiRevision -1
 ```
 
 ### REP iDClass Facial
@@ -419,23 +472,32 @@ As APIs faciais vão sempre com `mode=671`, que a documentação exige, mesmo nu
 
 ### Certificado do REP
 
-O construtor acima aceita qualquer certificado, porque o iDClass sai de fábrica com um autoassinado. Para não aceitar um
-certificado falso na rede, fixe a impressão digital SHA-256 do certificado do seu REP: com ela, só esse certificado passa.
+O iDClass sai de fábrica com um certificado autoassinado, que a validação padrão do .NET recusa. O `RepClient` valida o
+certificado ([ADR 0022](adr/0022-tls-do-rep-validado.md)): fixe a impressão digital SHA-256 do certificado do seu REP, e
+só esse certificado passa, mesmo autoassinado.
 
 ```csharp
-// Uma vez, numa rede confiável (confira o valor no navegador):
+// Uma vez, numa rede confiável (confira o valor no navegador ou na tela do equipamento):
 string sha256 = await ControlIdCertificates.GetServerCertificateSha256Async(new Uri("https://192.168.0.130"));
+// Guarde o valor na configuração. O sample faz isso com: dotnet run --project samples/ControlId.Net.Sample -- cert https://192.168.0.130
 
-using var rep = new RepClient(new ControlIdDeviceOptions
+using var rep = new RepClient("https://192.168.0.130", serverCertificateSha256: sha256);   // aceita "AB:CD:...", com espaços ou sem separadores
+
+// Ou, com todas as opções:
+using var rep2 = new RepClient(new ControlIdDeviceOptions
 {
     BaseAddress = new Uri("https://192.168.0.130"),
-    ServerCertificateSha256 = sha256, // aceita "AB:CD:...", com espaços ou sem separadores
+    ServerCertificateSha256 = sha256,
 });
 ```
 
+- Sem impressão digital, a chamada falha com `ControlIdException`, e a mensagem explica como obter o valor.
 - Com `ServerCertificateSha256`, `AcceptAnyServerCertificate` é ignorado. Se o REP trocar de certificado, as chamadas
   falham até a configuração ser atualizada.
 - No `appsettings.json` (pacote de DI): `"ponto": { "BaseAddress": "https://...", "ServerCertificateSha256": "AB:CD:..." }`.
+- Aceitar qualquer certificado (`AcceptAnyServerCertificate = true`) ainda é possível, mas expõe login e senha a quem se
+  passar pelo equipamento na rede. O cliente registra o log 1013 (Warning) ao ser criado assim. Até a 0.8.0-alpha.1, o
+  atalho `new RepClient(url, ...)` e o `AddControlIdRep` faziam isso sozinhos.
 - Vale também para equipamentos de acesso com HTTPS ligado.
 
 ### AFD tipado
@@ -479,7 +541,11 @@ builder.Services.AddControlIdAccess(o =>
     o.Password = builder.Configuration["ControlId:Senha"]!;
 });
 
-builder.Services.AddControlIdRep(o => o.BaseAddress = new Uri("https://192.168.0.130")); // aceita o certificado autoassinado
+builder.Services.AddControlIdRep(o =>
+{
+    o.BaseAddress = new Uri("https://192.168.0.130");
+    o.ServerCertificateSha256 = builder.Configuration["ControlId:RepSha256"];   // impressão digital do certificado autoassinado
+});
 
 public class PortariaService(IAccessClient portaria) { ... }
 ```
@@ -494,7 +560,7 @@ Vários equipamentos, direto do `appsettings.json` (a chave vira o nome):
       "garagem":  { "BaseAddress": "http://192.168.0.131", "Timeout": "00:00:10" }
     },
     "Rep": {
-      "rh": { "BaseAddress": "https://192.168.0.130", "Mode": "Portaria671" }
+      "rh": { "BaseAddress": "https://192.168.0.130", "Mode": "Portaria671", "ServerCertificateSha256": "AB:CD:..." }
     }
   }
 }
@@ -520,7 +586,11 @@ public class Sincronizacao(IControlIdClientFactory equipamentos)
 
 - Cada equipamento tem um cliente único durante a vida da aplicação, então a sessão de login é reaproveitada. Não descarte os clientes: o container faz isso.
 - O `HttpClient` vem do `IHttpClientFactory`. `AddControlIdAccess`/`AddControlIdRep` devolvem o `IHttpClientBuilder`, para encadear handlers (proxy, retry, logging).
-- Nome desconhecido ou configuração inválida geram `InvalidOperationException` com o nome do equipamento.
+- As opções de cada equipamento registrado são validadas na partida: configuração inválida (ex.: sem `BaseAddress`) faz o
+  host falhar ao subir, com `OptionsValidationException` citando o equipamento, em vez de falhar no primeiro uso.
+- `AddControlIdAccessDevices`/`AddControlIdRepDevices` com uma seção vazia ou inexistente (o erro mais comum é o nome da
+  seção) lançam `InvalidOperationException` já no registro.
+- Nome desconhecido gera `InvalidOperationException` com o nome do equipamento.
 - O `ControlId.Net.AspNetCore` já inclui este pacote.
 
 ## HttpClient externo
@@ -660,6 +730,17 @@ A sessão, o login e a senha nunca vão para os atributos.
 | `controlid.client.retries` | Contador | Novas tentativas de leituras (`ReadRetries`), com `controlid.command` e `error.type` |
 | `controlid.client.requests.queued` | UpDownCounter | Requisições esperando vaga no `MaxConcurrentRequests` |
 | `controlid.client.requests.active` | UpDownCounter | Requisições em andamento no equipamento |
+| `controlid.client.request.wait.duration` | Histograma (s) | Espera por uma vaga no `MaxConcurrentRequests` |
+| `controlid.client.circuit.transitions` | Contador | Mudanças do circuit breaker (`controlid.circuit.state`: `open`, `half_open`, `closed`) |
+| `controlid.client.circuit.rejected` | Contador | Requisições recusadas com o circuito aberto |
+
+No mesmo `Meter`, sem `server.address` (o `deviceId` também não vai para as tags):
+
+| Métrica | Tipo | O que mostra |
+| --- | --- | --- |
+| `controlid.push.commands` | Contador | Envios do `PushServer` por desfecho (`controlid.push.outcome`) |
+| `controlid.server.callback.requests` | Contador | Callbacks recebidos pelas rotas do ASP.NET Core (`controlid.callback.kind`: `push`, `result`, `monitor`, `online`; `controlid.callback.outcome`: `ok`, `unauthorized`, `forbidden`, `too_large`, `bad_request`, `error`) |
+| `controlid.server.callback.handler.duration` | Histograma (s) | Tempo do código da aplicação chamado pelo callback (`controlid.callback.kind`, `error.type` em caso de exceção) |
 
 Uma fila que não esvazia indica que o equipamento não está dando conta (um iDFace atende uma requisição por vez); muitos
 re-logins indicam um equipamento reiniciando.
@@ -689,8 +770,44 @@ Um `LoggerFactory` explícito nas options vale mais que o do container ([ADR 001
 | 1004 | Warning | Nova tentativa (comando, tentativa e motivo) |
 | 1005 | Warning | Erro devolvido pelo equipamento (status, código e mensagem) |
 | 1006 | Warning | Falha de comunicação |
+| 1007 | Warning | Circuito aberto (falhas seguidas e duração) |
+| 1008 | Debug | Circuito meio aberto; a próxima requisição testa o equipamento |
+| 1009 | Information | Circuito fechado; o equipamento voltou |
+| 1010 | Information | Parâmetro de configuração que o modelo não tem (`seção.campo`), retirado das próximas leituras |
+| 1011 | Information | Circuito fechado manualmente (`ResetCircuit`) |
+| 1012 | Debug | Logout não confirmado (rede ou timeout); a sessão local foi descartada |
+| 1013 | Warning | `AcceptAnyServerCertificate` ligado sem impressão digital |
 
-O pacote `ControlId.Net.AspNetCore` registra os seus próprios eventos, de 2001 a 2004 (rotas de Push, Monitor e modo online).
+O `PushServer` usa a mesma categoria, com o `LoggerFactory` de `PushServerOptions` (no ASP.NET Core, o do container). O
+corpo dos comandos e dos resultados nunca é registrado:
+
+| EventId | Nível | Evento |
+| --- | --- | --- |
+| 1101 | Error | O `IPushResultHandler` falhou ou passou do prazo; a resposta ao equipamento segue |
+| 1102 | Warning | Envio expirado na fila (`CommandTtl`) e descartado |
+| 1103 | Warning | Envio sem resultado (órfão) descartado |
+| 1104 | Warning | Limite de equipamentos acompanhados atingido (`MaxTrackedDevices`) |
+| 1105 | Warning | `/push` ou `/result` sem `uuid` recusado (`RequireUuid`) |
+| 1106 | Warning | Não foi possível remover do store um envio cancelado ou vencido |
+| 1107 | Information | A varredura removeu envios vencidos (quantidade) |
+
+O pacote `ControlId.Net.AspNetCore` registra os eventos das rotas:
+
+| EventId | Nível | Evento |
+| --- | --- | --- |
+| 2001 | Warning | Resultado de Push sem comando pendente |
+| 2002 | Warning | Notificação do Monitor inválida |
+| 2003 | Warning | Resultado de cadastro remoto inválido |
+| 2004 | Warning | `new_rex_log` inválido |
+| 2005 | Warning | Callback recusado (401) por token ausente ou inválido |
+| 2006 | Warning | Callback recusado (401) porque a rota não exige token; uma vez por rota, com a instrução |
+| 2007 | Warning | `device_id` da query diferente do corpo no modo online (403) |
+| 2008 | Error | Handler do Monitor falhou (os demais seguem) |
+| 2009 | Warning | Equipamento desconhecido (`IsKnownDevice`, 403) |
+| 2010 | Warning | Corpo acima de `MaxRequestBodySize` (413) |
+| 2011 | Error | Um `IPushResultHandler` falhou (os demais seguem) |
+| 2012 | Error | A varredura do Push falhou; nova tentativa no próximo intervalo |
+| 2013 | Information | Varredura automática do Push desligada (`PurgeInterval = null`) |
 
 ## Simulador para desenvolvimento e testes
 
@@ -730,11 +847,18 @@ nada (`system_information` no acesso, `get_about` no REP):
 builder.Services.AddControlIdAccessDevices(builder.Configuration.GetSection("ControlId:Access"));
 builder.Services.AddHealthChecks().AddControlIdDevices(o =>
 {
-    o.Timeout = TimeSpan.FromSeconds(3);        // prazo de cada equipamento (padrão 5 s)
-    o.SlowThreshold = TimeSpan.FromSeconds(1);  // acima disso, conta como lento (padrão 2 s)
+    o.Timeout = TimeSpan.FromSeconds(3);          // prazo de cada equipamento (padrão 5 s)
+    o.SlowThreshold = TimeSpan.FromSeconds(1);    // acima disso, conta como lento (padrão 2 s)
+    o.CacheDuration = TimeSpan.FromSeconds(10);   // reaproveita a sonda (padrão: sem cache)
 }, tags: new[] { "ready" });
 
-app.MapHealthChecks("/health");
+// Degraded responde 200 no padrão do ASP.NET Core; 503 tira a instância do balanceador.
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = c => c.Tags.Contains("ready"),
+    ResultStatusCodes = { [HealthStatus.Degraded] = StatusCodes.Status503ServiceUnavailable },
+});
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = c => c.Tags.Contains("live") });   // só o processo, sem equipamentos
 ```
 
 | Situação | Status |
@@ -742,10 +866,19 @@ app.MapHealthChecks("/health");
 | Todos responderam, abaixo do limite de lentidão | `Healthy` |
 | Algum falhou, passou do prazo ou está lento | `Degraded` |
 | Nenhum respondeu | `failureStatus` do registro (padrão `Unhealthy`) |
+| Nenhum equipamento registrado (com `RequireDevices`, o padrão) | `failureStatus` do registro |
 
 O resultado de cada equipamento vai nos dados do health check (`access:portaria` → `ok: 45 ms`, `falhou em 2082 ms: ...`).
-Um equipamento travado não segura os outros: o prazo vale para cada um. O `samples/ControlId.Net.Server` mostra uma
-resposta em JSON com esses dados.
+Um equipamento travado não segura os outros: o prazo vale para cada um, e o check inteiro tem prazo total de 30 s
+(`TotalTimeout`; quem não respondeu conta como falha). O `samples/ControlId.Net.Server` mostra uma resposta em JSON com
+esses dados, detalhada só para chamadas da própria máquina.
+
+- `RequireDevices` (padrão `true`): zero equipamentos registrados, quase sempre uma seção de configuração com o nome
+  errado, não passa por saudável. Em aplicações sem equipamentos registrados (só Push ou modo online), use `false`.
+- `CacheDuration`: o resultado da sonda de cada equipamento é reaproveitado por esse tempo, compartilhado entre o check
+  agregado e os por equipamento (com os dois registrados, uma requisição por equipamento). Evita sondar o equipamento a
+  cada chamada de um `/health` consultado com frequência.
+- Não use a tag do check dos equipamentos na prova de vida (`live`): um equipamento fora do ar não deve reiniciar a aplicação.
 
 ### Um check por equipamento e último contato
 
@@ -757,6 +890,9 @@ máxima. Só degrada quem tem contato registrado e vencido; sem contato registra
 ```csharp
 builder.Services.AddHealthChecks().AddControlIdDeviceChecks(o => o.MaxContactAge = TimeSpan.FromMinutes(5));
 ```
+
+Sem equipamentos registrados e com `RequireDevices`, `AddControlIdDeviceChecks` registra um check `controlid:none` (o
+prefixo é configurável) com o `failureStatus`, para o erro aparecer em vez de sumir.
 
 ## Circuit breaker
 
@@ -773,10 +909,23 @@ var opcoes = new ControlIdDeviceOptions
 // client.CircuitState: Closed, Open ou HalfOpen
 ```
 
-## Token nas rotas de callback
+- A chamada de teste (`HalfOpen`) sem resposta por mais de `2 × Timeout` (mínimo 1 s) conta como falha e reabre o
+  circuito, então um `HttpClient` com timeout infinito não prende o circuito meio aberto (nesse caso, o limite é 5 min).
+- `AccessClient` e `RepClient` implementam `IControlIdClientDiagnostics`, com `Session`, `CircuitState` e `ResetCircuit()`
+  (fecha o circuito na hora, log 1011). As interfaces `IAccessClient` e `IRepClient` não mudam; com DI, faça o cast:
 
-Para que só o equipamento poste em Push, Monitor e modo online, exija um token Bearer e grave o mesmo token no equipamento
-([ADR 0019](adr/0019-token-bearer-nos-callbacks.md)):
+```csharp
+if (equipamentos.GetAccessClient("portaria") is IControlIdClientDiagnostics diagnostico)
+{
+    diagnostico.ResetCircuit();   // ex.: depois de trocar o equipamento
+}
+```
+
+## Callbacks: token, limites e rate limiting
+
+As rotas de Push, Monitor e modo online são **fechadas por padrão** ([ADR 0021](adr/0021-callbacks-fechados-por-padrao.md)):
+sem `RequireControlIdToken`, respondem 401 (com `WWW-Authenticate: Bearer`) e registram o log 2006 uma vez por rota.
+Exija um token Bearer e grave o mesmo token no equipamento ([ADR 0019](adr/0019-token-bearer-nos-callbacks.md)):
 
 ```csharp
 app.MapControlIdPush().RequireControlIdToken("segredo-longo");
@@ -785,8 +934,51 @@ app.MapControlIdMonitor().RequireControlIdToken(o => o.DeviceToken = id => token
 await device.ConfigureCallbackSecurityAsync("segredo-longo");   // grava o token (e, se informado, o certificado fixado)
 ```
 
-Sem token ou com token errado a rota responde 401. O nome da seção e o formato do token e do certificado no equipamento
-ainda estão **a validar** em hardware; o parâmetro `section` (padrão `general`) permite ajustar.
+- Sem token ou com token errado, a rota responde 401 (log 2005). A comparação é em tempo constante.
+- **Rotação**: publique o token novo em `Token` e mantenha o antigo em `PreviousToken` até todos os equipamentos
+  receberem o novo; depois, remova-o.
+  `RequireControlIdToken(o => { o.Token = novo; o.PreviousToken = antigo; })`.
+- **Token por equipamento**: com `DeviceToken`, um equipamento para o qual a função devolve `null` (ou um callback sem
+  `deviceId`) é recusado. Para aceitar o `Token` global nesses casos, ligue `AllowTokenFallback = true`; sem isso, um token
+  compartilhado vazado não abre o parque inteiro. `DeviceToken` só é chamado quando a requisição traz o cabeçalho `Bearer`.
+- **Rota aberta**, só em rede isolada ou para firmware anterior à 6.22 (que não envia o cabeçalho): `.AllowAnonymousControlIdCallbacks()`,
+  junto com uma restrição de rede (`RequireHost`, firewall).
+- O nome da seção e o formato do token e do certificado no equipamento ainda estão **a validar** em hardware; o
+  parâmetro `section` (padrão `general`) permite ajustar.
+
+**Limites.** Configure com `ControlIdCallbackOptions`:
+
+```csharp
+builder.Services.Configure<ControlIdCallbackOptions>(o =>
+{
+    o.MaxRequestBodySize = 8 * 1024 * 1024;              // padrão 4 MiB (DefaultMaxRequestBodySize); acima, 413
+    o.IsKnownDevice = id => equipamentosConhecidos.Contains(id);   // fora da lista: 403, sem tocar a fila nem os handlers
+});
+```
+
+- Com token único (sem `DeviceToken`) ou rota aberta, a autorização vem antes de ler o corpo. Com `DeviceToken`, o corpo
+  é lido com o limite e só então autorizado, porque o `deviceId` pode vir nele.
+- `/push` e `/result` respondem com `Cache-Control: no-store`.
+
+**Rate limiting.** A biblioteca não escolhe a política; use o rate limiting do ASP.NET Core no grupo devolvido. Um
+equipamento consulta o `/push` a cada poucos segundos, então um limite por IP como o do sample sobra para ele e corta quem
+tenta adivinhar o token:
+
+```csharp
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.AddPolicy("controlid", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 300, Window = TimeSpan.FromMinutes(1) }));
+});
+
+app.UseRateLimiter();
+app.MapControlIdPush().RequireControlIdToken(token).RequireRateLimiting("controlid");
+```
+
+Atrás de um proxy reverso, o IP é o do proxy: use `UseForwardedHeaders`. As recusas aparecem nos logs 2005–2010 e na
+métrica `controlid.server.callback.requests`.
 
 ## Fila de Push durável
 
@@ -796,20 +988,35 @@ Por padrão a fila fica em memória e some se o servidor reiniciar. O pacote `Co
 ```csharp
 protected override void OnModelCreating(ModelBuilder mb) => mb.ApplyControlIdPush();   // tabela controlid_push_commands
 
+builder.Services.AddDbContextFactory<MeuDbContext>(o => o.UseSqlite("Data Source=push.db;Default Timeout=30"));
 builder.Services.AddControlIdPushEntityFrameworkStore<MeuDbContext>();
 builder.Services.AddControlIdPushResultHandler<MeuHandler>();   // IPushResultHandler: resultados sem tarefa esperando
+builder.Services.AddControlIdPushResultHandler<Auditoria>();    // vários handlers: todos rodam
 ```
 
 O comando é serializado ao enfileirar: alterar o `Body` depois de enfileirar não tem mais efeito. Um comando órfão
 (resultado que não voltou) sem tarefa esperando é reportado ao `IPushResultHandler` com `Error` e nunca reenviado.
-Dá para implementar o seu `IPushCommandStore` para outro banco.
+Dá para implementar o seu `IPushCommandStore` para outro banco (e `IPushCommandStoreMaintenance`, para a varredura).
+
+- O store precisa de `AddDbContextFactory<TContext>`; sem ela, a resolução falha com uma mensagem que diz isso.
+- **Várias instâncias** sobre o mesmo banco não entregam o mesmo envio: o próximo é tomado com um `UPDATE` condicional
+  ([ADR 0023](adr/0023-limites-da-fila-de-push.md)), sem mudança de esquema. `EnqueueAsync` com `IPushResultHandler`
+  funciona em qualquer instância. `SendAsync` ainda exige que o `/result` chegue à instância que enfileirou: em outra, o
+  resultado vai ao handler dela e a tarefa original termina pelo `CommandTimeout`.
+- Com SQLite e várias conexões, ponha `Default Timeout` na connection string para as escritas esperarem o bloqueio em
+  vez de falhar. Os testes de concorrência cobrem só o SQLite.
+- **Handlers**: `AddControlIdPushResultHandler<T>` registra cada handler como scoped (pode receber `DbContext`). A cada
+  resultado, o pacote cria um escopo e chama todos, em sequência; a falha de um vira o log 2011 e não impede os outros.
 
 ## Erros
 
 | Exceção | Quando |
 | --- | --- |
 | `ControlIdAuthenticationException` | Usuário ou senha recusados no `login.fcgi` |
-| `ControlIdException` | HTTP de erro do equipamento (com `StatusCode`, `DeviceErrorCode` e `ResponseBody`), timeout ou falha de rede |
+| `ControlIdException` | HTTP de erro do equipamento (com `StatusCode`, `DeviceErrorCode` e `ResponseBody`), timeout ou falha de rede (inclusive certificado TLS recusado) |
+| `ControlIdCircuitOpenException` | Circuit breaker aberto (`RetryAfter`) |
+| `PushQueueFullException` | Fila de Push do equipamento cheia (`DeviceId`, `Limit`) |
+| `TimeoutException` | `SendAsync`/`SendBatchAsync` do Push sem resposta no `CommandTimeout` |
 
 ## Desenvolvimento
 
@@ -817,11 +1024,17 @@ Dá para implementar o seu `IPushCommandStore` para outro banco.
 dotnet build
 dotnet test
 dotnet run --project samples/ControlId.Net.Sample -- access http://192.168.0.129 admin admin
-dotnet run --project samples/ControlId.Net.Server -- --urls http://0.0.0.0:5000
+dotnet run --project samples/ControlId.Net.Sample -- cert https://192.168.0.130          # impressão digital do REP
+dotnet run --project samples/ControlId.Net.Sample -- rep https://192.168.0.130 admin admin AB:CD:...
+
+# O servidor de exemplo exige o token dos callbacks e a chave da API (veja o topo do Program.cs):
+dotnet user-secrets set --id controlid-net-server-sample ControlId:CallbackToken "<token longo e aleatório>"
+dotnet user-secrets set --id controlid-net-server-sample ApiKey "<chave da API de operação>"
+dotnet run --project samples/ControlId.Net.Server -- --environment Development --urls http://localhost:5000
 ```
 
 Os testes rodam em `net8.0`, `net10.0` e `net48`. Os dois primeiros exercitam o build `net8.0` das bibliotecas (o `net10.0` garante a compatibilidade com o .NET 10, inclusive o pacote ASP.NET Core sobre o ASP.NET Core 10); o `net48` exercita o build `netstandard2.0`, usado no .NET Framework, e só executa no Windows. Para compilar o alvo `net10.0` é preciso o SDK do .NET 10. Em Linux ou macOS, use `dotnet test -f net8.0` ou `-f net10.0`.
 
 O `ci.yml` roda a cada push na `main` e em todo pull request: build sem avisos, testes nos três alvos (Linux e Windows), validação da API pública e resumo de cobertura. O `publish.yml` repete os testes ao lançar versão e só publica se todos passarem.
 
-Para publicar, crie uma tag `vX.Y.Z` e faça push. O workflow `publish.yml` empacota `ControlId.Net`, `ControlId.Net.DependencyInjection` e `ControlId.Net.AspNetCore` com a versão da tag e envia ao NuGet.org por Trusted Publishing (OIDC), sem chave guardada no repositório. Configuração única: uma política de Trusted Publishing no nuget.org para este repositório e o arquivo `publish.yml`, e o secret `NUGET_USER` com o nome de usuário do nuget.org.
+Para publicar, crie uma tag `vX.Y.Z` e faça push. O workflow `publish.yml` empacota `ControlId.Net`, `ControlId.Net.DependencyInjection`, `ControlId.Net.AspNetCore` e `ControlId.Net.Push.EntityFrameworkCore` com a versão da tag e envia ao NuGet.org por Trusted Publishing (OIDC), sem chave guardada no repositório. Configuração única: uma política de Trusted Publishing no nuget.org para este repositório e o arquivo `publish.yml`, e o secret `NUGET_USER` com o nome de usuário do nuget.org.

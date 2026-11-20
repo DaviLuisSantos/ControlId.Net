@@ -4,6 +4,59 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+Correções da [auditoria de 2026-11-19](docs/auditoria-2026-11-19.md): callbacks fechados por padrão, TLS do REP validado, fila de Push com prazos e limites, store EF com claim atômico, validação das opções na partida e núcleo endurecido. Tem mudanças que quebram: leia a seção abaixo antes de atualizar.
+
+### Mudanças que quebram
+
+Cada item traz o caminho de migração.
+
+- **Callbacks fechados por padrão** ([ADR 0021](docs/adr/0021-callbacks-fechados-por-padrao.md)): `MapControlIdPush`, `MapControlIdMonitor` e `MapControlIdOnline` sem `RequireControlIdToken` respondem 401 (com `WWW-Authenticate: Bearer`) e registram o log 2006 uma vez por rota. **Migração:** encadeie `.RequireControlIdToken(...)` e grave o mesmo token no equipamento com `ConfigureCallbackSecurityAsync`. Para manter a rota aberta, só em rede isolada, encadeie `.AllowAnonymousControlIdCallbacks()` (namespace `ControlId.AspNetCore`). Firmware anterior à 6.22 não envia o cabeçalho `Authorization`: use `AllowAnonymousControlIdCallbacks()` com restrição de rede (`RequireHost`, firewall).
+- **`DeviceToken` sem queda no token global**: com `ControlIdTokenOptions.DeviceToken` definido, um equipamento cuja função devolve `null` (ou um callback sem `deviceId`) é recusado em vez de cair no `Token`. **Migração:** devolva um token para cada equipamento ou ligue `AllowTokenFallback = true`.
+- **`Map*` sem `Add*` lança**: `MapControlIdPush` sem `AddControlIdPush()` e `MapControlIdOnline` sem `IOnlineAccessHandler` registrado lançam `InvalidOperationException` no mapeamento, em vez de falhar na primeira requisição. **Migração:** registre o serviço antes de mapear.
+- **Corpo dos callbacks limitado a 4 MiB**: acima disso a resposta é 413. **Migração:** `services.Configure<ControlIdCallbackOptions>(o => o.MaxRequestBodySize = ...)`.
+- **Modo online**: em `*_create.fcgi` e `new_rex_log.fcgi`, `device_id` da query diferente do corpo responde 403; sem `device_id` na query, o token é conferido contra o equipamento do corpo. **Migração:** nenhuma para equipamentos reais, que mandam os dois iguais.
+- **Monitor**: um `IMonitorNotificationHandler` que lança não impede mais os seguintes; a resposta é 500 só depois de todos rodarem. Com token único, o 401 sai antes de ler o corpo. **Migração:** handlers que dependiam de um anterior ter lançado para não rodar precisam checar isso por conta própria.
+- **TLS do REP validado** ([ADR 0022](docs/adr/0022-tls-do-rep-validado.md)): o atalho `new RepClient(string, login, password, mode)` foi trocado por um com `serverCertificateSha256` opcional que valida o certificado, e `ControlIdRepOptions.AcceptAnyServerCertificate` passa a ter padrão `false`. Sem impressão digital, o certificado autoassinado de fábrica é recusado. O código-fonte continua compilando, mas binários compilados contra a 0.8.0-alpha.1 precisam ser recompilados (quebra binária registrada em `CompatibilitySuppressions.xml`). **Migração:** leia a impressão digital uma vez com `ControlIdCertificates.GetServerCertificateSha256Async`, confira no equipamento e passe em `serverCertificateSha256` (ou `"ServerCertificateSha256"` no `appsettings.json`). Aceitar qualquer certificado exige `AcceptAnyServerCertificate = true` explícito e gera o log 1013.
+- **Prazos e limites do Push** ([ADR 0023](docs/adr/0023-limites-da-fila-de-push.md)): `SendAsync`/`SendBatchAsync` falham com `TimeoutException` depois de 5 minutos (`CommandTimeout`, mesmo com token do chamador sem prazo) e o envio sai da fila; pendente com mais de 24 horas (`CommandTtl`) não é entregue; cada equipamento tem no máximo 1.000 envios na fila (`PushQueueFullException`); `GetLastSeen` e o `DeviceContactTracker` acompanham no máximo 10.000 equipamentos. **Migração:** ajuste com `AddControlIdPush(o => ...)` ou `new PushServer(store, new PushServerOptions { ... })`; `null` desliga os prazos e `MaxPendingPerDevice = 0` desliga o limite.
+- **`new PushServer(store, null)` ambíguo**: com o novo construtor `PushServer(store, PushServerOptions, handler)`, o `null` literal no segundo argumento não compila. **Migração:** `new PushServer(store, (IPushResultHandler?)null)` ou só `new PushServer(store)`.
+- **Vários `IPushResultHandler`**: `AddControlIdPushResultHandler<T>` passa de `TryAddSingleton` (só o primeiro valia) para `TryAddEnumerable` com tempo de vida scoped: handlers diferentes rodam todos, em sequência, num escopo por resultado, e `THandler` não é mais registrado como serviço concreto. **Migração:** quem resolvia `THandler` direto do container registra-o à parte; handlers singleton com estado passam a ser criados a cada resultado.
+- **`AddControlIdPush` cria o `PushServer` na partida**: o serviço de varredura é registrado junto, então opções inválidas impedem o host de subir. **Migração:** corrija as opções; `PurgeInterval = null` desliga a varredura.
+- **Opções dos equipamentos validadas na partida**: configuração inválida de um equipamento registrado (ex.: sem `BaseAddress`) faz o `StartAsync` do host lançar `OptionsValidationException` citando o equipamento, em vez de falhar no primeiro uso. `AddControlIdAccessDevices`/`AddControlIdRepDevices` com seção vazia ou inexistente lançam `InvalidOperationException` no registro. **Migração:** corrija a configuração (o nome da seção costuma ser o erro).
+- **Health checks**: `ControlIdHealthCheckOptions.RequireDevices` tem padrão `true`, então zero equipamentos registrados devolve o `failureStatus` (e `AddControlIdDeviceChecks` registra o check `{prefixo}:none`); o check agregado tem prazo total de 30 s (`TotalTimeout`); `SlowThreshold` e `CacheDuration` negativos lançam `ArgumentOutOfRangeException`. **Migração:** `RequireDevices = false` em aplicações sem equipamentos registrados (só Push ou modo online).
+- **`SetAdministratorAsync(id, true)`** passa a alterar o papel com `modify_objects` e só cria quando nada foi alterado, sem apagar antes (a confirmar em equipamento real). **Migração:** nenhuma.
+- **`LogoutAsync`** não lança mais erro de rede nem timeout (log 1012, Debug); cancelamento do chamador continua lançando. **Migração:** remova `catch` que só existia para isso.
+- **Códigos desconhecidos do firmware**: `AccessLog.EventType` e `UserIdentifiedEvent.Event` (`AccessEventType`) e `FaceImageError.CodeType` (`FaceImageErrorCode`) devolvem `Unknown` (0), e `CauseType` (`AlarmCause`, nos alarmes) e `GetVpnStatusAsync` (`VpnStatus`) devolvem `Unknown` (-1) para um código que o enum não tem, em vez de um valor fora do enum. **Migração:** trate `Unknown` onde houver `switch` sobre esses enums.
+- **Cache de parâmetros de configuração ausentes zerado a cada login**: um parâmetro que o firmware passou a ter volta a ser lido depois de atualizar ou reiniciar o equipamento. **Migração:** nenhuma.
+
+### Added
+- **`PushServerOptions`**: `CommandTimeout`, `CommandTtl`, `InFlightTimeout`, `MaxPendingPerDevice`, `MaxTrackedDevices`, `RequireUuid`, `ResultHandlerTimeout`, `PurgeInterval` e `LoggerFactory`, com o construtor `PushServer(store, options, handler)` e a sobrecarga `AddControlIdPush(Action<PushServerOptions>)` ([guia](docs/guia.md#prazos-e-limites-do-push)).
+- **Varredura da fila**: `PushServer.PurgeExpiredAsync` e o contrato `IPushCommandStoreMaintenance` (implementado pelo store em memória e pelo EF). No ASP.NET Core, um serviço de fundo varre a cada `PurgeInterval` (padrão 1 minuto; `null` desliga).
+- `PushQueueFullException`, `DeviceContactTracker(int maxDevices)`, logs 1101–1107 do Push e a métrica `controlid.push.commands` (tag `controlid.push.outcome`).
+- **Store EF**: claim atômico (várias instâncias sobre o mesmo banco não entregam o mesmo envio), varredura de vencidos e erro claro sem `AddDbContextFactory`, sem mudança de esquema. Com SQLite e várias conexões, use `Default Timeout` na connection string.
+- **ASP.NET Core**: `AllowAnonymousControlIdCallbacks()`, `ControlIdTokenOptions.PreviousToken` (rotação) e `AllowTokenFallback`, `ControlIdCallbackOptions` (`MaxRequestBodySize`, `DefaultMaxRequestBodySize`, `IsKnownDevice`), `Cache-Control: no-store` em `/push` e `/result`, logs 2006–2013 e as métricas `controlid.server.callback.requests` e `controlid.server.callback.handler.duration`.
+- **Health checks**: `ControlIdHealthCheckOptions.RequireDevices`, `CacheDuration` (o check agregado e os por equipamento fazem uma requisição por equipamento) e `TotalTimeout`.
+- **Núcleo**: `IControlIdClientDiagnostics` (`Session`, `CircuitState`, `ResetCircuit`), implementada por `AccessClient` e `RepClient` (as interfaces publicadas não mudam); `AccessClient.ClearConfigurationFieldCache()`; `RepAbout.ApiRevisionText`; `Unknown` em `AccessEventType`, `FaceImageErrorCode`, `AlarmCause` e `VpnStatus`; logs 1010–1013.
+- A sonda do circuit breaker sem resposta por mais de `2 × Timeout` (mínimo 1 s; 5 min com timeout infinito) conta como falha e reabre o circuito.
+- Erro de TLS recusado explica como fixar a impressão digital.
+- **Samples**: o Server exige token nas três rotas, protege a API de operação com chave (`X-Api-Key`), tem rate limiting nos callbacks, `/health` detalhado só para chamadas locais e segredos por user-secrets (`--id controlid-net-server-sample`) ou variáveis de ambiente; o Dashboard tem health check real, token nos callbacks (vazio gera um por execução) e senha obrigatória (`Dashboard__DevicePassword`); o compose usa `CONTROLID_DEVICE_PASSWORD` e `CONTROLID_CALLBACK_TOKEN`; o sample do REP ganha o comando `cert` e usa a impressão digital.
+- Build: base da API na 0.8.0-alpha.1, gerenciamento central de pacotes (`Directory.Packages.props`), `global.json`, `nuget.config` só com o nuget.org, cobertura mínima de 89% e nota mínima de mutação de 60 na CI.
+- Testes de ponta a ponta dos callbacks fechados e da robustez do Push contra o simulador.
+
+### Changed
+- `RepAbout.ApiRevision` não lança mais com revisão hexadecimal com `A`–`F` (ex.: `0x10A`): devolve `-1`, e o texto fica em `ApiRevisionText`.
+- `IPushResultHandler` recebe um token próprio que vence em `ResultHandlerTimeout`, sem ligação com a requisição do equipamento, e também é chamado para envios expirados.
+- O circuit breaker emite log e métrica de transição fora do lock.
+- O transporte usa um caminho único de envio (novas tentativas, novo login e circuit breaker) para comandos e para streams de AFD, sem mudança de comportamento.
+- `ConfigureOnlineModeAsync` documenta a aplicação parcial em caso de falha.
+
+### Fixed
+- Um `IPushResultHandler` que lançava derrubava `/push` ou `/result` e fazia o equipamento perder o próximo comando (agora vira log 1101).
+- `deviceId` arbitrário na query fazia a memória do `PushServer` crescer sem limite.
+- Cancelar um `SendAsync` não removia o envio do store; o cancelamento agora libera a tarefa na hora e remove em segundo plano.
+- Handler de resultado scoped registrado direto no container era capturado pelo `PushServer` singleton.
+- Sample Dashboard: o `Urls` do `appsettings.json` tinha precedência sobre `ASPNETCORE_URLS`, e o compose não usava a porta 8080.
+- `dotnet build -warnaserror` sem rede falhava pelo NU1900.
+
 ## [0.8.0-alpha.1] - 2026-11-14
 
 Fase 3, produção: circuit breaker, health check por equipamento, token nos callbacks e fila de Push durável.

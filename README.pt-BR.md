@@ -31,9 +31,10 @@ API numa biblioteca tipada, assíncrona e pronta para injeção de dependência,
 - **Conformidade com a legislação.** Parser em streaming do AFD da Portaria 671/2021 e da 1510/2009, com validação de
   CRC-16/KERMIT, que não para numa linha corrompida e lê 100 mil marcações em cerca de 20 ms
   ([benchmarks](benchmarks/README.md)).
-- **Seguro por padrão.** Operações destrutivas exigem `DataLossConfirmation.Confirmed`; certificado fixado por SHA-256
-  opcional para os certificados autoassinados dos equipamentos; limite de requisições simultâneas por equipamento,
-  dimensionado com medições em equipamento real.
+- **Seguro por padrão.** As rotas de callback recusam requisições sem token Bearer, a não ser que você libere de forma
+  explícita; o TLS do relógio de ponto é validado, com certificado fixado por SHA-256 para o autoassinado; a fila de Push
+  tem prazo, validade e tamanho máximo; operações destrutivas exigem `DataLossConfirmation.Confirmed`; limite de
+  requisições simultâneas por equipamento, dimensionado com medições em equipamento real.
 - **Observável.** Traces e métricas do OpenTelemetry por comando: latência, re-logins e requisições na fila por
   equipamento, sem impor uma dependência do OpenTelemetry.
 - **Roda onde o .NET roda.** Alvos `net8.0` e `netstandard2.0`, testados no .NET 8, no .NET 10 e no .NET Framework 4.8.
@@ -100,7 +101,8 @@ Eventos em tempo real com ASP.NET Core:
 
 ```csharp
 builder.Services.AddControlIdMonitor<LogDeAcessoHandler>();
-app.MapControlIdMonitor();   // POST /api/notifications/{endpoint}
+app.MapControlIdMonitor()                       // POST /api/notifications/{endpoint}
+   .RequireControlIdToken(tokenDosCallbacks);   // fechado por padrão: sem token, a rota responde 401
 ```
 
 Marcações de um relógio de ponto:
@@ -109,7 +111,10 @@ Marcações de um relógio de ponto:
 using ControlId.Rep;
 using ControlId.Rep.Afd;
 
-using var rep = new RepClient("https://192.168.0.130", mode: RepMode.Portaria671);
+// O TLS é validado: fixe a impressão digital SHA-256 do certificado autoassinado do relógio
+// (leia uma vez com ControlIdCertificates.GetServerCertificateSha256Async).
+using var rep = new RepClient("https://192.168.0.130", mode: RepMode.Portaria671,
+    serverCertificateSha256: "AB:CD:EF:...");
 
 AfdFile afd = await rep.GetAfdFileFromNsrAsync(ultimoNsr + 1);
 foreach (var marcacao in afd.Punches)
@@ -152,7 +157,7 @@ equipamento sozinho e atualiza ao vivo:
 
 | Prática | Como |
 | --- | --- |
-| Testes | 494 testes unitários no .NET 8 e no .NET 10, 481 no .NET Framework 4.8 e 32 de integração; testes de ponta a ponta com HTTP de verdade contra o [simulador de equipamento](tools/ControlId.Net.Simulator/README.md) |
+| Testes | 799 testes unitários no .NET 8, 832 no .NET 10, 721 no .NET Framework 4.8 e 42 de integração; testes de ponta a ponta com HTTP de verdade contra o [simulador de equipamento](tools/ControlId.Net.Simulator/README.md) |
 | Teste de mutação | Stryker.NET: nota de mutação de 68,08% em `src/ControlId.Net` (1.216 mortos, 23 timeout, 425 sobreviventes) |
 | Site de documentação | [Referência da API e guia](https://daviluissantos.github.io/ControlId.Net/), publicado pelo workflow `docs.yml` (DocFX) |
 | CI | A cada push e pull request: build sem avisos, três alvos no Linux e no Windows, resumo de cobertura |
@@ -174,7 +179,7 @@ equipamento sozinho e atualiza ao vivo:
 - [x] Logs estruturados (`ILogger` com `LoggerMessage` gerado)
 - [x] Health checks de todos os equipamentos registrados
 - [x] Novas tentativas em comandos de leitura (nunca em comandos que alteram o equipamento)
-- [ ] Circuit breaker por equipamento
+- [x] Circuit breaker por equipamento
 - [x] Benchmarks do parser de AFD
 - [x] Avaliação de Native AOT ([ADR 0015](docs/adr/0015-native-aot.md))
 - [ ] Suporte a Native AOT e trimming (JSON com source generation, corpos tipados)

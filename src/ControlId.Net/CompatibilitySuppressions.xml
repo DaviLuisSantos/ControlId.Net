@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- https://learn.microsoft.com/dotnet/fundamentals/package-validation/diagnostic-ids -->
+<!--
+  Quebras intencionais em relação à versão publicada (0.8.0-alpha.1). Cada supressão diz o motivo; gere de novo com
+  dotnet pack -p:GenerateCompatibilitySuppressionFile=true e mantenha os comentários.
+-->
+<Suppressions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <!--
+    ADR 0022 (TLS do REP validado por padrão): o atalho new RepClient(baseAddress, login, password, mode) aceitava qualquer
+    certificado. Foi substituído pelo atalho com o parâmetro opcional serverCertificateSha256, que valida o certificado.
+    O código-fonte que chamava o atalho antigo continua compilando (o parâmetro novo é opcional), mas binários compilados
+    contra a 0.8.0-alpha.1 precisam ser recompilados. Manter as duas assinaturas deixaria a antiga sem validação ou mudaria
+    o comportamento dela em silêncio.
+  -->
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:ControlId.Rep.RepClient.#ctor(System.String,System.String,System.String,ControlId.Rep.RepMode)</Target>
+    <Left>lib/net8.0/ControlId.Net.dll</Left>
+    <Right>lib/net8.0/ControlId.Net.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <!-- ADR 0022: a mesma troca do atalho do RepClient, no alvo netstandard2.0. -->
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:ControlId.Rep.RepClient.#ctor(System.String,System.String,System.String,ControlId.Rep.RepMode)</Target>
+    <Left>lib/netstandard2.0/ControlId.Net.dll</Left>
+    <Right>lib/netstandard2.0/ControlId.Net.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+</Suppressions>

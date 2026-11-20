@@ -23,8 +23,10 @@ public sealed class ControlIdDeviceOptions
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
-    /// Aceita certificados TLS inválidos/autoassinados. O REP iDClass usa HTTPS com certificado
-    /// autoassinado, então normalmente isso precisa ser <c>true</c> para ele.
+    /// Aceita qualquer certificado TLS, inclusive inválido ou falso. Padrão: <c>false</c>. Evite: login e senha ficam expostos
+    /// a quem se passar pelo equipamento na rede, e o cliente registra o log 1013 (Warning) ao ser criado assim. Para o REP
+    /// iDClass, que sai de fábrica com certificado autoassinado, prefira <see cref="ServerCertificateSha256"/>, que aceita só
+    /// aquele certificado (e faz esta opção ser ignorada).
     /// Só tem efeito quando o cliente cria o próprio <see cref="System.Net.Http.HttpClient"/>.
     /// </summary>
     public bool AcceptAnyServerCertificate { get; set; }

@@ -30,9 +30,10 @@ dependency-injection-friendly library, verified against real devices.
 - **Brazilian labor law compliance.** A streaming parser for the AFD file of Portaria 671/2021 and 1510/2009, with
   CRC-16/KERMIT validation, that survives corrupt lines and reads 100,000 punches in about 20 ms
   ([benchmarks](benchmarks/README.md)).
-- **Safe by default.** Destructive operations require an explicit `DataLossConfirmation.Confirmed`; optional SHA-256
-  certificate pinning for self-signed device certificates; per-device concurrency limits sized from measurements on real
-  devices.
+- **Safe by default.** Callback endpoints reject requests without a Bearer token unless you opt out; TLS to the time
+  clock is validated, with SHA-256 pinning for its self-signed certificate; the Push queue has deadlines, expiry and size
+  limits; destructive operations require an explicit `DataLossConfirmation.Confirmed`; per-device concurrency limits
+  sized from measurements on real devices.
 - **Observable.** OpenTelemetry traces and metrics per command: latency, re-logins and requests queued per device,
   without forcing an OpenTelemetry dependency on you.
 - **Runs anywhere .NET runs.** `net8.0` and `netstandard2.0` targets, tested on .NET 8, .NET 10 and .NET Framework 4.8.
@@ -99,7 +100,8 @@ Receive events in real time with ASP.NET Core:
 
 ```csharp
 builder.Services.AddControlIdMonitor<AccessLogHandler>();
-app.MapControlIdMonitor();   // POST /api/notifications/{endpoint}
+app.MapControlIdMonitor()                       // POST /api/notifications/{endpoint}
+   .RequireControlIdToken(callbackToken);       // closed by default: without a token the route answers 401
 ```
 
 Read punches from a time clock:
@@ -108,7 +110,10 @@ Read punches from a time clock:
 using ControlId.Rep;
 using ControlId.Rep.Afd;
 
-using var rep = new RepClient("https://192.168.0.130", mode: RepMode.Portaria671);
+// TLS is validated: pin the SHA-256 fingerprint of the clock's self-signed certificate
+// (read it once with ControlIdCertificates.GetServerCertificateSha256Async).
+using var rep = new RepClient("https://192.168.0.130", mode: RepMode.Portaria671,
+    serverCertificateSha256: "AB:CD:EF:...");
 
 AfdFile afd = await rep.GetAfdFileFromNsrAsync(lastNsr + 1);
 foreach (var punch in afd.Punches)
@@ -151,7 +156,7 @@ its own and updates live:
 
 | Practice | How |
 | --- | --- |
-| Tests | 494 unit tests on .NET 8 and .NET 10, 481 on .NET Framework 4.8, 32 integration tests; end-to-end tests over real HTTP against the [device simulator](tools/ControlId.Net.Simulator/README.md) |
+| Tests | 799 unit tests on .NET 8, 832 on .NET 10, 721 on .NET Framework 4.8, 42 integration tests; end-to-end tests over real HTTP against the [device simulator](tools/ControlId.Net.Simulator/README.md) |
 | Mutation testing | Stryker.NET: 68.08% mutation score on `src/ControlId.Net` (1,216 killed, 23 timeout, 425 survived) |
 | Docs site | [API reference and guide](https://daviluissantos.github.io/ControlId.Net/), published by the `docs.yml` workflow (DocFX) |
 | CI | Every push and pull request: warning-free build, three target frameworks on Linux and Windows, coverage summary |
@@ -173,7 +178,7 @@ its own and updates live:
 - [x] Structured logs (`ILogger` with source-generated `LoggerMessage`)
 - [x] Health checks for every registered device
 - [x] Retries for read-only commands (never for commands that change the device)
-- [ ] Circuit breaker per device
+- [x] Circuit breaker per device
 - [x] Benchmarks for the AFD parser
 - [x] Native AOT evaluation ([ADR 0015](docs/adr/0015-native-aot.md))
 - [ ] Native AOT and trimming support (source-generated JSON, typed request bodies)
