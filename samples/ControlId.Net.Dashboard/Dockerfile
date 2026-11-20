@@ -2,7 +2,8 @@
 #
 #   docker build -f samples/ControlId.Net.Dashboard/Dockerfile -t controlid-dashboard .
 #   docker run --rm -p 8081:8080 -e Dashboard__DeviceAddress=http://IP-do-equipamento -e Dashboard__MonitorHostname=IP-desta-maquina \
-#     -e Dashboard__MonitorPort=8081 controlid-dashboard
+#     -e Dashboard__MonitorPort=8081 -e Dashboard__DevicePassword -e Dashboard__CallbackToken controlid-dashboard
+#   (-e sem valor repassa a variável do seu shell: a senha e o token não ficam no comando nem na imagem.)
 #
 # Com o simulador, use o docker-compose: docker compose -f samples/docker-compose.yml up --build
 

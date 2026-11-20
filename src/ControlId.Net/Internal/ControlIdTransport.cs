@@ -189,127 +189,16 @@ internal sealed class ControlIdTransport : IDisposable
 
     /// <summary>
     /// POST com corpo JSON; devolve o corpo da resposta como stream, lido sob demanda (ex.: AFD grande). A vaga do limite de
-    /// requisições fica ocupada até o stream ser fechado. Refaz o login uma vez em 401, como os demais comandos.
+    /// requisições fica ocupada até o stream ser fechado. Refaz o login e repete as leituras como os demais comandos, mas só
+    /// antes de os cabeçalhos chegarem: depois disso o corpo já está com quem consome o stream.
     /// </summary>
-    public async Task<(Stream Stream, string? CharSet)> PostForStreamAsync(string endpoint, object? body, CancellationToken cancellationToken, string? extraQuery = null)
-    {
+    public Task<(Stream Stream, string? CharSet)> PostForStreamAsync(string endpoint, object? body, CancellationToken cancellationToken, string? extraQuery = null) =>
         // O span cobre até os cabeçalhos da resposta; a leitura do corpo fica com quem consome o stream.
-        using var scope = new CommandScope(endpoint, _deviceTags);
-        try
+        TracedAsync<(Stream Stream, string? CharSet)>(endpoint, async scope =>
         {
-            return await PostForStreamCoreAsync(endpoint, body, extraQuery, scope, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            scope.Fail(ex);
-            throw;
-        }
-    }
-
-    private async Task<(Stream Stream, string? CharSet)> PostForStreamCoreAsync(
-        string endpoint, object? body, string? extraQuery, CommandScope scope, CancellationToken cancellationToken)
-    {
-        // Só repete antes de os cabeçalhos chegarem: depois disso o corpo já está com quem consome o stream.
-        var maxRetries = ReadRetry.IsReadOnly(scope.Command) ? _options.ReadRetries : 0;
-        var retries = 0;
-        var relogged = false;
-        while (true)
-        {
-            var session = await EnsureSessionAsync(cancellationToken).ConfigureAwait(false);
-            using var request = BuildRequest(HttpMethod.Post, endpoint, JsonContent(body), session, extraQuery);
-
-            var probe = _circuit.Acquire();
-            try
-            {
-                await _throttle.WaitAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch
-            {
-                _circuit.Cancel(probe);
-                throw;
-            }
-
-            HttpResponseMessage response;
-            ControlIdException? failure = null;
-            try
-            {
-                response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-                _circuit.Record(response.StatusCode, probe);
-            }
-            catch (HttpRequestException ex)
-            {
-                _throttle.Release();
-                _circuit.Failure(probe);
-                Log.CommunicationFailed(_logger, _device, scope.Command, ex);
-                failure = CommunicationFailure(endpoint, ex);
-                response = null!;
-            }
-            catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
-            {
-                _throttle.Release();
-                _circuit.Failure(probe);
-                Log.CommunicationFailed(_logger, _device, scope.Command, ex);
-                failure = new ControlIdException($"Timeout ao chamar '{endpoint}' em {_options.BaseAddress}.", innerException: ex);
-                response = null!;
-            }
-            catch
-            {
-                _throttle.Release();
-                _circuit.Cancel(probe);
-                throw;
-            }
-
-            if (failure is not null)
-            {
-                if (retries < maxRetries)
-                {
-                    retries++;
-                    scope.Retry(retries, failure.InnerException!.GetType().Name);
-                    Log.Retrying(_logger, _device, scope.Command, retries, failure.InnerException!.GetType().Name);
-                    await ReadRetry.WaitAsync(_options.RetryDelay, retries, cancellationToken).ConfigureAwait(false);
-                    continue;
-                }
-
-                throw failure;
-            }
-
-            if (response.StatusCode == HttpStatusCode.Unauthorized && !relogged)
-            {
-                response.Dispose();
-                _throttle.Release();
-                Interlocked.CompareExchange(ref _session, null, session);
-                relogged = true;
-                scope.Relogin();
-                Log.SessionExpired(_logger, _device, scope.Command);
-                continue;
-            }
-
-            if (!response.IsSuccessStatusCode && retries < maxRetries && ReadRetry.IsTransient(response.StatusCode))
-            {
-                var status = ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
-                response.Dispose();
-                _throttle.Release();
-                retries++;
-                scope.Retry(retries, status);
-                Log.Retrying(_logger, _device, scope.Command, retries, status);
-                await ReadRetry.WaitAsync(_options.RetryDelay, retries, cancellationToken).ConfigureAwait(false);
-                continue;
-            }
-
-            if (!response.IsSuccessStatusCode)
-            {
-                try
-                {
-                    var text = await ReadAsStringAsync(response, cancellationToken).ConfigureAwait(false);
-                    EnsureSuccess(response, endpoint, text);
-                }
-                finally
-                {
-                    response.Dispose();
-                    _throttle.Release();
-                }
-            }
-
+            var response = await SendCommandCoreAsync(
+                HttpMethod.Post, endpoint, () => JsonContent(body), extraQuery, requiresSession: true, HttpCompletionOption.ResponseHeadersRead, scope, cancellationToken)
+                .ConfigureAwait(false);
             try
             {
 #if NET5_0_OR_GREATER
@@ -321,12 +210,10 @@ internal sealed class ControlIdTransport : IDisposable
             }
             catch
             {
-                response.Dispose();
-                _throttle.Release();
+                Discard(response, HttpCompletionOption.ResponseHeadersRead);
                 throw;
             }
-        }
-    }
+        });
 
     /// <summary>Envia bytes crus (<paramref name="contentType"/>) e devolve o corpo da resposta como texto.</summary>
     public async Task<string> PostBytesAsync(string endpoint, byte[] content, string contentType, CancellationToken cancellationToken, string? extraQuery = null)
@@ -354,72 +241,110 @@ internal sealed class ControlIdTransport : IDisposable
     }
 
     /// <summary>
-    /// Envia o comando com a sessão atual, refaz o login uma vez em 401 e lança <see cref="ControlIdException"/>
-    /// se o equipamento devolver erro. O chamador descarta a resposta.
+    /// Envia o comando com a sessão atual (resposta lida inteira), refaz o login uma vez em 401 e lança
+    /// <see cref="ControlIdException"/> se o equipamento devolver erro. O chamador descarta a resposta.
     /// </summary>
-    private async Task<HttpResponseMessage> SendCommandAsync(
-        HttpMethod method, string endpoint, Func<HttpContent?> createContent, string? extraQuery, bool requiresSession, CancellationToken cancellationToken)
+    private Task<HttpResponseMessage> SendCommandAsync(
+        HttpMethod method, string endpoint, Func<HttpContent?> createContent, string? extraQuery, bool requiresSession, CancellationToken cancellationToken) =>
+        TracedAsync(endpoint, scope => SendCommandCoreAsync(
+            method, endpoint, createContent, extraQuery, requiresSession, HttpCompletionOption.ResponseContentRead, scope, cancellationToken));
+
+    /// <summary>
+    /// Núcleo único de envio de comandos: sessão, relogin uma vez em 401, repetição de leituras (ADR 0013) e erro do
+    /// equipamento. Com <see cref="HttpCompletionOption.ResponseHeadersRead"/> a resposta devolvida ainda segura a vaga do
+    /// limite de requisições: quem a recebe libera com <see cref="Discard"/> ou entregando-a a um <see cref="ResponseStream"/>.
+    /// Toda resposta descartada aqui (401, erro, repetição) já libera a sua vaga.
+    /// </summary>
+    private async Task<HttpResponseMessage> SendCommandCoreAsync(
+        HttpMethod method,
+        string endpoint,
+        Func<HttpContent?> createContent,
+        string? extraQuery,
+        bool requiresSession,
+        HttpCompletionOption completion,
+        CommandScope scope,
+        CancellationToken cancellationToken)
     {
-        using var scope = new CommandScope(endpoint, _deviceTags);
         var maxRetries = ReadRetry.IsReadOnly(scope.Command) ? _options.ReadRetries : 0;
         var retries = 0;
         var relogged = false;
-        try
+        while (true)
         {
-            while (true)
-            {
-                var session = requiresSession ? await EnsureSessionAsync(cancellationToken).ConfigureAwait(false) : null;
+            var session = requiresSession ? await EnsureSessionAsync(cancellationToken).ConfigureAwait(false) : null;
 
-                using var request = BuildRequest(method, endpoint, createContent(), session, extraQuery);
-                HttpResponseMessage response;
+            using var request = BuildRequest(method, endpoint, createContent(), session, extraQuery);
+            HttpResponseMessage response;
+            try
+            {
+                response = await SendAsync(request, endpoint, completion, cancellationToken).ConfigureAwait(false);
+            }
+            catch (ControlIdException ex) when (retries < maxRetries && ReadRetry.IsTransient(ex))
+            {
+                // Leitura que falhou na rede ou estourou o prazo: espera e repete (ADR 0013).
+                await RetryAsync(scope, ++retries, ex.InnerException?.GetType().Name ?? "network", cancellationToken).ConfigureAwait(false);
+                continue;
+            }
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized && requiresSession && !relogged)
+            {
+                // Sessão expirou ou o equipamento reiniciou: descarta e tenta de novo com login novo.
+                Discard(response, completion);
+                Interlocked.CompareExchange(ref _session, null, session);
+                relogged = true;
+                scope.Relogin();
+                Log.SessionExpired(_logger, _device, scope.Command);
+                continue;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                if (retries < maxRetries && ReadRetry.IsTransient(response.StatusCode))
+                {
+                    var status = ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    Discard(response, completion);
+                    await RetryAsync(scope, ++retries, status, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
                 try
                 {
-                    response = await SendAsync(request, endpoint, cancellationToken).ConfigureAwait(false);
+                    var text = await ReadAsStringAsync(response, cancellationToken).ConfigureAwait(false);
+                    EnsureSuccess(response, endpoint, text);
                 }
-                catch (ControlIdException ex) when (retries < maxRetries && ReadRetry.IsTransient(ex))
+                finally
                 {
-                    // Leitura que falhou na rede ou estourou o prazo: espera e repete (ADR 0013).
-                    retries++;
-                    var reason = ex.InnerException?.GetType().Name ?? "network";
-                    scope.Retry(retries, reason);
-                    Log.Retrying(_logger, _device, scope.Command, retries, reason);
-                    await ReadRetry.WaitAsync(_options.RetryDelay, retries, cancellationToken).ConfigureAwait(false);
-                    continue;
+                    Discard(response, completion);
                 }
-
-                if (response.StatusCode == HttpStatusCode.Unauthorized && requiresSession && !relogged)
-                {
-                    // Sessão expirou ou o equipamento reiniciou: descarta e tenta de novo com login novo.
-                    response.Dispose();
-                    Interlocked.CompareExchange(ref _session, null, session);
-                    relogged = true;
-                    scope.Relogin();
-                    Log.SessionExpired(_logger, _device, scope.Command);
-                    continue;
-                }
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    if (retries < maxRetries && ReadRetry.IsTransient(response.StatusCode))
-                    {
-                        var status = ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
-                        response.Dispose();
-                        retries++;
-                        scope.Retry(retries, status);
-                        Log.Retrying(_logger, _device, scope.Command, retries, status);
-                        await ReadRetry.WaitAsync(_options.RetryDelay, retries, cancellationToken).ConfigureAwait(false);
-                        continue;
-                    }
-
-                    using (response)
-                    {
-                        var text = await ReadAsStringAsync(response, cancellationToken).ConfigureAwait(false);
-                        EnsureSuccess(response, endpoint, text);
-                    }
-                }
-
-                return response;
             }
+
+            return response;
+        }
+    }
+
+    private Task RetryAsync(CommandScope scope, int retry, string reason, CancellationToken cancellationToken)
+    {
+        scope.Retry(retry, reason);
+        Log.Retrying(_logger, _device, scope.Command, retry, reason);
+        return ReadRetry.WaitAsync(_options.RetryDelay, retry, cancellationToken);
+    }
+
+    /// <summary>Descarta uma resposta de <see cref="SendAsync"/>; em stream, libera também a vaga que ela segurava.</summary>
+    private void Discard(HttpResponseMessage response, HttpCompletionOption completion)
+    {
+        response.Dispose();
+        if (completion == HttpCompletionOption.ResponseHeadersRead)
+        {
+            _throttle.Release();
+        }
+    }
+
+    /// <summary>Abre o span e a métrica de duração do comando e marca a falha, se houver.</summary>
+    private async Task<T> TracedAsync<T>(string endpoint, Func<CommandScope, Task<T>> action)
+    {
+        using var scope = new CommandScope(endpoint, _deviceTags);
+        try
+        {
+            return await action(scope).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -488,26 +413,15 @@ internal sealed class ControlIdTransport : IDisposable
         return false;
     }
 
-    private async Task<string> RequestSessionAsync(CancellationToken cancellationToken)
-    {
-        using var scope = new CommandScope("login.fcgi", _deviceTags);
-        try
-        {
-            return await RequestSessionCoreAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            scope.Fail(ex);
-            throw;
-        }
-    }
+    private Task<string> RequestSessionAsync(CancellationToken cancellationToken) =>
+        TracedAsync("login.fcgi", _ => RequestSessionCoreAsync(cancellationToken));
 
     private async Task<string> RequestSessionCoreAsync(CancellationToken cancellationToken)
     {
         var credentials = _credentials;
         var body = new LoginRequest { Login = credentials.Login, Password = credentials.Password };
         using var request = BuildRequest(HttpMethod.Post, "login.fcgi", JsonContent(body), null, null);
-        using var response = await SendAsync(request, "login.fcgi", cancellationToken).ConfigureAwait(false);
+        using var response = await SendAsync(request, "login.fcgi", HttpCompletionOption.ResponseContentRead, cancellationToken).ConfigureAwait(false);
         var text = await ReadAsStringAsync(response, cancellationToken).ConfigureAwait(false);
 
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
@@ -564,7 +478,14 @@ internal sealed class ControlIdTransport : IDisposable
     private static StringContent JsonContent(object? body) =>
         new StringContent(ControlIdJson.Serialize(body), Encoding.UTF8, "application/json");
 
-    private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, string endpoint, CancellationToken cancellationToken)
+    /// <summary>
+    /// Uma tentativa: porta do circuit breaker, vaga do limite, envio e classificação da falha (rede ou timeout do cliente
+    /// contam no circuito e viram <see cref="ControlIdException"/>; cancelamento de quem chamou só devolve a vez da sonda).
+    /// Com <see cref="HttpCompletionOption.ResponseContentRead"/> o corpo já chega lido e a vaga é liberada aqui; com
+    /// <see cref="HttpCompletionOption.ResponseHeadersRead"/> a resposta devolvida segura a vaga (ver <see cref="Discard"/>).
+    /// Em qualquer falha a vaga é liberada aqui.
+    /// </summary>
+    private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, string endpoint, HttpCompletionOption completion, CancellationToken cancellationToken)
     {
         // Porta do circuit breaker: comandos e login passam por aqui. Aberto, falha antes de pegar uma vaga.
         var probe = _circuit.Acquire();
@@ -578,11 +499,13 @@ internal sealed class ControlIdTransport : IDisposable
             throw;
         }
 
+        HttpResponseMessage? response = null;
+        var keepSlot = false;
         try
         {
-            // Com ResponseContentRead (padrão) o corpo já chega lido, então a vaga cobre a requisição inteira.
-            var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            response = await _http.SendAsync(request, completion, cancellationToken).ConfigureAwait(false);
             _circuit.Record(response.StatusCode, probe);
+            keepSlot = completion == HttpCompletionOption.ResponseHeadersRead;
             return response;
         }
         catch (HttpRequestException ex)
@@ -599,12 +522,16 @@ internal sealed class ControlIdTransport : IDisposable
         }
         catch
         {
+            response?.Dispose();
             _circuit.Cancel(probe);
             throw;
         }
         finally
         {
-            _throttle.Release();
+            if (!keepSlot)
+            {
+                _throttle.Release();
+            }
         }
     }
 
