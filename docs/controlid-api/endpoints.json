@@ -1,0 +1,2189 @@
+{
+  "alarm_status.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Alarme / Desativar alarme",
+      "Alarme / Obter status do alarme"
+    ],
+    "paginas": [
+      "alarme/introducao-ao-alarme"
+    ]
+  },
+  "buzzer_buzz.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Ações / Acionamento remoto buzzer"
+    ],
+    "paginas": [
+      "acoes/acionamento_remoto_buzzer"
+    ]
+  },
+  "camera_calibration_status.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "reconhecimento-facial/calibracao-da-camera"
+    ]
+  },
+  "cancel_remote_camera_calibration.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "reconhecimento-facial/calibracao-da-camera"
+    ]
+  },
+  "cancel_remote_enroll.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Registro / Cancelar registro remoto"
+    ],
+    "paginas": [
+      "acoes/cadastro-remoto-biometria-facial-cartao"
+    ]
+  },
+  "card_create.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "acoes/cadastro-remoto-biometria-facial-cartao"
+    ]
+  },
+  "change_crypto_key_default.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/alterar-chave-de-seguranca-secbox"
+    ]
+  },
+  "change_crypto_key_random.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/alterar-chave-de-seguranca-secbox"
+    ]
+  },
+  "change_idcloud_code.fcgi": {
+    "metodos": [
+      "GET"
+    ],
+    "postman": [
+      "Push / Alterar código de verificação"
+    ],
+    "paginas": [
+      "modo-push/idcloud"
+    ]
+  },
+  "change_login.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Gerenciamento de sessão / Alterar login e senha"
+    ],
+    "paginas": [
+      "gerenciamento-secao/alterar-usuario-e-senha-de-login"
+    ]
+  },
+  "check_ip_conflict.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "check_port_availability.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "configuracoes/verificar-disponibilidade-de-porta"
+    ]
+  },
+  "configure_802_1X.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Sistema / Habilitar 802.1X"
+    ],
+    "paginas": [
+      "changelog/setembro-2026",
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "connection_test.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "configuracoes/ferramentas-diagnostico"
+    ]
+  },
+  "create_objects.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Objetos / Regras de acesso / Criar regras de acesso",
+      "Objetos / Regras de acesso time zones / Criar regra de acesso time zones",
+      "Objetos / Cartões / Criar cartões",
+      "Objetos / QR Codes / Criar qrcodes",
+      "Objetos / Tabelas customizadas / Criar tabelas customizadas",
+      "Objetos / Colunas customizadas / Criar colunas customizadas",
+      "Objetos / Dispositivos / Criar dispositivos",
+      "Objetos / Regras de acesso para grupos / Criar regras de acesso para grupos",
+      "Objetos / Regras de acesso para liberações agendadas / Criar regras de acesso para liberações agendadas",
+      "Objetos / Grupos / Criar grupos",
+      "Objetos / Liberações agendadas / Criar liberações agendadas",
+      "Objetos / Portal access rules / Create portal access rules",
+      "Objetos / Templates / Criar templates",
+      "Objetos / Time spans / Criar time spans",
+      "Objetos / Time zones / Criar time zones",
+      "Objetos / Regras de acesso para usuário / Criar regras de acesso para usuário",
+      "Objetos / Grupos de usuários / Criar grupo de usuários",
+      "Objetos / Usuários / Criar usuários",
+      "Objetos / User roles / Criar copia de usuário",
+      "Objetos / Regras de intertravamento via rede / Criar regra"
+    ],
+    "paginas": [
+      "modos-de-operacao/configurar-modo-online",
+      "objetos/carregar-objetos",
+      "objetos/criar-objetos",
+      "particularidade-dos-produtos/qr-code",
+      "reconhecimento-facial/cadastro-facial"
+    ]
+  },
+  "create_or_modify_objects.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Objetos / Usuários / Criar ou modificar usuários"
+    ],
+    "paginas": [
+      "objetos/criar-ou-modificar-objetos"
+    ]
+  },
+  "delete_admins.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Sistema / Remover todos administradores"
+    ],
+    "paginas": [
+      "sistema/remover-administradores"
+    ]
+  },
+  "delete_kiosk_icon.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/modo-quiosque"
+    ]
+  },
+  "delete_slideshow_image.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "fotos-e-logotipo/gerenciar-slideshow",
+      "particularidade-dos-produtos/slideshow"
+    ]
+  },
+  "destroy_objects.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Objetos / Cartões / Deletar cartões",
+      "Objetos / QR Codes / Deletar qrcodes",
+      "Objetos / Grupos / Deletar grupos",
+      "Objetos / Liberações agendadas / Deletar liberações agendadas",
+      "Objetos / Templates / Deletar templates",
+      "Objetos / Grupos de usuários / Deletar grupo de usuários",
+      "Objetos / Usuários / Deletar usuários",
+      "Objetos / Regras de intertravamento via rede / Remover regra"
+    ],
+    "paginas": [
+      "objetos/destruir-objetos"
+    ]
+  },
+  "device_has_secbox.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/secbox"
+    ]
+  },
+  "device_is_alive.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "modos-de-operacao/configurar-modo-online",
+      "modos-de-operacao/eventos-de-identificacao-online"
+    ]
+  },
+  "device_rfid_module.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "hardware/modulo-rfid"
+    ]
+  },
+  "doors_state.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Ações / Obter estado atual das portas"
+    ],
+    "paginas": [
+      "acoes/abertura-remota-porta-e-catraca"
+    ]
+  },
+  "dual_sided_query.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "sistema/dual-sided-secbox"
+    ]
+  },
+  "eap_802_1X_certificate_change.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/certificados-eap"
+    ]
+  },
+  "eap_802_1X_certificate_change_wifi.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "sistema/certificados-eap"
+    ]
+  },
+  "eap_tls_802_1X_certificate_change.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/certificados-eap"
+    ]
+  },
+  "eap_tls_802_1X_private_key_change.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/certificados-eap"
+    ]
+  },
+  "eap_tls_802_1X_private_key_persist.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/certificados-eap"
+    ]
+  },
+  "enroller_state.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Registro / Obter estado atual do registro"
+    ],
+    "paginas": [
+      "acoes/estado-do-enrollment"
+    ]
+  },
+  "execute_actions.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Ações / Abrir secbox (padrão)",
+      "Ações / Abrir secbox (3 segundos)",
+      "Ações / Abrir porta 1 (padrão)",
+      "Ações / Abrir porta 1 (3 segundos)",
+      "Ações / Abrir todas portas (padrão)",
+      "Ações / Abrir todas portas (3 segundos)",
+      "Ações / Abrir urna coletora",
+      "Ações / Manter secbox aberta",
+      "Ações / Manter porta aberta",
+      "Ações / Fechar secbox",
+      "Ações / Fechar porta 1",
+      "Ações / Fechar todas portas",
+      "Ações / Liberar giro no sentido horário",
+      "Ações / Liberar giro no sentido anti-horário",
+      "Ações / Liberar giro em ambos sentidos",
+      "Ações / Liberar relés catraca"
+    ],
+    "paginas": [
+      "acoes/abertura-remota-porta-e-catraca",
+      "primeiros-passos/exemplos"
+    ]
+  },
+  "export_afd.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Objetos / Relatórios / Relatório AFD",
+      "Objetos / Relatórios / Relatório AFD com formato 671",
+      "Objetos / Relatórios / Relatório AFD com filtro de data inicial",
+      "Objetos / Relatórios / Relatório AFD com filtro NSR"
+    ],
+    "paginas": [
+      "changelog/setembro-2026",
+      "objetos/exportar-relatorio"
+    ]
+  },
+  "export_audit_logs.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Sistema / Obter relatório de logs de auditoria para todos os filtros"
+    ],
+    "paginas": [
+      "changelog/setembro-2026",
+      "objetos/exportar-relatorio"
+    ]
+  },
+  "export_custom_tables_metadata.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "objetos/exportar-relatorio"
+    ]
+  },
+  "export_object.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "objetos/exportar-relatorio"
+    ]
+  },
+  "export_objects.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Sistema / Exportar objetos"
+    ],
+    "paginas": [
+      "objetos/exportar-relatorio",
+      "sistema/sincronizacao"
+    ]
+  },
+  "face_create.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "acoes/cadastro-remoto-biometria-facial-cartao",
+      "modos-de-operacao/eventos-de-identificacao-online"
+    ]
+  },
+  "face_template_count_distinct.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "reconhecimento-facial/operacoes-template-facial"
+    ]
+  },
+  "face_template_create.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "modos-de-operacao/eventos-de-identificacao-online"
+    ]
+  },
+  "face_template_destroy.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "reconhecimento-facial/operacoes-template-facial"
+    ]
+  },
+  "face_template_enroll.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "reconhecimento-facial/operacoes-template-facial"
+    ]
+  },
+  "face_template_extract.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "reconhecimento-facial/operacoes-template-facial"
+    ]
+  },
+  "face_template_extract_list.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "reconhecimento-facial/operacoes-template-facial"
+    ]
+  },
+  "face_template_match.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "reconhecimento-facial/operacoes-template-facial"
+    ]
+  },
+  "finalize_sip_call.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Interfonia SIP / Finalizar chamada SIP"
+    ],
+    "paginas": [
+      "particularidade-dos-produtos/interfonia-sip-idface"
+    ]
+  },
+  "fingerprint_create.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "acoes/cadastro-remoto-biometria-facial-cartao",
+      "modos-de-operacao/eventos-de-identificacao-online"
+    ]
+  },
+  "forget_wifi_connected_network.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "get_802_1X_status.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "get_ac_log.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Sistema / Obter logs de sistema"
+    ],
+    "paginas": [
+      "configuracoes/ferramentas-diagnostico"
+    ]
+  },
+  "get_audio_access_message.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Configurações / Download de mensagem sonora customizada"
+    ],
+    "paginas": [
+      "particularidade-dos-produtos/mensagens-sonoras-acesso-idface"
+    ]
+  },
+  "get_catra_info.fcgi": {
+    "metodos": [
+      "GET"
+    ],
+    "postman": [
+      "Cadastro facial / Obter informações da catraca"
+    ],
+    "paginas": [
+      "reconhecimento-facial/informacoes-catraca"
+    ]
+  },
+  "get_configuration.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Configurações / Buscar todas configurações (iDAccess/iDFit)",
+      "Configurações / Buscar todas configurações (iDBlock)",
+      "Configurações / Buscar todas configurações (iDBox)",
+      "Configurações / Buscar todas configurações (iDFlex)",
+      "Configurações / Visualizar configurações do módulo mifare"
+    ],
+    "paginas": [
+      "configuracoes/obter-configuracoes"
+    ]
+  },
+  "get_dual_sided_status.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "sistema/dual-sided-secbox"
+    ]
+  },
+  "get_eap_tls_csr_file.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/certificados-eap"
+    ]
+  },
+  "get_hid_last_card.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "hardware/modulo-rfid"
+    ]
+  },
+  "get_kiosk_icon.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/modo-quiosque"
+    ]
+  },
+  "get_kiosk_icons_list.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/modo-quiosque"
+    ]
+  },
+  "get_last_snapshot.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "reconhecimento-facial/captura-de-camera"
+    ]
+  },
+  "get_ntp_server.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "configuracoes/servidor-ntp"
+    ]
+  },
+  "get_ntp_server_status.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "configuracoes/servidor-ntp"
+    ]
+  },
+  "get_oem_code.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/obter-informacoes-do-sistema"
+    ]
+  },
+  "get_oem_downgrade_approved_versions.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "sistema/firmware-aprovado-oem"
+    ]
+  },
+  "get_openvpn_log.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "configuracoes/ferramentas-diagnostico"
+    ]
+  },
+  "get_osdp_installation_mode.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Configurações / Status do Modo de Instalação"
+    ],
+    "paginas": [
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "get_phone_icon.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/interfonia-sip-idface"
+    ]
+  },
+  "get_pjsip_audio_message.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Interfonia SIP / Download de som de chamada personalizado"
+    ],
+    "paginas": [
+      "particularidade-dos-produtos/interfonia-sip-idface"
+    ]
+  },
+  "get_sip_status.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Interfonia SIP / Verificar status da chamada SIP"
+    ],
+    "paginas": [
+      "particularidade-dos-produtos/interfonia-sip-idface"
+    ]
+  },
+  "get_slideshow_image.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "fotos-e-logotipo/gerenciar-slideshow",
+      "particularidade-dos-produtos/slideshow"
+    ]
+  },
+  "get_slideshow_images_list.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "fotos-e-logotipo/gerenciar-slideshow",
+      "particularidade-dos-produtos/slideshow"
+    ]
+  },
+  "get_ssl_certificate.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "get_streaming_logo.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/streaming-idface"
+    ]
+  },
+  "get_vpn_file.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Sistema / Receber arquivo de Exemplo OpenVPN"
+    ],
+    "paginas": [
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "get_vpn_information.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Sistema / Recebe as configurações de OpenVPN"
+    ],
+    "paginas": [
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "get_vpn_ip.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "get_vpn_status.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Sistema / Recebe Status da conexão OpenVPN"
+    ],
+    "paginas": [
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "get_wiegand_card_read.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "hardware/modulo-rfid"
+    ]
+  },
+  "get_wifi_data.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "get_wpa_log.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "configuracoes/ferramentas-diagnostico"
+    ]
+  },
+  "get_wpasupplicant_log.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "configuracoes/ferramentas-diagnostico"
+    ]
+  },
+  "gpio_state.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Hardware / Buscar estado do GPIO"
+    ],
+    "paginas": [
+      "hardware/ler-estado-de-gpio"
+    ]
+  },
+  "has_audio_access_messages.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Configurações / Verificar áudios customizados de acesso presentes no dispositivo",
+      "Interfonia SIP / Verificar se existe som de chamada personalizado no dispositivo"
+    ],
+    "paginas": [
+      "particularidade-dos-produtos/mensagens-sonoras-acesso-idface"
+    ]
+  },
+  "has_pjsip_audio_message.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/interfonia-sip-idface"
+    ]
+  },
+  "has_vpn_file.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Sistema / Recebe a confirmação se já possui um arquivo de configuração"
+    ],
+    "paginas": [
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "hid_get_key_info.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "hardware/gerenciamento-de-chaves-hid"
+    ]
+  },
+  "hid_get_oid.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "hardware/gerenciamento-de-chaves-hid"
+    ]
+  },
+  "hid_inject_custom_kek.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "hardware/gerenciamento-de-chaves-hid"
+    ]
+  },
+  "hid_inject_default_kek.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "hardware/gerenciamento-de-chaves-hid"
+    ]
+  },
+  "hid_inject_media_key.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "hardware/gerenciamento-de-chaves-hid"
+    ]
+  },
+  "hid_reset_config.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "hardware/gerenciamento-de-chaves-hid"
+    ]
+  },
+  "hid_set_oid.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "hardware/gerenciamento-de-chaves-hid"
+    ]
+  },
+  "idflex_upgrade_enterprise.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/update-idflex-idaccess-nano"
+    ]
+  },
+  "io_state.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "hardware/diagnostico-de-entradas-e-saidas"
+    ]
+  },
+  "is_identifying.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "reconhecimento-facial/configuracoes-reconhecimento-facial"
+    ]
+  },
+  "is_valid_biometry.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Template / Verificar validade de template"
+    ],
+    "paginas": [
+      "acoes/operacoes-template-digital",
+      "sistema/verificar-biometria"
+    ]
+  },
+  "led_rgb_refresh.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Hardware / Recarregar LED RGB"
+    ],
+    "paginas": [
+      "hardware/reler-configuracao-do-led"
+    ]
+  },
+  "load_objects.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Objetos / Alarm logs / Carregar logs do alarm",
+      "Objetos / Regras de acesso / Carregar regras de acesso",
+      "Objetos / Regras de acesso time zones / Carregar regras de acesso time zones",
+      "Objetos / Ações / Carregar ações",
+      "Objetos / Logs de acesso / Carregar logs de acesso",
+      "Objetos / Cartões / Carregar cartões",
+      "Objetos / QR Codes / Carregar qrcodes",
+      "Objetos / Modificar logs / Carregar logs modificados",
+      "Objetos / Tabelas customizadas / Carregar tabelas customizadas",
+      "Objetos / Colunas customizadas / Carregar colunas customizadas",
+      "Objetos / Dispositivos / Carregar dispositivos",
+      "Objetos / Regras de acesso para grupos / Carregar regras de acesso para grupos",
+      "Objetos / Regras de acesso para liberações agendadas / Carregar regras de acesso para liberações agendadas",
+      "Objetos / Grupos / Carregar grupos",
+      "Objetos / Liberações agendadas / Carregar liberações agendadas",
+      "Objetos / Feriados / Carregar feriados",
+      "Objetos / Portal access rules / Load portal access rules",
+      "Objetos / Regras de acesso ao portal / Carregar ações do portal",
+      "Objetos / Portals / Carregar portals",
+      "Objetos / Templates / Carregar templates",
+      "Objetos / Time spans / Carregar time spans",
+      "Objetos / Time zones / Carregar time zones",
+      "Objetos / Regras de acesso para usuário / Carregar regras de acesso do usuário",
+      "Objetos / Grupos de usuários / Carregar grupo de usuários",
+      "Objetos / Usuários / Carregar usuários",
+      "Objetos / Usuários / Lista de usuários sem foto cadastrada",
+      "Objetos / Usuários / Lista de usuários com foto cadastrada",
+      "Objetos / Regras de intertravamento via rede / Carregar regras"
+    ],
+    "paginas": [
+      "objetos/carregar-objetos",
+      "primeiros-passos/exemplos"
+    ]
+  },
+  "login.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Gerenciamento de sessão / Login"
+    ],
+    "paginas": [
+      "gerenciamento-secao/fazer-login",
+      "primeiros-passos/realizar-login"
+    ]
+  },
+  "logo.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Fotos e Logotipo / Recuperar logo"
+    ],
+    "paginas": [
+      "fotos-e-logotipo/gerenciar-logotipo"
+    ]
+  },
+  "logo_change.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Fotos e Logotipo / Mudar Logo"
+    ],
+    "paginas": [
+      "fotos-e-logotipo/gerenciar-logotipo"
+    ]
+  },
+  "logo_destroy.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Fotos e Logotipo / Remover Logo",
+      "Fotos e Logotipo / Remover logo sem id"
+    ],
+    "paginas": [
+      "fotos-e-logotipo/gerenciar-logotipo"
+    ]
+  },
+  "logout.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Gerenciamento de sessão / Logout"
+    ],
+    "paginas": [
+      "gerenciamento-secao/fazer-logout"
+    ]
+  },
+  "make_sip_call.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Interfonia SIP / Realizar chamada SIP"
+    ],
+    "paginas": [
+      "particularidade-dos-produtos/interfonia-sip-idface"
+    ]
+  },
+  "make_sip_conference.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/interfonia-sip-idface"
+    ]
+  },
+  "master_password.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Sistema / Alterar senha mestre"
+    ],
+    "paginas": [
+      "sistema/reforco-de-seguranca"
+    ]
+  },
+  "message_to_screen.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "acoes/apresentar_mensagem_tela"
+    ]
+  },
+  "modify_objects.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Objetos / Dispositivos / Atulaizar dispositivos",
+      "Objetos / Regras de acesso para grupos / Atualizar regras de acesso para grupos",
+      "Objetos / Regras de acesso para liberações agendadas / Atualizar regras de acesso para liberações agendadas",
+      "Objetos / Regras de acesso ao portal / Atualizar ações do portal",
+      "Objetos / Time spans / Atualizar time spans",
+      "Objetos / Usuários / Atualizar usuários",
+      "Objetos / Regras de intertravamento via rede / Modificar regra"
+    ],
+    "paginas": [
+      "objetos/modificar-objetos"
+    ]
+  },
+  "new_biometric_image.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "modos-de-operacao/eventos-de-identificacao-online"
+    ]
+  },
+  "new_biometric_template.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "modos-de-operacao/eventos-de-identificacao-online"
+    ]
+  },
+  "new_card.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "modos-de-operacao/eventos-de-identificacao-online"
+    ]
+  },
+  "new_face_template.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "modos-de-operacao/eventos-de-identificacao-online"
+    ]
+  },
+  "new_pin.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "modos-de-operacao/eventos-de-identificacao-online"
+    ]
+  },
+  "new_qrcode.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "modos-de-operacao/eventos-de-identificacao-online"
+    ]
+  },
+  "new_rex_log.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "modos-de-operacao/eventos-de-identificacao-online"
+    ]
+  },
+  "new_uhf_tag.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "modos-de-operacao/eventos-de-identificacao-online"
+    ]
+  },
+  "new_user_enrolled.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "modos-de-operacao/eventos-de-identificacao-online"
+    ]
+  },
+  "new_user_id_and_password.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "modos-de-operacao/eventos-de-identificacao-online"
+    ]
+  },
+  "new_user_identified.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "modos-de-operacao/eventos-de-identificacao-online"
+    ]
+  },
+  "nslookup_test.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "configuracoes/ferramentas-diagnostico"
+    ]
+  },
+  "object_add.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "objetos/schema-objeto-customizado"
+    ]
+  },
+  "object_add_field.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Usuário / Adicionar campo customizado"
+    ],
+    "paginas": [
+      "objetos/schema-objeto-customizado"
+    ]
+  },
+  "object_metadata.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Sistema / Obter metadados de objetos"
+    ],
+    "paginas": [
+      "objetos/schema-objeto-customizado"
+    ]
+  },
+  "object_remove.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "objetos/schema-objeto-customizado"
+    ]
+  },
+  "object_remove_fields.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Usuário / Apagar campo customizado"
+    ],
+    "paginas": [
+      "objetos/schema-objeto-customizado"
+    ]
+  },
+  "object_update_field.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "objetos/schema-objeto-customizado"
+    ]
+  },
+  "osdp_get_connection_status.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "osdp_get_output_capabilities.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "osdp_refresh.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "osdp_scbk.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "osdp_set_secure_key.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "osdp_set_secure_type.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "password_create.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "acoes/cadastro-remoto-biometria-facial-cartao"
+    ]
+  },
+  "pin_create.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "acoes/cadastro-remoto-biometria-facial-cartao"
+    ]
+  },
+  "ping_test.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "configuracoes/ferramentas-diagnostico"
+    ]
+  },
+  "reboot.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Sistema / Reiniciar"
+    ],
+    "paginas": [
+      "sistema/reiniciar-equipamento"
+    ]
+  },
+  "reboot_recovery.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Sistema / Reiniciar em modo de recuperação"
+    ],
+    "paginas": [
+      "sistema/reiniciar-em-modo-de-update"
+    ]
+  },
+  "recovery_password.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "sistema/senha-do-modo-de-update"
+    ]
+  },
+  "remote_camera_calibration.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "reconhecimento-facial/calibracao-da-camera"
+    ]
+  },
+  "remote_enroll.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Registro / Registrar dedo de pânico (sync)",
+      "Registro / Registrar dedo de pânico (async)",
+      "Registro / Registrar dedo (sync)",
+      "Registro / Registrar senha (sync)",
+      "Registro / Registrar PIN (sync)",
+      "Registro / Registrar PIN (async)",
+      "Registro / Registrar senha (async)",
+      "Registro / Registrar dedo (async)",
+      "Registro / Registrar face (sync)",
+      "Registro / Registrar face (async)",
+      "Registro / Registrar cartão proximidade (sync)"
+    ],
+    "paginas": [
+      "acoes/cadastro-remoto-biometria-facial-cartao",
+      "changelog/setembro-2026",
+      "monitor/introducao-ao-monitor"
+    ]
+  },
+  "remote_led_control.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Configurações / iDBlock Next / Configurar LEDs na catraca"
+    ],
+    "paginas": [
+      "particularidade-dos-produtos/idblock-next"
+    ]
+  },
+  "remote_user_authorization.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "acoes/autorizacao_remota_acesso"
+    ]
+  },
+  "remove_custom_video.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "fotos-e-logotipo/gerenciar-modo-propaganda",
+      "particularidade-dos-produtos/streaming-idface"
+    ]
+  },
+  "remove_phone_icon.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/interfonia-sip-idface"
+    ]
+  },
+  "remove_slideshow_images.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "fotos-e-logotipo/gerenciar-slideshow",
+      "particularidade-dos-produtos/slideshow"
+    ]
+  },
+  "remove_streaming_logo.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/streaming-idface"
+    ]
+  },
+  "report_generate.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Objetos / Relatórios / Gerar Relatório"
+    ],
+    "paginas": [
+      "modo-ponto/funcionamento",
+      "objetos/exportar-relatorio"
+    ]
+  },
+  "request_redirect.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/redirecionar-requisicao"
+    ]
+  },
+  "reset_crypto_key.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/alterar-chave-de-seguranca-secbox"
+    ]
+  },
+  "reset_to_factory_default.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Sistema / Voltar todas configurações de fábrica",
+      "Sistema / Voltar configurações de fábrica exceto rede"
+    ],
+    "paginas": [
+      "changelog/setembro-2026",
+      "sistema/redefinir-as-configuracoes"
+    ]
+  },
+  "save_screenshot.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Cadastro facial / Captura de câmera via API"
+    ],
+    "paginas": [
+      "changelog/setembro-2026",
+      "reconhecimento-facial/captura-de-camera"
+    ]
+  },
+  "secbox_is_active.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/secbox"
+    ]
+  },
+  "secbox_serial_number.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/secbox"
+    ]
+  },
+  "send_slideshow_images.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "fotos-e-logotipo/gerenciar-slideshow",
+      "particularidade-dos-produtos/slideshow"
+    ]
+  },
+  "send_video.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "fotos-e-logotipo/gerenciar-modo-propaganda",
+      "particularidade-dos-produtos/streaming-idface"
+    ]
+  },
+  "session_is_valid.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Gerenciamento de sessão / Checar validade da sessão"
+    ],
+    "paginas": [
+      "gerenciamento-secao/verificar-validade-da-sessao",
+      "modos-de-operacao/configurar-modo-online"
+    ]
+  },
+  "set_audio_access_message.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Configurações / Carregar mensagem sonora customizada"
+    ],
+    "paginas": [
+      "particularidade-dos-produtos/mensagens-sonoras-acesso-idface"
+    ]
+  },
+  "set_configuration.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Ações / Personalizar mensagem de eventos",
+      "Configurações / iDBlock Next / Habilitar relé 1 da catraca (iDBlock Next)",
+      "Configurações / iDBlock Next / Desabilitar relé 1 da catraca (iDBlock Next)",
+      "Configurações / iDBlock Next / Ativar relé 1 da catraca em sentido anti-horário (iDBlock Next)",
+      "Configurações / iDBlock Next / Ativar relé 1 da catraca em sentido horário (iDBlock Next)",
+      "Configurações / iDBlock Next / Habilitar relé 2 da catraca (iDBlock Next)",
+      "Configurações / iDBlock Next / Desabilitar relé 2 da catraca (iDBlock Next)",
+      "Configurações / iDBlock Next / Ativar relé 2 da catraca em sentido anti-horário (iDBlock Next)",
+      "Configurações / iDBlock Next / Ativar relé 2 da catraca em sentido horário (iDBlock Next)",
+      "Configurações / iDBlock Next / Alterar modo de operação (iDBlock Next)",
+      "Configurações / iDBlock Next / Alterar modo de operação  iDFace ou IHM primários (iDBlock Next)",
+      "Configurações / iDBlock Next / Alterar modo de operação iDFace ou IHM secundários (iDBlock Next)",
+      "Configurações / iDBlock Next / Alterar modo de operação intervalo de tempo entre sincronismo de usuários (iDBlock Next)",
+      "Configurações / iDBlock Next / Alterar modo de operação intervalo de tempo entre sincronismo de biometrias (iDBlock Next)",
+      "Configurações / iDBlock Next / Alterar modo de operação intervalo de tempo entre sincronismo de configurações (iDBlock Next)",
+      "Configurações / iDBlock Next / Alterar modo de operação sentidos da catraca  (iDBlock Next)",
+      "Configurações / iDBlock Next / Alterar modo de operação  sentido de giro da catraca (iDBlock Next)",
+      "Configurações / iDBlock Next / Alterar modo de operação tempo de duração da liberação do giro (iDBlock Next)",
+      "Configurações / iDBlock Next / Habilitar saída de visitantes com cartão (iDBlock Next)",
+      "Configurações / iDBlock Next / Desabilitar saída de visitantes com cartão (iDBlock Next)",
+      "Configurações / iDFace Max / Alterar modo de saída secbox (normal)",
+      "Configurações / iDFace Max / Alterar modo de saída secbox (rejeitados)",
+      "Configurações / iDFace Max / Alterar modo de saída secbox (campainha)",
+      "Configurações / iDFace Max / Alterar modo de saída secbox (alarme)",
+      "Configurações / iDFace Max / Habilitar relé interno",
+      "Configurações / iDFace Max / Desabilitar relé interno",
+      "Configurações / iDFace Max / Habilitar fechamento inteligente relé interno",
+      "Configurações / iDFace Max / Desabilitar fechamento inteligente relé interno",
+      "Configurações / iDFace Max / Alterar timeout relé interno",
+      "Configurações / iDFace Max / Alterar modo de saída relé interno (normal)",
+      "Configurações / iDFace Max / Alterar modo de saída relé interno (rejeitados)",
+      "Configurações / iDFace Max / Alterar modo de saída relé interno (campainha)",
+      "Configurações / iDFace Max / Alterar modo de saída relé interno (alarme)",
+      "Configurações / iDFace Max / Desabilitar GPIO1",
+      "Configurações / iDFace Max / Alterar modo de operação GPIO2 (habilitar facial)",
+      "Configurações / iDFace Max / Alterar modo de operação GPIO2 (alarme)",
+      "Configurações / iDFace Max / Alterar modo de operação GPIO2 (emergência)",
+      "Configurações / iDFace Max / Alterar modo de operação GPIO2 (lockdown)",
+      "Configurações / iDFace Max / Alterar modo de operação GPIO2 (interfonia)",
+      "Configurações / iDFace Max / Alterar modo de operação GPIO2 (intertravamento)",
+      "Configurações / iDFace Max / Alterar modo de operação GPIO2 (abrir relé)",
+      "Configurações / iDFace Max / Alterar modo de operação GPIO2 (abrir secbox)",
+      "Configurações / iDFace Max / Alterar modo de operação GPIO2 (abrir relé/secbox)",
+      "Configurações / iDFace Max / Alterar nível ativo 0 GPIO3 (NC)",
+      "Configurações / iDFace Max / Alterar nível ativo 1 GPIO3 (NO)",
+      "Configurações / Ativar modo online",
+      "Configurações / Desativar modo online",
+      "Configurações / Habilitar acesso do SSH ao dispositivo",
+      "Configurações / Desabilita o acesso do SSH ao dispositivo",
+      "Configurações / Habilitar endpoint de reinício do dispositivo",
+      "Configurações / Desabilita endpoint de reinício do dispositivo",
+      "Configurações / Ativar emergência",
+      "Configurações / Desativar emergência",
+      "Configurações / Ativar extração de template",
+      "Configurações / Desativar extração de template",
+      "Configurações / Habilitar relé 1 da catraca",
+      "Configurações / Desabilitar relé 1 da catraca",
+      "Configurações / Ativar relé 1 da catraca em sentido anti-horário",
+      "Configurações / Ativar relé 1 da catraca em sentido horário",
+      "Configurações / Habilitar relé 2 da catraca",
+      "Configurações / Desabilitar relé 2 da catraca",
+      "Configurações / Ativar relé 2 da catraca em sentido anti-horário",
+      "Configurações / Ativar relé 2 da catraca em sentido horário",
+      "Configurações / Ativar identificação no dispositivo",
+      "Configurações / Desativar identificação no dispositivo",
+      "Configurações / Ativar identificação por Cartão",
+      "Configurações / Desativar identificação por Cartão",
+      "Configurações / Ativar identificação por Face",
+      "Configurações / Desativar identificação por Face",
+      "Configurações / Ativar identificação por QR Code",
+      "Configurações / Desativar identificação por QR Code",
+      "Configurações / Modificar horário do reboot diário",
+      "Configurações / Alterar servidor",
+      "Configurações / Remover servidor",
+      "Configurações / Alterar idioma (padrão)",
+      "Configurações / Alterar idioma (espanhol)",
+      "Configurações / Alterar idioma (inglês)",
+      "Configurações / Alterar idioma (português)",
+      "Configurações / Configuração de chave de cartão Mifare",
+      "Configurações / Alterar módulo mifare (default)",
+      "Configurações / Alterar módulo mifare (W_26)",
+      "Configurações / Alterar módulo mifare (LSB)",
+      "Configurações / Alterar módulo mifare (LSB64)",
+      "Configurações / Alterar módulo mifare (LSB W26)",
+      "Configurações / Alterar módulo rs485 - enabled (default)",
+      "Configurações / Alterar módulo rs485 - enabled (1)",
+      "Configurações / Alterar módulo rs485 - legacy_mode (default)",
+      "Configurações / Alterar módulo rs485 - legacy_mode (1)",
+      "Configurações / Alterar módulo rs485 - legacy_mode (2)",
+      "Configurações / Alterar wiegand out (default)",
+      "Configurações / Alterar wiegand out (cartão autorizado)",
+      "Configurações / Alterar wiegand out (qualquer cartão)",
+      "Configurações / Alterar tamanho wiegand out (W_26)",
+      "Configurações / Alterar tamanho wiegand out (W_32)",
+      "Configurações / Alterar tamanho wiegand out (W_34)",
+      "Configurações / Alterar tamanho wiegand out (W_35)",
+      "Configurações / Alterar tamanho wiegand out (W_37)",
+      "Configurações / Alterar tamanho wiegand out (W_40)",
+      "Configurações / Alterar tamanho wiegand out (W_42)",
+      "Configurações / Alterar tamanho wiegand out (W_66)",
+      "Configurações / Alterar wiegand out secbox (ID - padrão)",
+      "Configurações / Alterar wiegand out secbox (cartão autorizado)",
+      "Configurações / Alterar wiegand out secbox (qualquer cartão)",
+      "Configurações / Alterar wiegand out secbox (cartão do usuário)",
+      "Configurações / Alterar wiegand_format_size secbox (W_26)",
+      "Configurações / Alterar wiegand_format_size secbox (W_32)",
+      "Configurações / Alterar wiegand_format_size secbox (W_34)",
+      "Configurações / Alterar wiegand_format_size secbox (W_35)",
+      "Configurações / Alterar wiegand_format_size secbox (W_37(H10302))",
+      "Configurações / Alterar wiegand_format_size secbox (W_37(H10304))",
+      "Configurações / Alterar wiegand_format_size secbox (W_40)",
+      "Configurações / Alterar wiegand_format_size secbox (W_42)",
+      "Configurações / Alterar wiegand_format_size secbox (W_48)",
+      "Configurações / Alterar wiegand_format_size secbox (W_56)",
+      "Configurações / Alterar wiegand_format_size secbox (W_64)",
+      "Configurações / Alterar wiegand_format_size secbox (W_66)",
+      "Configurações / Alterar wiegand in 0 (default)",
+      "Configurações / Alterar wiegand in 1 (default)",
+      "Configurações / Alterar wiegand in 2 (default)",
+      "Configurações / Alterar wiegand in 3 (default)",
+      "Configurações / Alterar card_reader0 (modo wiegand)",
+      "Configurações / Alterar card_reader0 (modo ABA Track II)",
+      "Configurações / Alterar card_reader0 (ordem dos bytes normal)",
+      "Configurações / Alterar card_reader0 (ordem dos bytes invertida)",
+      "Configurações / Ativar anti-passback",
+      "Configurações / Desativar anti-passback",
+      "Configurações / Alterar modo de operação (default)",
+      "Configurações / Alterar modo de operação (ambas controladas)",
+      "Configurações / Alterar modo de operação (entrada liberada)",
+      "Configurações / Alterar modo de operação (saída liberada)",
+      "Configurações / Alterar modo de operação (ambas liberadas)",
+      "Configurações / Alterar modo do leitor HID (W37)",
+      "Configurações / Alterar modo do leitor HID (W26)",
+      "Configurações / Alterar modo do leitor HID (Mifare)",
+      "Configurações / Alterar modo do leitor HID (ASK)",
+      "Configurações / Alterar modo do leitor HID (Indala)",
+      "Configurações / Alterar Tamanho do código de usuário - RFID - (16 bits)",
+      "Configurações / Alterar Tamanho do código de usuário - RFID - (24 bits)",
+      "Configurações / Alterar Tamanho do código de usuário - RFID - (32 bits)",
+      "Configurações / Alterar Tamanho do código de usuário - RFID - (40 bits)",
+      "Configurações / Alterar Tamanho do código de área - RFID - (0 bits)",
+      "Configurações / Alterar Tamanho do código de área - RFID - (8 bits)",
+      "Configurações / Alterar w37_cardid_size (Leitor HID)",
+      "Configurações / Ativar uso de facility code (Leitor HID)",
+      "Configurações / Desativar uso de facility code (Leitor HID)",
+      "Configurações / Modo de operação Alfanumérico - QR Code para linha facial",
+      "Configurações / Modo de operação Somente Numérico Decimal - QR Code para linha facial",
+      "Configurações / Modo de operação Somente Numérico Hexadecimal - QR Code para linha facial Copy",
+      "Configurações / Modo de operação Alfanumérico - QR Code linha de Acesso V5",
+      "Configurações / Modo de operação Somente Numérico Decimal - QR Code linha de Acesso V5",
+      "Configurações / Modo de operação Somente Numérico Hexadecimal - QR Code linha de Acesso V5",
+      "Configurações / Alterar modo de operação QR Code (Legacy)",
+      "Configurações / Ativar beep",
+      "Configurações / Desativar beep",
+      "Configurações / Habilitar streaming de video RTSP",
+      "Configurações / Desabilitar streaming de video RTSP",
+      "Configurações / Alterar a porta do streaming de vídeo RTSP",
+      "Configurações / Configurar credenciais para streaming de video RTSP",
+      "Configurações / Alterar o codec do streaming de vídeo (MJPEG)",
+      "Configurações / Alterar o codec do streaming de vídeo (H.264)",
+      "Configurações / Alterar câmera da transmissão de vídeo (IR)",
+      "Configurações / Alterar câmera da transmissão de vídeo (RGB)",
+      "Configurações / Habilitar streaming de video ONVIF",
+      "Configurações / Alterar credencial de usuário do streaming de video ONVIF",
+      "Configurações / Definir senha para acesso à streaming de video ONVIF",
+      "Configurações / Desabilitar streaming de video ONVIF",
+      "Configurações / Alterar a porta do streaming de vídeo ONVIF",
+      "Configurações / Alterar resolução do streaming para 720p",
+      "Configurações / Alterar resolução do streaming para 360p",
+      "Configurações / Habilitar a transmissão de vídeo espelhada",
+      "Configurações / Desabilitar a transmissão de vídeo espelhada",
+      "Configurações / Habilitar as mensagens de voz padrão do dispositivo",
+      "Configurações / Desabilitar as mensagens de voz",
+      "Configurações / Habilitar as mensagens de voz customizadas",
+      "Configurações / Alterar o volume das mensagens de voz (baixo)",
+      "Configurações / Alterar o volume das mensagens de voz (médio)",
+      "Configurações / Alterar o volume das mensagens de voz (alto)",
+      "Configurações / Habilitar anti-passback",
+      "Configurações / Desabilitar anti-passback",
+      "Configurações / Alterar modo do anti-passback (daily_catra)",
+      "Configurações / Alterar modo do anti-passback (timed)",
+      "Configurações / Alterar modo do anti-passback (timed_catra)",
+      "Configurações / Alterar tempo do anti-passback",
+      "Configurações / Alterar limiar de acendimento dos LEDs brancos (baixa luminosidade)",
+      "Configurações / Alterar limiar de acendimento dos LEDs brancos (média luminosidade)",
+      "Configurações / Alterar limiar de acendimento dos LEDs brancos (alta luminosidade)",
+      "Configurações / Alterar limiar de acendimento dos LEDs brancos (acesos em qualquer ambiente)",
+      "Configurações / Modificar Configurações UHF",
+      "Configurações / Alterar modo de operação do relé interno iDUHF",
+      "Configurações / Modo Ponto",
+      "Configurações / Alterar modo de operação iDUHF",
+      "Configurações / Habilita configuração para ocultar nome no Acesso",
+      "Configurações / Desabilita configuração para ocultar nome no Acesso",
+      "Configurações / Ativar porta USB (iDFace)",
+      "Configurações / Desativar porta USB (iDFace)",
+      "Configurações / Habilitar limpeza automática de todos os usuários e visitantes",
+      "Configurações / Habilitar limpeza automática apenas para visitantes",
+      "Configurações / Desabilitar limpeza automática",
+      "Configurações / Habilitar o protocolo OSDP",
+      "Configurações / Desabilitar o protocolo OSDP",
+      "Configurações / Configura o endereço do módulo OSDP",
+      "Configurações / Habilitar o canal seguro obrigatório OSDP",
+      "Configurações / Desabilitar o canal seguro obrigatório OSDP",
+      "Configurações / Alterar a taxa de transmissão de dados OSDP",
+      "Configurações / Alterar formato de leitura do cartão OSDP",
+      "Configurações / Alterar tamanho do Wiegand OSDP",
+      "Configurações / Alterar o modo de saída OSDP",
+      "Configurações / Habilitar NTP e configurar timezone",
+      "Configurações / Desabilitar NTP",
+      "Configurações / Habilitar acesso ao SNMP do dispositivo",
+      "Configurações / Desabilitar acesso ao SNMP do dispositivo",
+      "Configurações / Configurar códigos para eventos não identificado e não autorizado via Wiegand",
+      "Push / Ativar o push",
+      "Push / Desativar o push",
+      "Push / Conexão iDCloud",
+      "Alarme / Tempo de atraso do sensor de porta",
+      "Alarme / Habilitar violação de equipamento",
+      "Alarme / Tempo de acionamento com a secbox fechada",
+      "Alarme / Habilitar sensor de porta",
+      "Alarme / Tempo de debounce acesso forçado",
+      "Alarme / Habilitar acesso forçado",
+      "Alarme / Habilitar cartão do pânico",
+      "Alarme / Atraso no dedo do pânico",
+      "Alarme / Habilitar dedo do pânico",
+      "Alarme / Habilitar senha de pânico",
+      "Alarme / Habilitar pin do pânico",
+      "Monitor / Ativar o monitor",
+      "Monitor / Desativar o monitor",
+      "Monitor / Alterar URL",
+      "Monitor / Voltar URL para padrão",
+      "Cadastro facial / Alterar deslocamento vertical da câmera",
+      "Cadastro facial / Alterar zoom da câmera",
+      "Cadastro facial / Alterar tempo para liberar novamente a mesma face",
+      "Cadastro facial / Alterar modo de detecção (veicular ou pedestre)",
+      "Cadastro facial / Alterar uso de máscara obrigatório",
+      "Cadastro facial / Limitar identificação facial à região do display",
+      "Cadastro facial / Ativar modo de liveness rigoroso",
+      "Cadastro facial / Remover fotos de usuários após cadastro",
+      "Cadastro facial / Manter fotos de usuários após cadastro",
+      "Cadastro facial / Alterar o brilho dos LEDs",
+      "Cadastro facial / Alterar distância de identificação",
+      "Interfonia SIP / Configurar conexão",
+      "Interfonia SIP / Configurar chamada",
+      "Interfonia SIP / Configurar volumes",
+      "Interfonia SIP / Habilitar liberação de acesso via interfonia",
+      "Interfonia SIP / Desabilitar liberação de acesso via interfonia",
+      "Interfonia SIP / Habilitar identificação durante interfonia",
+      "Interfonia SIP / Desabilitar identificação durante interfonia",
+      "Interfonia SIP / Habilitar chamada por botoeira de discagem",
+      "Interfonia SIP / Desabilitar chamada por botoeira de discagem",
+      "Interfonia SIP / Registrar código de discagem para liberação",
+      "Interfonia SIP / Habilitar som de chamada personalizado",
+      "Interfonia SIP / Desabilitar som de chamada personalizado",
+      "Interfonia SIP / Configurar volume do som de chamada personalizado",
+      "Fotos e Logotipo / Habilitar mostrar a logo",
+      "Fotos e Logotipo / Desabilitar mostrar logo"
+    ],
+    "paginas": [
+      "acoes/personalizar-mensagem-eventos",
+      "alarme/introducao-ao-alarme",
+      "configuracoes/ativar-desativar-usb",
+      "configuracoes/modificar-configuracoes",
+      "fotos-e-logotipo/gerenciar-logotipo",
+      "fotos-e-logotipo/gerenciar-modo-propaganda",
+      "fotos-e-logotipo/gerenciar-slideshow",
+      "modo-ponto/funcionamento",
+      "modos-de-operacao/configurar-modo-online",
+      "monitor/introducao-ao-monitor",
+      "particularidade-dos-produtos/idblock-next",
+      "particularidade-dos-produtos/interfonia-sip-idface",
+      "particularidade-dos-produtos/mensagens-sonoras-acesso-idface",
+      "particularidade-dos-produtos/modo-quiosque",
+      "particularidade-dos-produtos/particulariade-terminais-control-id",
+      "particularidade-dos-produtos/qr-code",
+      "particularidade-dos-produtos/sinais-configuraveis-idface-max",
+      "particularidade-dos-produtos/streaming-idface",
+      "reconhecimento-facial/cadastro-facial",
+      "reconhecimento-facial/configuracoes-reconhecimento-facial",
+      "sistema/alterar-data-e-hora",
+      "sistema/desativar-interface-web",
+      "sistema/reforco-de-seguranca",
+      "sistema/suporte-a-SNMP",
+      "visitantes/introducao-visitas"
+    ]
+  },
+  "set_custom_video.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "fotos-e-logotipo/gerenciar-modo-propaganda",
+      "particularidade-dos-produtos/streaming-idface"
+    ]
+  },
+  "set_dual_sided_secret.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "sistema/dual-sided-secbox"
+    ]
+  },
+  "set_kiosk_icon.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/modo-quiosque"
+    ]
+  },
+  "set_network_interlock.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Configurações / Configurar o Intertravamento via Rede"
+    ],
+    "paginas": [
+      "changelog/setembro-2026",
+      "configuracoes/intertravamento-via-rede"
+    ]
+  },
+  "set_ntp_server.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "configuracoes/servidor-ntp"
+    ]
+  },
+  "set_oem_approved_fw.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "sistema/firmware-aprovado-oem"
+    ]
+  },
+  "set_oem_code.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/obter-informacoes-do-sistema"
+    ]
+  },
+  "set_osdp_installation_mode.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Configurações / Habilitar o Modo de Instalação OSDP",
+      "Configurações / Desabilitar o Modo de Instalação OSDP"
+    ],
+    "paginas": [
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "set_phone_icon.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/interfonia-sip-idface"
+    ]
+  },
+  "set_pjsip_audio_message.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Interfonia SIP / Carregar som de chamada personalizado"
+    ],
+    "paginas": [
+      "particularidade-dos-produtos/interfonia-sip-idface"
+    ]
+  },
+  "set_pro_operation_mode_and_reboot.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/update-idface",
+      "particularidade-dos-produtos/update-idface-max"
+    ]
+  },
+  "set_streaming_logo.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/streaming-idface"
+    ]
+  },
+  "set_system_network.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Sistema / Alterar configuração de rede"
+    ],
+    "paginas": [
+      "changelog/setembro-2026",
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "set_system_time.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Sistema / Alterar data/hora"
+    ],
+    "paginas": [
+      "sistema/alterar-data-e-hora"
+    ]
+  },
+  "set_vpn_file.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Sistema / Alterar arquivo de configuração de VPN com arquivo .config",
+      "Sistema / Alterar arquivo de configuração de VPN com arquivo .zip"
+    ],
+    "paginas": [
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "set_vpn_information.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Sistema / Alterar configuração de OpenVPN"
+    ],
+    "paginas": [
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "set_wifi_settings.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "set_wifi_source.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "ssl_certificate_change.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/configuracoes-de-rede"
+    ]
+  },
+  "system_information.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Sistema / Obter informações do sistema"
+    ],
+    "paginas": [
+      "changelog/setembro-2026",
+      "modo-push/idcloud",
+      "sistema/obter-informacoes-do-sistema"
+    ]
+  },
+  "tag_create.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "modos-de-operacao/eventos-de-identificacao-online"
+    ]
+  },
+  "template_create.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "acoes/cadastro-remoto-biometria-facial-cartao",
+      "modos-de-operacao/eventos-de-identificacao-online"
+    ]
+  },
+  "template_extract.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Template / Extrair template"
+    ],
+    "paginas": [
+      "acoes/operacoes-template-digital"
+    ]
+  },
+  "template_match.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Template / Verificar template",
+      "Template / Verificar template único"
+    ],
+    "paginas": [
+      "acoes/operacoes-template-digital"
+    ]
+  },
+  "template_merge.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "acoes/operacoes-template-digital"
+    ]
+  },
+  "template_sync_end.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Template / Desabilitar sincronismo de biomatrias"
+    ],
+    "paginas": [
+      "acoes/operacoes-template-digital",
+      "objetos/carregar-objetos"
+    ]
+  },
+  "template_sync_init.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Template / Habilitar sincronismo de biometrias"
+    ],
+    "paginas": [
+      "acoes/operacoes-template-digital",
+      "objetos/carregar-objetos"
+    ]
+  },
+  "tests.fcgi": {
+    "metodos": [
+      "GET"
+    ],
+    "postman": [
+      "Hardware / Coletar testes de fábrica"
+    ],
+    "paginas": []
+  },
+  "update_secbox_firmware.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/secbox"
+    ]
+  },
+  "update_secbox_firmware_status.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/secbox"
+    ]
+  },
+  "update_secbox_firmware_version.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "sistema/secbox"
+    ]
+  },
+  "upgrade_fifteen_thousand_face_templates.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/update-idface"
+    ]
+  },
+  "upgrade_fifty_thousand_face_templates.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Configurações / Ativar licença Pro"
+    ],
+    "paginas": [
+      "particularidade-dos-produtos/update-idface-max"
+    ]
+  },
+  "upgrade_hundred_thousand_face_templates.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/update-idface-max"
+    ]
+  },
+  "upgrade_ten_thousand_face_templates.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/update-idface"
+    ]
+  },
+  "upgrade_ten_thousand_templates.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/update-idflex-idaccess-nano"
+    ]
+  },
+  "upgrade_thirty_thousand_face_templates.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/update-idface"
+    ]
+  },
+  "upgrade_twenty_thousand_face_templates.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "particularidade-dos-produtos/update-idface-max"
+    ]
+  },
+  "user_destroy_image.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Cadastro facial / Excluir foto de usuário"
+    ],
+    "paginas": [
+      "fotos-e-logotipo/gerenciar-fotos-de-usuarios",
+      "reconhecimento-facial/cadastro-facial"
+    ]
+  },
+  "user_get_image.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Usuário / Obter imagem do usuário",
+      "Cadastro facial / Obter imagem do usuário"
+    ],
+    "paginas": [
+      "fotos-e-logotipo/gerenciar-fotos-de-usuarios",
+      "modos-de-operacao/eventos-de-identificacao-online",
+      "reconhecimento-facial/cadastro-facial"
+    ]
+  },
+  "user_get_image_list.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Cadastro facial / Obter lista de imagens de usuários"
+    ],
+    "paginas": [
+      "reconhecimento-facial/cadastro-facial"
+    ]
+  },
+  "user_hash_password.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Usuário / Gerar HASH de senha"
+    ],
+    "paginas": [
+      "sistema/criar-hash-de-senha-de-usuario"
+    ]
+  },
+  "user_list_images.fcgi": {
+    "metodos": [
+      "GET"
+    ],
+    "postman": [
+      "Cadastro facial / Obter lista de usuários com foto cadastrada"
+    ],
+    "paginas": [
+      "fotos-e-logotipo/gerenciar-fotos-de-usuarios",
+      "reconhecimento-facial/cadastro-facial"
+    ]
+  },
+  "user_set_image.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Usuário / Atualizar imagem do usuário",
+      "Cadastro facial / Cadastrar imagem do usuário"
+    ],
+    "paginas": [
+      "changelog/setembro-2026",
+      "fotos-e-logotipo/gerenciar-fotos-de-usuarios",
+      "reconhecimento-facial/cadastro-facial"
+    ]
+  },
+  "user_set_image_list.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Cadastro facial / Cadastrar lista de imagens de usuários"
+    ],
+    "paginas": [
+      "changelog/setembro-2026",
+      "fotos-e-logotipo/gerenciar-fotos-de-usuarios",
+      "reconhecimento-facial/cadastro-facial"
+    ]
+  },
+  "user_test_image.fcgi": {
+    "metodos": [
+      "POST"
+    ],
+    "postman": [
+      "Cadastro facial / Testar imagem do usuário"
+    ],
+    "paginas": [
+      "reconhecimento-facial/cadastro-facial"
+    ]
+  },
+  "wifi_scan.fcgi": {
+    "metodos": [],
+    "postman": [],
+    "paginas": [
+      "changelog/setembro-2026",
+      "sistema/configuracoes-de-rede"
+    ]
+  }
+}
