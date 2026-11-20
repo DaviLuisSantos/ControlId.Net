@@ -21,8 +21,16 @@ public sealed class ControlIdRepOptions
     /// <summary>Timeout de cada requisição. Padrão: 30 segundos.</summary>
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
 
-    /// <summary>Aceita o certificado autoassinado do REP. Padrão: <c>true</c> (o iDClass sai de fábrica assim).</summary>
-    public bool AcceptAnyServerCertificate { get; set; } = true;
+    /// <summary>
+    /// Aceita qualquer certificado TLS do REP, sem validação. Padrão: <c>false</c> (o certificado é validado).
+    /// <para>
+    /// O iDClass sai de fábrica com certificado autoassinado, que a validação padrão recusa. O jeito seguro de aceitá-lo é
+    /// fixar a impressão digital em <see cref="ServerCertificateSha256"/> (obtenha com
+    /// <see cref="ControlIdCertificates.GetServerCertificateSha256Async"/>). Ligar esta opção expõe login e senha a quem
+    /// interceptar a conexão (MITM); use só em rede isolada e confiável.
+    /// </para>
+    /// </summary>
+    public bool AcceptAnyServerCertificate { get; set; }
 
     /// <summary>
     /// Impressão digital SHA-256 do certificado do REP. Com ela, só esse certificado é aceito e

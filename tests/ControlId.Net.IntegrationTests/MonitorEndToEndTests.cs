@@ -1,5 +1,6 @@
 using ControlId.Access;
 using ControlId.Access.Monitoring;
+using ControlId.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
@@ -35,7 +36,7 @@ public sealed class MonitorEndToEndTests
             return Task.CompletedTask;
         });
         await using var server = builder.Build();
-        server.MapControlIdMonitor();
+        server.MapControlIdMonitor().AllowAnonymousControlIdCallbacks();
         await server.StartAsync();
         var serverUri = new Uri(server.Services.GetRequiredService<IServer>().Features.GetRequiredFeature<IServerAddressesFeature>().Addresses.First());
 

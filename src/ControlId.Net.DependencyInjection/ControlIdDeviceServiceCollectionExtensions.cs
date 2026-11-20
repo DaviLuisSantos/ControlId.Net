@@ -21,6 +21,11 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// <remarks>
 /// Os métodos devolvem o <see cref="IHttpClientBuilder"/> do equipamento, para acrescentar handlers (proxy, retry,
 /// logging). O cliente é criado uma vez e reaproveitado; mudanças posteriores na configuração exigem reiniciar a aplicação.
+/// <para>
+/// As opções de cada equipamento registrado são validadas na partida do host (<c>ValidateOnStart</c>): <c>BaseAddress</c>
+/// ausente ou relativo, impressão digital malformada ou limites fora da faixa fazem o <c>StartAsync</c> lançar
+/// <see cref="OptionsValidationException"/> citando o equipamento, em vez de falhar só no primeiro uso.
+/// </para>
 /// </remarks>
 public static class ControlIdDeviceServiceCollectionExtensions
 {
@@ -64,14 +69,10 @@ public static class ControlIdDeviceServiceCollectionExtensions
     /// Registra um equipamento de acesso para cada filha da seção, usando a chave como nome. Ex.:
     /// <c>"Access": { "portaria": { "BaseAddress": "http://..." }, "garagem": { ... } }</c>.
     /// </summary>
+    /// <exception cref="InvalidOperationException">A seção não existe ou não tem nenhum equipamento.</exception>
     public static IServiceCollection AddControlIdAccessDevices(this IServiceCollection services, IConfiguration section)
     {
-        if (section is null)
-        {
-            throw new ArgumentNullException(nameof(section));
-        }
-
-        foreach (var device in section.GetChildren())
+        foreach (var device in DevicesOf(section, "AddControlIdAccessDevices"))
         {
             services.AddControlIdAccess(device.Key, device);
         }
@@ -115,14 +116,10 @@ public static class ControlIdDeviceServiceCollectionExtensions
     }
 
     /// <summary>Registra um REP para cada filha da seção, usando a chave como nome.</summary>
+    /// <exception cref="InvalidOperationException">A seção não existe ou não tem nenhum equipamento.</exception>
     public static IServiceCollection AddControlIdRepDevices(this IServiceCollection services, IConfiguration section)
     {
-        if (section is null)
-        {
-            throw new ArgumentNullException(nameof(section));
-        }
-
-        foreach (var device in section.GetChildren())
+        foreach (var device in DevicesOf(section, "AddControlIdRepDevices"))
         {
             services.AddControlIdRep(device.Key, device);
         }
@@ -130,9 +127,30 @@ public static class ControlIdDeviceServiceCollectionExtensions
         return services;
     }
 
+    // Seção sem filhas é quase sempre caminho errado (ou appsettings ausente): falha no registro em vez de não registrar nada.
+    private static IConfigurationSection[] DevicesOf(IConfiguration section, string method)
+    {
+        if (section is null)
+        {
+            throw new ArgumentNullException(nameof(section));
+        }
+
+        var devices = section.GetChildren().ToArray();
+        if (devices.Length == 0)
+        {
+            var path = section is IConfigurationSection named ? named.Path : "(raiz)";
+            throw new InvalidOperationException(
+                $"A seção de configuração '{path}' passada a {method} não existe ou não tem nenhum equipamento. Esperado: " +
+                $"\"{path}\": {{ \"portaria\": {{ \"BaseAddress\": \"http://...\" }} }}, com uma filha por equipamento.");
+        }
+
+        return devices;
+    }
+
     private static IHttpClientBuilder RegisterAccess(IServiceCollection services, string name)
     {
         AddCore(services).AccessDevices.Add(name);
+        services.AddOptions<ControlIdDeviceOptions>(name).ValidateOnStart();
         return AddHttpClient(services, ControlIdRegistry.AccessHttpClientName(name), sp =>
         {
             var options = sp.GetRequiredService<IOptionsMonitor<ControlIdDeviceOptions>>().Get(name);
@@ -143,6 +161,7 @@ public static class ControlIdDeviceServiceCollectionExtensions
     private static IHttpClientBuilder RegisterRep(IServiceCollection services, string name)
     {
         AddCore(services).RepDevices.Add(name);
+        services.AddOptions<ControlIdRepOptions>(name).ValidateOnStart();
         return AddHttpClient(services, ControlIdRegistry.RepHttpClientName(name), sp =>
         {
             var options = sp.GetRequiredService<IOptionsMonitor<ControlIdRepOptions>>().Get(name);
@@ -199,6 +218,8 @@ public static class ControlIdDeviceServiceCollectionExtensions
             services.AddSingleton(registry);
             services.AddOptions();
             services.TryAddSingleton<IControlIdClientFactory, ControlIdClientFactory>();
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<ControlIdDeviceOptions>, ControlIdDeviceOptionsValidator>());
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<ControlIdRepOptions>, ControlIdRepOptionsValidator>());
         }
 
         return registry;

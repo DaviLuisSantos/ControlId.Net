@@ -4,7 +4,7 @@
     "project": "ControlId.Net.csproj",
     "target-framework": "net8.0",
     "reporters": ["html", "json", "progress"],
-    "thresholds": { "high": 80, "low": 60, "break": 0 },
+    "thresholds": { "high": 80, "low": 60, "break": 60 },
     "ignore-mutations": ["string"]
   }
 }

@@ -37,8 +37,8 @@ public sealed class AspNetCoreTests : IAsyncDisposable
         _app = builder.Build();
         if (map is null)
         {
-            _app.MapControlIdPush();
-            _app.MapControlIdMonitor();
+            _app.MapControlIdPush().AllowAnonymousControlIdCallbacks();
+            _app.MapControlIdMonitor().AllowAnonymousControlIdCallbacks();
         }
         else
         {
@@ -136,7 +136,7 @@ public sealed class AspNetCoreTests : IAsyncDisposable
     {
         var http = await StartAsync(
             services => services.AddSingleton<Counter>().AddControlIdMonitor<CountingHandler>(),
-            app => app.MapControlIdMonitor("/eventos/controlid/"));
+            app => app.MapControlIdMonitor("/eventos/controlid/").AllowAnonymousControlIdCallbacks());
 
         await http.PostAsync("/eventos/controlid/device_is_alive", new StringContent("""{"access_logs":3,"device_id":1}"""));
 

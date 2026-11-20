@@ -39,6 +39,14 @@ internal static class Telemetry
     public static readonly Counter<long> CircuitRejected = Meter.CreateCounter<long>(
         "controlid.client.circuit.rejected", "{request}", "Requisições recusadas porque o circuit breaker do equipamento está aberto.");
 
+    public static readonly Counter<long> PushCommands = Meter.CreateCounter<long>(
+        "controlid.push.commands", "{command}",
+        "Envios do PushServer por desfecho (tag controlid.push.outcome: enqueued, delivered, completed, orphaned, expired, cancelled, rejected ou timeout).");
+
+    /// <summary>Conta um envio do Push com o desfecho informado (valores de <see cref="PushOutcome"/>).</summary>
+    public static void RecordPush(string outcome) =>
+        PushCommands.Add(1, new KeyValuePair<string, object?>("controlid.push.outcome", outcome));
+
     /// <summary>Nome do comando para spans e métricas: sem <c>.fcgi</c> nem query string (baixa cardinalidade).</summary>
     public static string CommandName(string endpoint)
     {
@@ -59,6 +67,19 @@ internal static class Telemetry
         new KeyValuePair<string, object?>("server.address", baseAddress.Host),
         new KeyValuePair<string, object?>("server.port", baseAddress.Port),
     };
+}
+
+/// <summary>Valores da tag <c>controlid.push.outcome</c> da métrica <c>controlid.push.commands</c>.</summary>
+internal static class PushOutcome
+{
+    public const string Enqueued = "enqueued";
+    public const string Delivered = "delivered";
+    public const string Completed = "completed";
+    public const string Orphaned = "orphaned";
+    public const string Expired = "expired";
+    public const string Cancelled = "cancelled";
+    public const string Rejected = "rejected";
+    public const string Timeout = "timeout";
 }
 
 /// <summary>

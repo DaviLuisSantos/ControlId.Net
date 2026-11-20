@@ -1,5 +1,6 @@
 using ControlId.Access;
 using ControlId.Access.Push;
+using ControlId.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
@@ -25,7 +26,7 @@ public sealed class DeviceHealthEndToEndTests
         builder.Services.AddControlIdAccess("portaria", o => o.BaseAddress = sim.BaseAddress);
         builder.Services.AddHealthChecks().AddControlIdDeviceChecks();
         await using var server = builder.Build();
-        server.MapControlIdPush();
+        server.MapControlIdPush().AllowAnonymousControlIdCallbacks();
         await server.StartAsync();
         var address = new Uri(server.Services.GetRequiredService<IServer>().Features.GetRequiredFeature<IServerAddressesFeature>().Addresses.First());
         var health = server.Services.GetRequiredService<HealthCheckService>();

@@ -1,0 +1,6 @@
+ControlId.Net.DependencyInjection: ControlId.DependencyInjection.ControlIdHealthCheckOptions.CacheDuration.get -> System.TimeSpan
+ControlId.Net.DependencyInjection: ControlId.DependencyInjection.ControlIdHealthCheckOptions.CacheDuration.set -> void
+ControlId.Net.DependencyInjection: ControlId.DependencyInjection.ControlIdHealthCheckOptions.RequireDevices.get -> bool
+ControlId.Net.DependencyInjection: ControlId.DependencyInjection.ControlIdHealthCheckOptions.RequireDevices.set -> void
+ControlId.Net.DependencyInjection: ControlId.DependencyInjection.ControlIdHealthCheckOptions.TotalTimeout.get -> System.TimeSpan
+ControlId.Net.DependencyInjection: ControlId.DependencyInjection.ControlIdHealthCheckOptions.TotalTimeout.set -> void

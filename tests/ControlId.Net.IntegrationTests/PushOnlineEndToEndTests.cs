@@ -3,6 +3,7 @@ using System.Text.Json;
 using ControlId.Access;
 using ControlId.Access.Online;
 using ControlId.Access.Push;
+using ControlId.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
@@ -48,7 +49,7 @@ public sealed class PushOnlineEndToEndTests
     [Fact]
     public async Task Executes_a_single_command_sent_through_the_push_server()
     {
-        var (server, address) = await StartServerAsync(s => s.AddControlIdPush(), app => app.MapControlIdPush());
+        var (server, address) = await StartServerAsync(s => s.AddControlIdPush(), app => app.MapControlIdPush().AllowAnonymousControlIdCallbacks());
         await using var _ = server;
         await using var sim = await RunningSimulator.StartAsync();
         using var device = sim.CreateClient();
@@ -78,7 +79,7 @@ public sealed class PushOnlineEndToEndTests
     [Fact]
     public async Task Executes_a_batch_of_commands_and_reports_each_result()
     {
-        var (server, address) = await StartServerAsync(s => s.AddControlIdPush(), app => app.MapControlIdPush());
+        var (server, address) = await StartServerAsync(s => s.AddControlIdPush(), app => app.MapControlIdPush().AllowAnonymousControlIdCallbacks());
         await using var _ = server;
         await using var sim = await RunningSimulator.StartAsync(o => o.SeedSampleData = false);
         using var device = sim.CreateClient();
@@ -136,7 +137,7 @@ public sealed class PushOnlineEndToEndTests
                     ? OnlineAuthorization.Grant(1, "Ana Souza", DeviceAction.OpenDoor(1))
                     : OnlineAuthorization.Deny(user, null, "Bloqueado pelo servidor"));
             }),
-            app => app.MapControlIdOnline("/api"));
+            app => app.MapControlIdOnline("/api").AllowAnonymousControlIdCallbacks());
         await using var _ = server;
         await using var sim = await RunningSimulator.StartAsync();
         using var device = sim.CreateClient();
@@ -182,7 +183,7 @@ public sealed class PushOnlineEndToEndTests
                 received = identification;
                 return Task.FromResult(OnlineAuthorization.Grant(2, "Bruno Lima", DeviceAction.OpenDoor(1)));
             }),
-            app => app.MapControlIdOnline("/api"));
+            app => app.MapControlIdOnline("/api").AllowAnonymousControlIdCallbacks());
         await using var _ = server;
         await using var sim = await RunningSimulator.StartAsync();
         using var device = sim.CreateClient();
@@ -208,7 +209,7 @@ public sealed class PushOnlineEndToEndTests
                 Interlocked.Increment(ref calls);
                 return Task.FromResult(OnlineAuthorization.Deny(null, null, "Fora do horário"));
             }),
-            app => app.MapControlIdOnline("/api"));
+            app => app.MapControlIdOnline("/api").AllowAnonymousControlIdCallbacks());
         await using var sim = await RunningSimulator.StartAsync();
         using var device = sim.CreateClient();
 

@@ -2670,3 +2670,80 @@ static ControlId.Rep.Afd.AfdParser.ReadRecords(System.IO.TextReader! reader) -> 
 const ControlId.ControlIdTelemetry.LoggerCategory = "ControlId.Net" -> string!
 ControlId.ControlIdDeviceOptions.LoggerFactory.get -> Microsoft.Extensions.Logging.ILoggerFactory?
 ControlId.ControlIdDeviceOptions.LoggerFactory.set -> void
+ControlId.ControlIdCircuitState
+ControlId.ControlIdCircuitState.Closed = 0 -> ControlId.ControlIdCircuitState
+ControlId.ControlIdCircuitState.Open = 1 -> ControlId.ControlIdCircuitState
+ControlId.ControlIdCircuitState.HalfOpen = 2 -> ControlId.ControlIdCircuitState
+ControlId.ControlIdCircuitOpenException
+ControlId.ControlIdCircuitOpenException.ControlIdCircuitOpenException(string! message, System.TimeSpan retryAfter) -> void
+ControlId.ControlIdCircuitOpenException.RetryAfter.get -> System.TimeSpan
+const ControlId.ControlIdDeviceOptions.MaxCircuitBreakerFailureThreshold = 100 -> int
+ControlId.ControlIdDeviceOptions.CircuitBreakerFailureThreshold.get -> int
+ControlId.ControlIdDeviceOptions.CircuitBreakerFailureThreshold.set -> void
+ControlId.ControlIdDeviceOptions.CircuitBreakerBreakDuration.get -> System.TimeSpan
+ControlId.ControlIdDeviceOptions.CircuitBreakerBreakDuration.set -> void
+ControlId.Access.AccessClient.CircuitState.get -> ControlId.ControlIdCircuitState
+ControlId.Rep.RepClient.CircuitState.get -> ControlId.ControlIdCircuitState
+ControlId.Access.Push.IPushCommandStore
+ControlId.Access.Push.IPushCommandStore.AddAsync(ControlId.Access.Push.PushEnvelope! envelope, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+ControlId.Access.Push.IPushCommandStore.CompleteAsync(long deviceId, string? uuid, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<ControlId.Access.Push.PushEnvelope?>!
+ControlId.Access.Push.IPushCommandStore.CountAsync(long deviceId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
+ControlId.Access.Push.IPushCommandStore.RemoveAsync(System.Guid id, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.Push.IPushCommandStore.TakeNextAsync(long deviceId, string? uuid, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<ControlId.Access.Push.PushTake>!
+ControlId.Access.Push.IPushResultHandler
+ControlId.Access.Push.IPushResultHandler.HandleAsync(ControlId.Access.Push.PushCompletion! completion, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+ControlId.Access.Push.InMemoryPushCommandStore
+ControlId.Access.Push.InMemoryPushCommandStore.AddAsync(ControlId.Access.Push.PushEnvelope! envelope, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+ControlId.Access.Push.InMemoryPushCommandStore.CompleteAsync(long deviceId, string? uuid, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<ControlId.Access.Push.PushEnvelope?>!
+ControlId.Access.Push.InMemoryPushCommandStore.CountAsync(long deviceId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
+ControlId.Access.Push.InMemoryPushCommandStore.InMemoryPushCommandStore() -> void
+ControlId.Access.Push.InMemoryPushCommandStore.RemoveAsync(System.Guid id, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.Push.InMemoryPushCommandStore.TakeNextAsync(long deviceId, string? uuid, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<ControlId.Access.Push.PushTake>!
+ControlId.Access.Push.PushCompletion
+ControlId.Access.Push.PushCompletion.CommandId.get -> System.Guid
+ControlId.Access.Push.PushCompletion.DeviceId.get -> long
+ControlId.Access.Push.PushCompletion.Error.get -> string?
+ControlId.Access.Push.PushCompletion.PushCompletion(System.Guid commandId, long deviceId, System.Collections.Generic.IReadOnlyList<ControlId.Access.Push.PushResult!>! results, string? error) -> void
+ControlId.Access.Push.PushCompletion.Results.get -> System.Collections.Generic.IReadOnlyList<ControlId.Access.Push.PushResult!>!
+ControlId.Access.Push.PushEnvelope
+ControlId.Access.Push.PushEnvelope.Batch.get -> bool
+ControlId.Access.Push.PushEnvelope.CreatedAt.get -> System.DateTimeOffset
+ControlId.Access.Push.PushEnvelope.DeliveredAt.get -> System.DateTimeOffset?
+ControlId.Access.Push.PushEnvelope.DeliveredAt.set -> void
+ControlId.Access.Push.PushEnvelope.DeviceId.get -> long
+ControlId.Access.Push.PushEnvelope.Endpoints.get -> System.Collections.Generic.IReadOnlyList<string!>!
+ControlId.Access.Push.PushEnvelope.Id.get -> System.Guid
+ControlId.Access.Push.PushEnvelope.Payload.get -> string!
+ControlId.Access.Push.PushEnvelope.PushEnvelope(System.Guid id, long deviceId, bool batch, System.Collections.Generic.IReadOnlyList<string!>! endpoints, string! payload, System.DateTimeOffset createdAt) -> void
+ControlId.Access.Push.PushEnvelope.Status.get -> ControlId.Access.Push.PushEnvelopeStatus
+ControlId.Access.Push.PushEnvelope.Status.set -> void
+ControlId.Access.Push.PushEnvelope.Uuid.get -> string?
+ControlId.Access.Push.PushEnvelope.Uuid.set -> void
+ControlId.Access.Push.PushEnvelopeStatus
+ControlId.Access.Push.PushEnvelopeStatus.InFlight = 1 -> ControlId.Access.Push.PushEnvelopeStatus
+ControlId.Access.Push.PushEnvelopeStatus.Pending = 0 -> ControlId.Access.Push.PushEnvelopeStatus
+ControlId.Access.Push.PushServer.EnqueueAsync(long deviceId, ControlId.Access.Push.PushCommand! command, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Guid>!
+ControlId.Access.Push.PushServer.EnqueueBatchAsync(long deviceId, System.Collections.Generic.IEnumerable<ControlId.Access.Push.PushCommand!>! commands, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Guid>!
+ControlId.Access.Push.PushServer.GetPendingCountAsync(long deviceId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+ControlId.Access.Push.PushServer.HandlePushAsync(long deviceId, string? uuid, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.Push.PushServer.HandleResultAsync(long deviceId, string? uuid, string! body, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.Push.PushServer.PushServer(ControlId.Access.Push.IPushCommandStore! store, ControlId.Access.Push.IPushResultHandler? unclaimedResultHandler = null) -> void
+ControlId.Access.Push.PushTake
+ControlId.Access.Push.PushTake.Next.get -> ControlId.Access.Push.PushEnvelope?
+ControlId.Access.Push.PushTake.Orphan.get -> ControlId.Access.Push.PushEnvelope?
+ControlId.Access.Push.PushTake.PushTake() -> void
+ControlId.Access.Push.PushTake.PushTake(ControlId.Access.Push.PushEnvelope? orphan, ControlId.Access.Push.PushEnvelope? next) -> void
+ControlId.Access.AccessClientCallbackSecurityExtensions
+static ControlId.Access.AccessClientCallbackSecurityExtensions.ConfigureCallbackSecurityAsync(this ControlId.Access.IAccessClient! client, string? bearerToken, string? pinnedCertificate = null, string! section = "general", System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.DeviceContactSource
+ControlId.Access.DeviceContactSource.Push = 0 -> ControlId.Access.DeviceContactSource
+ControlId.Access.DeviceContactSource.Monitor = 1 -> ControlId.Access.DeviceContactSource
+ControlId.Access.DeviceContactSource.Online = 2 -> ControlId.Access.DeviceContactSource
+ControlId.Access.DeviceContact
+ControlId.Access.DeviceContact.At.get -> System.DateTimeOffset
+ControlId.Access.DeviceContact.Source.get -> ControlId.Access.DeviceContactSource
+ControlId.Access.DeviceContactTracker
+ControlId.Access.DeviceContactTracker.DeviceContactTracker() -> void
+ControlId.Access.DeviceContactTracker.GetAll() -> System.Collections.Generic.IReadOnlyDictionary<long, ControlId.Access.DeviceContact!>!
+ControlId.Access.DeviceContactTracker.GetLastContact(long deviceId) -> ControlId.Access.DeviceContact?
+ControlId.Access.DeviceContactTracker.Record(long deviceId, ControlId.Access.DeviceContactSource source) -> void

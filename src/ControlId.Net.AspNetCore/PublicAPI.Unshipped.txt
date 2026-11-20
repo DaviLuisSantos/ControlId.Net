@@ -1,11 +1,1 @@
 #nullable enable
-ControlId.AspNetCore.ControlIdTokenOptions
-ControlId.AspNetCore.ControlIdTokenOptions.ControlIdTokenOptions() -> void
-ControlId.AspNetCore.ControlIdTokenOptions.Token.get -> string?
-ControlId.AspNetCore.ControlIdTokenOptions.Token.set -> void
-ControlId.AspNetCore.ControlIdTokenOptions.DeviceToken.get -> System.Func<long, string?>?
-ControlId.AspNetCore.ControlIdTokenOptions.DeviceToken.set -> void
-ControlId.AspNetCore.ControlIdEndpointConventionBuilderExtensions
-static ControlId.AspNetCore.ControlIdEndpointConventionBuilderExtensions.RequireControlIdToken<TBuilder>(this TBuilder builder, string! token) -> TBuilder
-static ControlId.AspNetCore.ControlIdEndpointConventionBuilderExtensions.RequireControlIdToken<TBuilder>(this TBuilder builder, System.Action<ControlId.AspNetCore.ControlIdTokenOptions!>! configure) -> TBuilder
-static Microsoft.Extensions.DependencyInjection.ControlIdServiceCollectionExtensions.AddControlIdPushResultHandler<THandler>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
