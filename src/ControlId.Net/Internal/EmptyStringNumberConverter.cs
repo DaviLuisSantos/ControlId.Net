@@ -21,9 +21,9 @@ internal sealed class EmptyStringNumberConverter : JsonConverterFactory
     {
         var nullable = Nullable.GetUnderlyingType(typeToConvert) is not null;
         var type = Nullable.GetUnderlyingType(typeToConvert) ?? typeToConvert;
-        return type == typeof(int) ? (nullable ? new Converter<int?>(ReadInt32) : new Converter<int>(r => ReadInt32(r) ?? 0))
-            : type == typeof(long) ? (nullable ? new Converter<long?>(ReadInt64) : new Converter<long>(r => ReadInt64(r) ?? 0))
-            : nullable ? new Converter<double?>(ReadDouble) : new Converter<double>(r => ReadDouble(r) ?? 0);
+        return type == typeof(int) ? (nullable ? new NullableInt32Converter() : new Int32Converter())
+            : type == typeof(long) ? (nullable ? new NullableInt64Converter() : new Int64Converter())
+            : nullable ? new NullableDoubleConverter() : new DoubleConverter();
     }
 
     private static int? ReadInt32(Utf8JsonReader reader) => checked((int?)ReadInt64(reader));
@@ -46,19 +46,45 @@ internal sealed class EmptyStringNumberConverter : JsonConverterFactory
         _ => throw new JsonException($"Esperado número, recebido {reader.TokenType}."),
     };
 
-    private delegate T ReadValue<T>(Utf8JsonReader reader);
-
-    private sealed class Converter<T> : JsonConverter<T>
+    private sealed class Int32Converter : JsonConverter<int>
     {
-        private readonly ReadValue<T> _read;
+        public override int Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => ReadInt32(reader) ?? 0;
+        public override void Write(Utf8JsonWriter writer, int value, JsonSerializerOptions options) => writer.WriteNumberValue(value);
+    }
 
-        public Converter(ReadValue<T> read) => _read = read;
-
+    private sealed class NullableInt32Converter : JsonConverter<int?>
+    {
         public override bool HandleNull => true;
+        public override int? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => ReadInt32(reader);
+        public override void Write(Utf8JsonWriter writer, int? value, JsonSerializerOptions options)
+        { if (value.HasValue) writer.WriteNumberValue(value.Value); else writer.WriteNullValue(); }
+    }
 
-        public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => _read(reader);
+    private sealed class Int64Converter : JsonConverter<long>
+    {
+        public override long Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => ReadInt64(reader) ?? 0;
+        public override void Write(Utf8JsonWriter writer, long value, JsonSerializerOptions options) => writer.WriteNumberValue(value);
+    }
 
-        public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options) =>
-            JsonSerializer.Serialize(writer, value, ControlIdJson.Options);
+    private sealed class NullableInt64Converter : JsonConverter<long?>
+    {
+        public override bool HandleNull => true;
+        public override long? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => ReadInt64(reader);
+        public override void Write(Utf8JsonWriter writer, long? value, JsonSerializerOptions options)
+        { if (value.HasValue) writer.WriteNumberValue(value.Value); else writer.WriteNullValue(); }
+    }
+
+    private sealed class DoubleConverter : JsonConverter<double>
+    {
+        public override double Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => ReadDouble(reader) ?? 0;
+        public override void Write(Utf8JsonWriter writer, double value, JsonSerializerOptions options) => writer.WriteNumberValue(value);
+    }
+
+    private sealed class NullableDoubleConverter : JsonConverter<double?>
+    {
+        public override bool HandleNull => true;
+        public override double? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => ReadDouble(reader);
+        public override void Write(Utf8JsonWriter writer, double? value, JsonSerializerOptions options)
+        { if (value.HasValue) writer.WriteNumberValue(value.Value); else writer.WriteNullValue(); }
     }
 }
