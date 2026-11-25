@@ -174,7 +174,7 @@ equipamento sozinho e atualiza ao vivo:
 - [x] Logs estruturados (`ILogger` com `LoggerMessage` gerado)
 - [x] Health checks de todos os equipamentos registrados
 - [x] Novas tentativas em comandos de leitura (nunca em comandos que alteram o equipamento)
-- [ ] Circuit breaker por equipamento
+- [x] Circuit breaker por equipamento
 - [x] Benchmarks do parser de AFD
 - [x] Avaliação de Native AOT ([ADR 0015](docs/adr/0015-native-aot.md))
 - [ ] Suporte a Native AOT e trimming (JSON com source generation, corpos tipados)
