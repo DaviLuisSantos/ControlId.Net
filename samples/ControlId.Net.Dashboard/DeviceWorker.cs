@@ -3,8 +3,9 @@ using Microsoft.Extensions.Options;
 namespace ControlId.Dashboard;
 
 /// <summary>
-/// Ao iniciar, aponta o Monitor do equipamento para este dashboard e carrega os usuários; depois consulta o equipamento
-/// de tempos em tempos para saber se ele está online. Se o equipamento voltar de uma queda, configura o Monitor de novo.
+/// Ao iniciar, grava o token dos callbacks no equipamento, aponta o Monitor para este dashboard e carrega os usuários;
+/// depois consulta o equipamento de tempos em tempos para saber se ele está online. Se o equipamento voltar de uma queda,
+/// configura token e Monitor de novo.
 /// </summary>
 public sealed class DeviceWorker(DeviceService device, DashboardState state, IOptions<DashboardOptions> options, ILogger<DeviceWorker> logger)
     : BackgroundService
@@ -24,7 +25,9 @@ public sealed class DeviceWorker(DeviceService device, DashboardState state, IOp
                     await device.ConfigureMonitorAsync(stoppingToken);
                     await device.RefreshUsersAsync(stoppingToken);
                     logger.LogInformation(
-                        "Monitor do equipamento apontado para {Host}:{Port}.", options.Value.MonitorHostname, options.Value.MonitorPort);
+                        "Token dos callbacks gravado e Monitor do equipamento apontado para {Host}:{Port}.",
+                        options.Value.MonitorHostname,
+                        options.Value.MonitorPort);
                     ready = true;
                 }
 

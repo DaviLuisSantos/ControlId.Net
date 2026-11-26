@@ -84,7 +84,7 @@ public class AccessReportsTests
         var e = Assert.Single(events);
         Assert.Equal("door", e.Event);
         Assert.Equal("OPEN", e.Type);
-        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1700000000), e.TimestampUtc);
+        Assert.Equal(new DateTime(2023, 11, 14, 22, 13, 20), e.LocalTimestamp);
         Assert.Equal(6, Assert.Single(alarms).Cause);
 
         var bodies = device.RequestsTo("load_objects.fcgi").Select(r => r.Body).ToList();
@@ -179,7 +179,7 @@ public class AccessReportsTests
 
         Assert.Equal("2026-10-10 config changed", await client.ExportAuditLogsAsync(AuditLogCategories.Config | AuditLogCategories.Online));
         Assert.Equal(
-            """{"config":1,"api":0,"usb":0,"network":0,"time":0,"online":1,"menu":0}""",
+            """{"config":1,"api":0,"usb":0,"network":0,"time":0,"online":1,"menu":0,"boot":0,"push":0}""",
             device.RequestsTo("export_audit_logs.fcgi").Single().Body);
         await Assert.ThrowsAsync<ArgumentException>(() => client.ExportAuditLogsAsync(AuditLogCategories.None));
     }

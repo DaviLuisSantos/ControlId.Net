@@ -1,0 +1,72 @@
+<Project>
+  <!--
+    Gerenciamento central de pacotes: as versões ficam só aqui; os PackageReference dos projetos não levam Version.
+    O Dependabot atualiza este arquivo (ver .github/dependabot.yml para as majors que sobem à mão).
+  -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <!--
+    Versões mínimas das dependências no alvo netstandard2.0 (ADR 0030). Os csproj de src/ as aplicam com VersionOverride,
+    só no netstandard2.0; o net8.0 continua nas versões abaixo. Cada valor é a menor versão que traz as APIs usadas e não
+    tem vulnerabilidade conhecida. Não sobem sozinhas: o Dependabot não as enxerga, e o job min-deps da CI as fixa.
+  -->
+  <PropertyGroup>
+    <ControlIdMinSystemTextJson>8.0.5</ControlIdMinSystemTextJson>
+    <ControlIdMinBclAsyncInterfaces>8.0.0</ControlIdMinBclAsyncInterfaces>
+    <ControlIdMinDiagnosticSource>8.0.1</ControlIdMinDiagnosticSource>
+    <ControlIdMinLoggingAbstractions>8.0.2</ControlIdMinLoggingAbstractions>
+    <ControlIdMinHostingAbstractions>8.0.1</ControlIdMinHostingAbstractions>
+    <ControlIdMinHttp>8.0.1</ControlIdMinHttp>
+    <ControlIdMinOptionsConfigurationExtensions>8.0.0</ControlIdMinOptionsConfigurationExtensions>
+    <ControlIdMinHealthChecks>8.0.0</ControlIdMinHealthChecks>
+    <!-- Só para os testes no net48, que consomem o build netstandard2.0 com as mínimas. -->
+    <ControlIdMinMicrosoftExtensionsConfiguration>8.0.0</ControlIdMinMicrosoftExtensionsConfiguration>
+  </PropertyGroup>
+
+  <!-- Bibliotecas publicadas (src/). Runtime na major do LTS mais antigo ainda suportado (ADR 0010). -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="5.6.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.15" />
+    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="10.0.15" />
+    <PackageVersion Include="System.Text.Json" Version="10.0.15" />
+  </ItemGroup>
+
+  <!-- Testes. -->
+  <ItemGroup>
+    <PackageVersion Include="coverlet.collector" Version="10.1.0" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
+    <PackageVersion Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
+  </ItemGroup>
+
+  <!--
+    O TestHost acompanha a versão do ASP.NET Core de cada alvo dos testes (8 no net8.0, 10 no net10.0). A condição é
+    avaliada em cada build interno, quando o TargetFramework já está definido.
+  -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="8.0.11" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.0" />
+  </ItemGroup>
+
+  <!-- Samples e benchmarks. -->
+  <ItemGroup>
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.20.1" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.20.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.20.1" />
+  </ItemGroup>
+</Project>

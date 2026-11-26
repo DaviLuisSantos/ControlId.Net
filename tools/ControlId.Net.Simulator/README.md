@@ -20,15 +20,16 @@ var users = await device.GetUsersAsync();   // Ana, Bruno e Carla, dos dados de 
 | --- | --- |
 | Sessão | `login`, `logout`, `session_is_valid`; sessão inválida devolve 401, como o equipamento |
 | Objetos | `load_objects` (com `where`, `order`, `limit`, `offset`, `fields`), `create_objects`, `modify_objects`, `destroy_objects` (com `limit`), `create_or_modify_objects` |
-| Fotos | `user_set_image`, `user_get_image` (inclusive com `get_timestamp`), `user_list_images`, `user_destroy_image` |
+| Fotos | `user_set_image`, `user_set_image_list` (recusa corpo acima de `MaxImageListBytes` com HTTP 413), `user_get_image` (inclusive com `get_timestamp`), `user_list_images`, `user_destroy_image` |
 | Configuração | `get_configuration`, `set_configuration` |
-| Equipamento | `execute_actions` (porta), `doors_state`, `system_information`, `message_to_screen`, `buzzer_buzz`, `change_login`, `reboot` |
+| Equipamento | `set_system_time`, `enroller_state` (sempre `NORMAL_STATE`), `execute_actions` (porta), `doors_state`, `system_information`, `message_to_screen`, `buzzer_buzz`, `change_login`, `reboot` |
 | Monitor | Notificações `dao` (logs de acesso) e `door` enviadas para o `hostname`, `port` e `path` da seção `monitor` |
 
 Comportamentos do firmware real que o simulador reproduz, porque a biblioteca depende deles:
 
 - `get_configuration` recusa a leitura inteira se um parâmetro não existir, com a mensagem `Node or attribute not found.
   Node path: config->{seção}->param[name={campo}]` (iDFace 6.9.12, [ADR 0007](../../docs/adr/0007-configuracao-tolerante-a-parametros-ausentes.md)).
+- O `time` dos logs de acesso é a hora de parede local codificada como epoch (sem fuso), como o firmware.
 - Comando desconhecido devolve HTTP 400 com `Invalid command`.
 - Nas notificações do Monitor, os valores de `object_changes` chegam como texto (`"id": "519"`).
 - `system_information` devolve o `device_id` como texto.
@@ -45,7 +46,7 @@ Rotas que não existem no equipamento e provocam o que, no mundo real, vem de um
 | `POST /simulator/identify` `{"userId": 1}` ou `{"cardValue": 4194301001}` | Uma pessoa se identifica: grava o log de acesso (liberado ou não identificado), abre a porta e notifica o Monitor |
 | `POST /simulator/expire-sessions` | Encerra as sessões, como um reinício; o cliente deve refazer o login sozinho |
 | `POST /simulator/reset` | Volta ao estado inicial |
-| `GET /simulator/state` | Tabelas, portas, fotos, destino do Monitor e as últimas entregas |
+| `GET /simulator/state` | Tabelas, portas, fotos, destino do Monitor, as últimas entregas e `requests` (contador de requisições por comando) |
 | `GET /health` | Health check |
 
 ## REP, Push e modo online
@@ -68,6 +69,8 @@ Seção `Simulator` do `appsettings.json`, argumentos (`--Simulator:Password=...
 | `Doors` | `1` (até 4) |
 | `DoorOpenTime` | `00:00:03` |
 | `SeedSampleData` | `true`: três usuários e dois cartões |
+| `DisabledCommands` | vazio. Comandos que respondem 400 `Invalid command` (ex.: `--DisabledCommands=user_set_image_list,set_system_time`), para testar firmware sem o recurso |
+| `MaxImageListBytes` | `2097152` (2 MiB): limite do corpo de `user_set_image_list` |
 
 Com Docker, o Monitor do simulador precisa alcançar a sua máquina: use `host.docker.internal` como `hostname`.
 

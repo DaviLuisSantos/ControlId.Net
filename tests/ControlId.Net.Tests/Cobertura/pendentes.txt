@@ -1,0 +1,2 @@
+# Endpoints documentados ainda sem cobertura em src/. Um nome.fcgi por linha; # comenta.
+# A lista so encolhe: o teste falha se um item daqui ja estiver coberto.

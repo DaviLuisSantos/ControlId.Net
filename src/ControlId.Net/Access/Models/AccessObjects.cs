@@ -104,7 +104,12 @@ public sealed class AccessDeviceEvent
     [JsonPropertyName("timestamp")]
     public long Timestamp { get; set; }
 
-    /// <summary><see cref="Timestamp"/> como data, em UTC.</summary>
+    /// <summary><see cref="Timestamp"/> como hora local do equipamento (<see cref="DateTimeKind.Unspecified"/>, sem fuso).</summary>
+    [JsonIgnore]
+    public DateTime LocalTimestamp => DeviceLocalTime.FromEpoch(Timestamp);
+
+    /// <summary><see cref="Timestamp"/> lido como UTC. O equipamento grava a hora local dele, não UTC.</summary>
+    [Obsolete("O equipamento grava a hora local dele, não UTC. Use LocalTimestamp.")]
     [JsonIgnore]
     public DateTimeOffset TimestampUtc => DateTimeOffset.FromUnixTimeSeconds(Timestamp);
 }
@@ -130,9 +135,12 @@ public sealed class AlarmLog
     [JsonPropertyName("cause")]
     public int Cause { get; set; }
 
-    /// <summary><see cref="Cause"/> como enum (mesma numeração de <c>alarm_status</c>).</summary>
+    /// <summary>
+    /// <see cref="Cause"/> como enum (mesma numeração de <c>alarm_status</c>); <see cref="AlarmCause.Unknown"/> para um código
+    /// que a biblioteca não conhece.
+    /// </summary>
     [JsonIgnore]
-    public AlarmCause CauseType => (AlarmCause)Cause;
+    public AlarmCause CauseType => Internal.EnumValues.ToDefined<AlarmCause>(Cause);
 
     /// <summary>Usuário envolvido.</summary>
     [JsonPropertyName("user_id")]
@@ -150,7 +158,12 @@ public sealed class AlarmLog
     [JsonPropertyName("door_id")]
     public long? DoorId { get; set; }
 
-    /// <summary><see cref="Time"/> como data, em UTC.</summary>
+    /// <summary><see cref="Time"/> como hora local do equipamento (<see cref="DateTimeKind.Unspecified"/>, sem fuso).</summary>
+    [JsonIgnore]
+    public DateTime LocalTime => DeviceLocalTime.FromEpoch(Time);
+
+    /// <summary><see cref="Time"/> lido como UTC. O equipamento grava a hora local dele, não UTC.</summary>
+    [Obsolete("O equipamento grava a hora local dele, não UTC. Use LocalTime.")]
     [JsonIgnore]
     public DateTimeOffset TimeUtc => DateTimeOffset.FromUnixTimeSeconds(Time);
 }

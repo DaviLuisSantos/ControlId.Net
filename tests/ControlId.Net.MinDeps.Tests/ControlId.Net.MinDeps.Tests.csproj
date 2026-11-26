@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Smoke das versões mínimas das dependências do netstandard2.0 (ADR 0030). O net48 consome o build netstandard2.0 das
+    bibliotecas, que declara as mínimas com VersionOverride. Este projeto não referencia nenhum pacote que suba essas
+    versões: o NuGet resolve a menor que satisfaz o grafo, e os testes conferem o que foi carregado de fato.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <!-- Assemblies de referência do .NET Framework sem depender do targeting pack instalado. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="System.Net.Http" />
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ControlId.Net\ControlId.Net.csproj" />
+    <ProjectReference Include="..\..\src\ControlId.Net.DependencyInjection\ControlId.Net.DependencyInjection.csproj" />
+    <ProjectReference Include="..\..\src\ControlId.Net.Testing\ControlId.Net.Testing.csproj" />
+  </ItemGroup>
+
+</Project>

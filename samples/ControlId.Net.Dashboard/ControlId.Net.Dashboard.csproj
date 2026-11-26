@@ -10,6 +10,8 @@
     <IsPackable>false</IsPackable>
     <InvariantGlobalization>true</InvariantGlobalization>
     <RootNamespace>ControlId.Dashboard</RootNamespace>
+    <!-- Senha do equipamento por user-secrets no Development (fora do appsettings.json versionado). -->
+    <UserSecretsId>controlid-net-dashboard-sample</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

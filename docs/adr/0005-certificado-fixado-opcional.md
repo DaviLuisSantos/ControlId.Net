@@ -1,6 +1,6 @@
 # 0005. Certificado fixado como opção, sem mudar o padrão
 
-Status: Aceita (2026-10-30)
+Status: Aceita (2026-10-30). Complementada pela [0022](0022-tls-do-rep-validado.md) (2026-11-19): o REP passa a validar o certificado por padrão.
 
 ## Contexto
 

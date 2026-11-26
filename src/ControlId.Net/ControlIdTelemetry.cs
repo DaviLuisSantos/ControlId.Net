@@ -22,6 +22,18 @@ namespace ControlId;
 /// <c>closed</c>) e <c>controlid.client.circuit.rejected</c>, com <c>server.address</c> e <c>server.port</c> identificando o
 /// equipamento. Uma requisição recusada pelo circuit breaker aberto termina o span com <c>error.type=circuit_open</c>.
 /// </para>
+/// <para>
+/// Push: <c>controlid.push.commands</c>, um por envio do <c>PushServer</c>, com a tag <c>controlid.push.outcome</c>
+/// (<c>enqueued</c>, <c>delivered</c>, <c>completed</c>, <c>orphaned</c>, <c>expired</c>, <c>cancelled</c>, <c>rejected</c> ou
+/// <c>timeout</c>).
+/// </para>
+/// <para>
+/// Rotas do pacote <c>ControlId.Net.AspNetCore</c> (no mesmo <c>Meter</c>): <c>controlid.server.callback.requests</c>, com as
+/// tags <c>controlid.callback.kind</c> (<c>push</c>, <c>result</c>, <c>monitor</c> ou <c>online</c>) e
+/// <c>controlid.callback.outcome</c> (<c>ok</c>, <c>unauthorized</c>, <c>forbidden</c>, <c>too_large</c>, <c>bad_request</c> ou
+/// <c>error</c>), e <c>controlid.server.callback.handler.duration</c> (s, código da aplicação chamado pelo callback, com
+/// <c>controlid.callback.kind</c> e, em caso de exceção, <c>error.type</c>). O <c>deviceId</c> não vai para as tags.
+/// </para>
 /// </remarks>
 public static class ControlIdTelemetry
 {

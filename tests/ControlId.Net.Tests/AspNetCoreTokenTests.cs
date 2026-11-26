@@ -99,11 +99,18 @@ public sealed class AspNetCoreTokenTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task Push_without_token_group_stays_open_and_feeds_the_tracker()
+    public async Task Push_without_token_group_is_closed_and_the_anonymous_opt_in_feeds_the_tracker()
     {
-        var http = await StartAsync(map: app => app.MapControlIdPush());
+        var http = await StartAsync(map: app =>
+        {
+            app.MapControlIdPush("/fechado");
+            app.MapControlIdPush("/aberto").AllowAnonymousControlIdCallbacks();
+        });
 
-        var response = await http.GetAsync("/push?deviceId=9&uuid=a");
+        AssertUnauthorized(await http.GetAsync("/fechado/push?deviceId=9&uuid=a"));
+        Assert.Null(Tracker.GetLastContact(9));
+
+        var response = await http.GetAsync("/aberto/push?deviceId=9&uuid=a");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var contact = Tracker.GetLastContact(9);
@@ -114,7 +121,7 @@ public sealed class AspNetCoreTokenTests : IAsyncDisposable
     [Fact]
     public async Task Push_result_feeds_the_tracker()
     {
-        var http = await StartAsync(map: app => app.MapControlIdPush());
+        var http = await StartAsync(map: app => app.MapControlIdPush().AllowAnonymousControlIdCallbacks());
 
         await http.PostAsync("/result?deviceId=3", new StringContent("{}"));
 
@@ -128,12 +135,28 @@ public sealed class AspNetCoreTokenTests : IAsyncDisposable
         {
             o.Token = "geral";
             o.DeviceToken = id => id == 7 ? "do-7" : null;
+            o.AllowTokenFallback = true;
         }));
 
         AssertUnauthorized(await http.SendAsync(Get("/push?deviceId=7", "Bearer geral")));
         Assert.Equal(HttpStatusCode.OK, (await http.SendAsync(Get("/push?deviceId=7", "Bearer do-7"))).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await http.SendAsync(Get("/push?deviceId=8", "Bearer geral"))).StatusCode);
         AssertUnauthorized(await http.SendAsync(Get("/push?deviceId=8", "Bearer do-7")));
+    }
+
+    [Fact]
+    public async Task Shared_token_does_not_cover_devices_without_their_own_token_by_default()
+    {
+        var http = await StartAsync(map: app => app.MapControlIdPush().RequireControlIdToken(o =>
+        {
+            o.Token = "geral";
+            o.DeviceToken = id => id == 7 ? "do-7" : null;
+        }));
+
+        Assert.Equal(HttpStatusCode.OK, (await http.SendAsync(Get("/push?deviceId=7", "Bearer do-7"))).StatusCode);
+        AssertUnauthorized(await http.SendAsync(Get("/push?deviceId=8", "Bearer geral")));
+        AssertUnauthorized(await http.SendAsync(Get("/push?deviceId=7", "Bearer geral")));
+        Assert.Null(Tracker.GetLastContact(8));
     }
 
     [Fact]
@@ -164,9 +187,16 @@ public sealed class AspNetCoreTokenTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task Monitor_without_token_group_feeds_the_tracker_and_ignores_missing_device_id()
+    public async Task Monitor_without_token_group_is_closed_and_the_anonymous_opt_in_feeds_the_tracker()
     {
-        var http = await StartAsync(map: app => app.MapControlIdMonitor());
+        var http = await StartAsync(map: app =>
+        {
+            app.MapControlIdMonitor("fechado/notifications");
+            app.MapControlIdMonitor().AllowAnonymousControlIdCallbacks();
+        });
+
+        AssertUnauthorized(await http.PostAsync("/fechado/notifications/device_is_alive", new StringContent("""{"access_logs":3,"device_id":4}""")));
+        Assert.Null(Tracker.GetLastContact(4));
 
         await http.PostAsync("/api/notifications/device_is_alive", new StringContent("""{"access_logs":3,"device_id":4}"""));
         await http.PostAsync("/api/notifications/device_is_alive", new StringContent("""{"access_logs":3}"""));
@@ -203,9 +233,15 @@ public sealed class AspNetCoreTokenTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task Online_without_token_group_stays_open()
+    public async Task Online_without_token_group_is_closed_unless_anonymous_is_allowed()
     {
-        var http = await StartAsync(map: app => app.MapControlIdOnline("/api"));
+        var http = await StartAsync(map: app =>
+        {
+            app.MapControlIdOnline("/fechado");
+            app.MapControlIdOnline("/api").AllowAnonymousControlIdCallbacks();
+        });
+
+        AssertUnauthorized(await http.PostAsync("/fechado/session_is_valid.fcgi", new StringContent("{}")));
 
         var response = await http.PostAsync("/api/session_is_valid.fcgi", new StringContent("{}"));
 
@@ -221,7 +257,7 @@ public sealed class AspNetCoreTokenTests : IAsyncDisposable
                 services.AddSingleton<ScopeLog>();
                 services.AddControlIdPushResultHandler<ScopedResultHandler>();
             },
-            app => app.MapControlIdPush());
+            app => app.MapControlIdPush().AllowAnonymousControlIdCallbacks());
         var push = _app!.Services.GetRequiredService<PushServer>();
         var first = await push.EnqueueAsync(1, new PushCommand("reboot"));
         var second = await push.EnqueueAsync(1, new PushCommand("reboot"));

@@ -229,4 +229,181 @@ public abstract class PushStoreContractTests
             Assert.Equal(0, await store.CountAsync(device, Ct));
         }
     }
+
+    // ---- IPushCommandStoreMaintenance (opcional) ----
+    // Os testes abaixo só exercitam stores que implementam a interface; os demais passam sem verificar nada.
+    // Uma implementação que precisa da interface sobrescreve RequiresMaintenance para tornar a ausência uma falha.
+
+    /// <summary><c>true</c> obriga o store a implementar <see cref="IPushCommandStoreMaintenance"/>.</summary>
+    protected virtual bool RequiresMaintenance => false;
+
+    private (IPushCommandStore Store, IPushCommandStoreMaintenance? Maintenance) CreateMaintainedStore()
+    {
+        var store = CreateStore();
+        return (store, store as IPushCommandStoreMaintenance);
+    }
+
+    [Fact]
+    public void Store_implements_maintenance_when_required()
+    {
+        var store = CreateStore();
+        if (RequiresMaintenance)
+        {
+            Assert.IsAssignableFrom<IPushCommandStoreMaintenance>(store);
+        }
+    }
+
+    [Fact]
+    public async Task RemoveExpired_on_an_empty_store_returns_nothing()
+    {
+        var (_, maintenance) = CreateMaintainedStore();
+        if (maintenance is null)
+        {
+            return;
+        }
+
+        Assert.Empty(await maintenance.RemoveExpiredAsync(DateTimeOffset.MaxValue, DateTimeOffset.MaxValue, Ct));
+    }
+
+    [Fact]
+    public async Task RemoveExpired_removes_pending_created_before_the_limit_and_keeps_the_rest()
+    {
+        var (store, maintenance) = CreateMaintainedStore();
+        if (maintenance is null)
+        {
+            return;
+        }
+
+        var limit = DateTimeOffset.UtcNow.AddHours(-1);
+        var old = NewEnvelope(1, "old", createdAt: limit.AddMinutes(-30));
+        var atLimit = NewEnvelope(1, "at-limit", createdAt: limit);
+        var recent = NewEnvelope(1, "recent", createdAt: limit.AddMinutes(30));
+        await store.AddAsync(old, Ct);
+        await store.AddAsync(atLimit, Ct);
+        await store.AddAsync(recent, Ct);
+
+        var removed = await maintenance.RemoveExpiredAsync(limit, DateTimeOffset.MinValue, Ct);
+
+        var envelope = Assert.Single(removed);
+        Assert.Equal(old.Id, envelope.Id);
+        Assert.Equal(PushEnvelopeStatus.Pending, envelope.Status);
+        Assert.Equal(1, envelope.DeviceId);
+        Assert.Equal(old.Payload, envelope.Payload);
+        Assert.Equal(old.Endpoints, envelope.Endpoints);
+        Assert.Equal(2, await store.CountAsync(1, Ct));
+        Assert.Equal(atLimit.Id, (await store.TakeNextAsync(1, "u", Ct)).Next!.Id);
+        Assert.False(await store.RemoveAsync(old.Id, Ct));
+    }
+
+    [Fact]
+    public async Task RemoveExpired_removes_in_flight_delivered_before_the_limit()
+    {
+        var (store, maintenance) = CreateMaintainedStore();
+        if (maintenance is null)
+        {
+            return;
+        }
+
+        var only = NewEnvelope(1, "only");
+        await store.AddAsync(only, Ct);
+        await store.TakeNextAsync(1, "u", Ct);
+
+        var removed = await maintenance.RemoveExpiredAsync(DateTimeOffset.MinValue, DateTimeOffset.UtcNow.AddMinutes(5), Ct);
+
+        var envelope = Assert.Single(removed);
+        Assert.Equal(only.Id, envelope.Id);
+        Assert.Equal(PushEnvelopeStatus.InFlight, envelope.Status);
+        Assert.Equal("u", envelope.Uuid);
+        Assert.Equal(0, await store.CountAsync(1, Ct));
+        Assert.Null(await store.CompleteAsync(1, "u", Ct));
+        var take = await store.TakeNextAsync(1, "v", Ct);
+        Assert.Null(take.Orphan);
+        Assert.Null(take.Next);
+    }
+
+    [Fact]
+    public async Task RemoveExpired_keeps_in_flight_delivered_after_the_limit()
+    {
+        var (store, maintenance) = CreateMaintainedStore();
+        if (maintenance is null)
+        {
+            return;
+        }
+
+        var only = NewEnvelope(1, "only");
+        await store.AddAsync(only, Ct);
+        await store.TakeNextAsync(1, "u", Ct);
+
+        Assert.Empty(await maintenance.RemoveExpiredAsync(DateTimeOffset.MinValue, DateTimeOffset.UtcNow.AddMinutes(-5), Ct));
+        Assert.Equal(only.Id, (await store.CompleteAsync(1, "u", Ct))!.Id);
+    }
+
+    [Fact]
+    public async Task RemoveExpired_judges_in_flight_by_delivery_not_by_creation()
+    {
+        var (store, maintenance) = CreateMaintainedStore();
+        if (maintenance is null)
+        {
+            return;
+        }
+
+        // Criado há muito tempo, mas entregue agora: o limite de pendentes não o alcança.
+        var old = NewEnvelope(1, "old", createdAt: DateTimeOffset.UtcNow.AddDays(-2));
+        await store.AddAsync(old, Ct);
+        await store.TakeNextAsync(1, "u", Ct);
+
+        Assert.Empty(await maintenance.RemoveExpiredAsync(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddMinutes(-5), Ct));
+        Assert.Equal(1, await store.CountAsync(1, Ct));
+    }
+
+    [Fact]
+    public async Task RemoveExpired_covers_every_device_and_both_states_at_once()
+    {
+        var (store, maintenance) = CreateMaintainedStore();
+        if (maintenance is null)
+        {
+            return;
+        }
+
+        var limit = DateTimeOffset.UtcNow.AddHours(-1);
+        var oldPending = NewEnvelope(1, "old-pending", createdAt: limit.AddMinutes(-1));
+        var otherDevice = NewEnvelope(2, "other-device", createdAt: limit.AddMinutes(-2));
+        var kept = NewEnvelope(3, "kept");
+        var inFlight = NewEnvelope(4, "in-flight");
+        await store.AddAsync(oldPending, Ct);
+        await store.AddAsync(otherDevice, Ct);
+        await store.AddAsync(kept, Ct);
+        await store.AddAsync(inFlight, Ct);
+        Assert.Equal(inFlight.Id, (await store.TakeNextAsync(4, "u", Ct)).Next!.Id);
+
+        var removed = await maintenance.RemoveExpiredAsync(limit, DateTimeOffset.UtcNow.AddMinutes(5), Ct);
+
+        Assert.Equal(
+            new[] { inFlight.Id, oldPending.Id, otherDevice.Id }.OrderBy(id => id),
+            removed.Select(e => e.Id).OrderBy(id => id));
+        Assert.Equal(0, await store.CountAsync(1, Ct));
+        Assert.Equal(0, await store.CountAsync(2, Ct));
+        Assert.Equal(1, await store.CountAsync(3, Ct));
+        Assert.Equal(0, await store.CountAsync(4, Ct));
+        Assert.Empty(await maintenance.RemoveExpiredAsync(limit, DateTimeOffset.UtcNow.AddMinutes(5), Ct));
+    }
+
+    [Fact]
+    public async Task Store_accepts_new_envelopes_after_RemoveExpired_empties_a_device()
+    {
+        var (store, maintenance) = CreateMaintainedStore();
+        if (maintenance is null)
+        {
+            return;
+        }
+
+        await store.AddAsync(NewEnvelope(1, "old", createdAt: DateTimeOffset.UtcNow.AddDays(-1)), Ct);
+        Assert.Single(await maintenance.RemoveExpiredAsync(DateTimeOffset.UtcNow.AddHours(-1), DateTimeOffset.MinValue, Ct));
+
+        var fresh = NewEnvelope(1, "fresh");
+        await store.AddAsync(fresh, Ct);
+
+        Assert.Equal(1, await store.CountAsync(1, Ct));
+        Assert.Equal(fresh.Id, (await store.TakeNextAsync(1, "u", Ct)).Next!.Id);
+    }
 }

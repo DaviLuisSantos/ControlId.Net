@@ -1,3 +1,4 @@
+using System;
 using System.Text.Json.Serialization;
 
 namespace ControlId.Access;
@@ -14,13 +15,17 @@ public sealed class AccessLog
     [JsonPropertyName("time")]
     public long Time { get; set; }
 
+    /// <summary><see cref="Time"/> como hora local do equipamento (<see cref="DateTimeKind.Unspecified"/>, sem fuso).</summary>
+    [JsonIgnore]
+    public DateTime LocalTime => Internal.DeviceLocalTime.FromEpoch(Time);
+
     /// <summary>Código do evento (ex.: 7 = acesso concedido). Veja a documentação Control iD.</summary>
     [JsonPropertyName("event")]
     public int Event { get; set; }
 
-    /// <summary><see cref="Event"/> como enum.</summary>
+    /// <summary><see cref="Event"/> como enum; <see cref="AccessEventType.Unknown"/> para um código que a biblioteca não conhece.</summary>
     [JsonIgnore]
-    public AccessEventType EventType => (AccessEventType)Event;
+    public AccessEventType EventType => Internal.EnumValues.ToDefined<AccessEventType>(Event);
 
     /// <summary>ID do dispositivo que gerou o evento.</summary>
     [JsonPropertyName("device_id")]

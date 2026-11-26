@@ -1,0 +1,32 @@
+#nullable enable
+ControlId.Testing.Cassette
+ControlId.Testing.Cassette.Cassette() -> void
+ControlId.Testing.Cassette.Entries.get -> System.Collections.Generic.IList<ControlId.Testing.CassetteEntry!>!
+ControlId.Testing.Cassette.Entries.set -> void
+ControlId.Testing.Cassette.Save(string! path) -> void
+ControlId.Testing.CassetteEntry
+ControlId.Testing.CassetteEntry.CassetteEntry() -> void
+ControlId.Testing.CassetteEntry.Method.get -> string!
+ControlId.Testing.CassetteEntry.Method.set -> void
+ControlId.Testing.CassetteEntry.Path.get -> string!
+ControlId.Testing.CassetteEntry.Path.set -> void
+ControlId.Testing.CassetteEntry.RequestBody.get -> string?
+ControlId.Testing.CassetteEntry.RequestBody.set -> void
+ControlId.Testing.CassetteEntry.RequestBodyIsBase64.get -> bool
+ControlId.Testing.CassetteEntry.RequestBodyIsBase64.set -> void
+ControlId.Testing.CassetteEntry.ResponseBody.get -> string!
+ControlId.Testing.CassetteEntry.ResponseBody.set -> void
+ControlId.Testing.CassetteEntry.ResponseBodyIsBase64.get -> bool
+ControlId.Testing.CassetteEntry.ResponseBodyIsBase64.set -> void
+ControlId.Testing.CassetteEntry.ResponseContentType.get -> string?
+ControlId.Testing.CassetteEntry.ResponseContentType.set -> void
+ControlId.Testing.CassetteEntry.StatusCode.get -> int
+ControlId.Testing.CassetteEntry.StatusCode.set -> void
+ControlId.Testing.RecordingHandler
+ControlId.Testing.RecordingHandler.RecordingHandler(System.Net.Http.HttpMessageHandler! innerHandler, ControlId.Testing.Cassette! cassette, System.Collections.Generic.IEnumerable<string!>? extraMaskedFields = null) -> void
+ControlId.Testing.ReplayHandler
+ControlId.Testing.ReplayHandler.Remaining.get -> int
+ControlId.Testing.ReplayHandler.ReplayHandler(ControlId.Testing.Cassette! cassette, System.Collections.Generic.IEnumerable<string!>? extraMaskedFields = null) -> void
+const ControlId.Testing.Cassette.MaskValue = "***" -> string!
+static ControlId.Testing.Cassette.DefaultMaskedFields.get -> System.Collections.Generic.IReadOnlyCollection<string!>!
+static ControlId.Testing.Cassette.Load(string! path) -> ControlId.Testing.Cassette!

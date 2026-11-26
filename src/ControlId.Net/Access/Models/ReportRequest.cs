@@ -162,6 +162,31 @@ public enum AuditLogCategories
     /// <summary>Acesso ao menu do equipamento.</summary>
     Menu = 64,
 
-    /// <summary>Todas.</summary>
-    All = Config | Api | Usb | Network | Time | Online | Menu,
+    /// <summary>Inicializações do equipamento.</summary>
+    Boot = 128,
+
+    /// <summary>Comunicação com o servidor do modo push.</summary>
+    Push = 256,
+
+    /// <summary>Todas (as 9 categorias).</summary>
+    All = Config | Api | Usb | Network | Time | Online | Menu | Boot | Push,
+}
+
+/// <summary>Filtros de <c>export_afd.fcgi</c>.</summary>
+public sealed class AfdExportOptions
+{
+    /// <summary>NSR inicial (não combina com <see cref="InitialDate"/>).</summary>
+    public long? InitialNsr { get; set; }
+
+    /// <summary>Data inicial (não combina com <see cref="InitialNsr"/>).</summary>
+    public DateTime? InitialDate { get; set; }
+
+    /// <summary><c>true</c> pede o leiaute da Portaria 671 (<c>mode=671</c>); <c>false</c>, o anterior (595/1510).</summary>
+    public bool Portaria671 { get; set; } = true;
+
+    /// <summary>Máximo de registros (padrão do equipamento: 1500). A paginação só vale com <c>Limit</c> ou <see cref="Offset"/>.</summary>
+    public int? Limit { get; set; }
+
+    /// <summary>Registros a ignorar, para paginação.</summary>
+    public int? Offset { get; set; }
 }

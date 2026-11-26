@@ -27,14 +27,20 @@ public sealed class AlarmStatus
     [JsonPropertyName("cause")]
     public int Cause { get; set; }
 
-    /// <summary><see cref="Cause"/> como enum.</summary>
+    /// <summary><see cref="Cause"/> como enum; <see cref="AlarmCause.Unknown"/> para um código que a biblioteca não conhece.</summary>
     [JsonIgnore]
-    public AlarmCause CauseType => (AlarmCause)Cause;
+    public AlarmCause CauseType => Internal.EnumValues.ToDefined<AlarmCause>(Cause);
 }
 
 /// <summary>Causa de alarme, numerada como em <c>alarm_status</c> (os mesmos códigos de <c>alarm_logs.cause</c>).</summary>
 public enum AlarmCause
 {
+    /// <summary>
+    /// Código que esta versão da biblioteca não conhece (ex.: de um firmware mais novo); o número fica em
+    /// <see cref="AlarmStatus.Cause"/>/<see cref="AlarmLog.Cause"/>. Vale -1 porque o 0 já é <see cref="None"/>.
+    /// </summary>
+    Unknown = -1,
+
     /// <summary>0: sem causa.</summary>
     None = 0,
 

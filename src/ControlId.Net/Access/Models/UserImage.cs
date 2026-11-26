@@ -26,3 +26,16 @@ public sealed class UserImage
     [JsonPropertyName("image")]
     public byte[] Image { get; }
 }
+
+/// <summary>Opções de <c>user_set_image.fcgi</c> e <c>user_set_image_list.fcgi</c>.</summary>
+public sealed class UserImageUploadOptions
+{
+    /// <summary>Recusa a foto se o rosto já pertence a outro usuário (<c>match</c>).</summary>
+    public bool RejectExistingFace { get; set; } = true;
+
+    /// <summary>
+    /// Ignora a verificação de qualidade da imagem (<c>bypass_quality_score</c>). Serve para migrar bases de fotos
+    /// existentes; fotos sem a verificação podem causar falhas ou lentidão na identificação. Não use no dia a dia.
+    /// </summary>
+    public bool BypassQualityScore { get; set; }
+}

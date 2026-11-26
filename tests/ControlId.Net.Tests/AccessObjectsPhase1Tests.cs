@@ -101,27 +101,61 @@ public class AccessObjectsPhase1Tests
         Assert.Equal("""{"object":"pins","where":{"pins":{"user_id":7}}}""", bodies[2]);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task SetAdministrator_replaces_the_role(bool isAdministrator)
+    [Fact]
+    public async Task SetAdministrator_false_removes_the_role()
+    {
+        var device = LoggedDevice().OnJson("destroy_objects.fcgi", """{"changes":1}""");
+        using var client = new AccessClient(Options, device.CreateClient());
+
+        await client.SetAdministratorAsync(7, false);
+
+        Assert.Equal("""{"object":"user_roles","where":{"user_roles":{"user_id":7}},"limit":200}""", device.RequestsTo("destroy_objects.fcgi").Single().Body);
+        Assert.Empty(device.RequestsTo("modify_objects.fcgi"));
+        Assert.Empty(device.RequestsTo("create_objects.fcgi"));
+    }
+
+    [Fact]
+    public async Task SetAdministrator_true_modifies_the_existing_role_without_deleting_it()
     {
         var device = LoggedDevice()
-            .OnJson("destroy_objects.fcgi", """{"changes":0}""")
+            .OnJson("modify_objects.fcgi", """{"changes":1}""")
             .OnJson("create_objects.fcgi", """{"ids":[]}""");
         using var client = new AccessClient(Options, device.CreateClient());
 
-        await client.SetAdministratorAsync(7, isAdministrator);
+        await client.SetAdministratorAsync(7, true);
 
-        Assert.Equal("""{"object":"user_roles","where":{"user_roles":{"user_id":7}},"limit":200}""", device.RequestsTo("destroy_objects.fcgi").Single().Body);
-        if (isAdministrator)
-        {
-            Assert.Equal("""{"object":"user_roles","values":[{"user_id":7,"role":1}]}""", device.RequestsTo("create_objects.fcgi").Single().Body);
-        }
-        else
-        {
-            Assert.Empty(device.RequestsTo("create_objects.fcgi"));
-        }
+        Assert.Equal(
+            """{"object":"user_roles","values":{"role":1},"where":{"user_roles":{"user_id":7}}}""",
+            device.RequestsTo("modify_objects.fcgi").Single().Body);
+        Assert.Empty(device.RequestsTo("destroy_objects.fcgi"));
+        Assert.Empty(device.RequestsTo("create_objects.fcgi"));
+    }
+
+    [Fact]
+    public async Task SetAdministrator_true_creates_the_role_when_there_was_none()
+    {
+        var device = LoggedDevice()
+            .OnJson("modify_objects.fcgi", """{"changes":0}""")
+            .OnJson("create_objects.fcgi", """{"ids":[3]}""");
+        using var client = new AccessClient(Options, device.CreateClient());
+
+        await client.SetAdministratorAsync(7, true);
+
+        Assert.Single(device.RequestsTo("modify_objects.fcgi"));
+        Assert.Equal("""{"object":"user_roles","values":[{"user_id":7,"role":1}]}""", device.RequestsTo("create_objects.fcgi").Single().Body);
+        Assert.Empty(device.RequestsTo("destroy_objects.fcgi"));
+    }
+
+    [Fact]
+    public async Task SetAdministrator_true_keeps_the_role_when_the_modify_fails()
+    {
+        var device = LoggedDevice().On("modify_objects.fcgi", System.Net.HttpStatusCode.InternalServerError, """{"error":"busy","code":1}""");
+        using var client = new AccessClient(Options, device.CreateClient());
+
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.SetAdministratorAsync(7, true));
+
+        Assert.Empty(device.RequestsTo("destroy_objects.fcgi"));
+        Assert.Empty(device.RequestsTo("create_objects.fcgi"));
     }
 
     [Fact]

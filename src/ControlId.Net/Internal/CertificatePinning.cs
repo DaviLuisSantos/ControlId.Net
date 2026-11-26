@@ -24,6 +24,26 @@ internal static class CertificatePinning
         }
     }
 
+#if NET8_0_OR_GREATER
+    /// <summary>
+    /// Mesma lógica de <see cref="Configure"/>, no formato do <c>SslClientAuthenticationOptions</c> do <see cref="SocketsHttpHandler"/>.
+    /// Devolve <c>null</c> quando vale a validação padrão do .NET.
+    /// </summary>
+    public static System.Net.Security.RemoteCertificateValidationCallback? CreateValidationCallback(string? sha256, bool acceptAny)
+    {
+        if (Normalize(sha256) is { } expected)
+        {
+            return (_, certificate, _, _) =>
+                certificate is not null && string.Equals(Sha256(new X509Certificate2(certificate)), expected, StringComparison.Ordinal);
+        }
+
+        // Aceitar qualquer certificado é opt-in explícito do usuário (AcceptAnyCertificate), para equipamentos autoassinados.
+#pragma warning disable CA5359
+        return acceptAny ? static (_, _, _, _) => true : null;
+#pragma warning restore CA5359
+    }
+#endif
+
     /// <summary>SHA-256 do certificado (DER), em hexadecimal maiúsculo sem separadores.</summary>
     public static string Sha256(X509Certificate2 certificate)
     {

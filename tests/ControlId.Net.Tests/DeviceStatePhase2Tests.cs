@@ -33,7 +33,7 @@ public class DeviceStatePhase2Tests
         var device = LoggedDevice().On("doors_state.fcgi", HttpStatusCode.BadRequest, """{"error":"Sec Box count message parameter is invalid","code":1}""");
         using var client = new AccessClient(Options, device.CreateClient());
 
-        var ex = await Assert.ThrowsAsync<ControlIdException>(() => client.GetDoorStatesAsync());
+        var ex = await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetDoorStatesAsync());
         Assert.Contains("Sec Box count", ex.Message);
     }
 

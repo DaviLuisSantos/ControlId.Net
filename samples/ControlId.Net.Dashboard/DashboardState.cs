@@ -28,7 +28,7 @@ public sealed record DashboardSnapshot(
 /// Estado em memória do dashboard: últimos acessos, portas, usuários e se o equipamento responde. Quem muda o estado
 /// dispara <see cref="Changed"/>, e as páginas abertas se redesenham.
 /// </summary>
-public sealed class DashboardState(IOptions<DashboardOptions> options)
+public sealed class DashboardState(IOptions<DashboardOptions> options, IHostApplicationLifetime lifetime, ILogger<DashboardState> logger)
 {
     private readonly object _lock = new();
     private readonly List<AccessEntry> _events = new();
@@ -158,20 +158,33 @@ public sealed class DashboardState(IOptions<DashboardOptions> options)
         }
     }
 
+    // Disparado sem await por SetDoor: termina com a aplicação (ApplicationStopping) e nunca deixa exceção sem observar.
     private async Task CloseLaterAsync(int id, DateTimeOffset since)
     {
-        await Task.Delay(TimeSpan.FromSeconds(Math.Max(1, options.Value.DoorFallbackSeconds)));
-        lock (_lock)
+        var stopping = lifetime.ApplicationStopping;
+        try
         {
-            // Outra notificação chegou nesse meio-tempo: ela manda.
-            if (_doors.TryGetValue(id, out var current) && current.Since != since)
+            await Task.Delay(TimeSpan.FromSeconds(Math.Max(1, options.Value.DoorFallbackSeconds)), stopping);
+            lock (_lock)
             {
-                return;
+                // Outra notificação chegou nesse meio-tempo: ela manda.
+                if (_doors.TryGetValue(id, out var current) && current.Since != since)
+                {
+                    return;
+                }
+
+                _doors[id] = new DoorView(id, false, DateTimeOffset.UtcNow);
             }
 
-            _doors[id] = new DoorView(id, false, DateTimeOffset.UtcNow);
+            Changed?.Invoke();
         }
-
-        Changed?.Invoke();
+        catch (OperationCanceledException) when (stopping.IsCancellationRequested)
+        {
+            // A aplicação está parando: ninguém mais olha a porta.
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Falha ao voltar a porta {Door} para fechada no painel.", id);
+        }
     }
 }

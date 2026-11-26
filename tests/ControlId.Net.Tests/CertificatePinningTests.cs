@@ -88,9 +88,9 @@ public class CertificatePinningTests
             handler = delegating.InnerHandler!;
         }
 
-        var callback = Assert.IsType<HttpClientHandler>(handler).ServerCertificateCustomValidationCallback!;
-        Assert.True(callback(new HttpRequestMessage(), certificate, null, System.Net.Security.SslPolicyErrors.RemoteCertificateChainErrors));
-        Assert.False(callback(new HttpRequestMessage(), other, null, System.Net.Security.SslPolicyErrors.None));
+        var callback = PrimaryHandlerCertificate.Of(handler)!;
+        Assert.True(callback(certificate, System.Net.Security.SslPolicyErrors.RemoteCertificateChainErrors));
+        Assert.False(callback(other, System.Net.Security.SslPolicyErrors.None));
     }
 
     [Fact]

@@ -54,23 +54,29 @@ internal sealed class ControlIdClientFactory : IControlIdClientFactory, IDisposa
     public IAccessClient GetAccessClient(string name = "")
     {
         EnsureRegistered(name ?? throw new ArgumentNullException(nameof(name)), _registry.AccessDevices, "de acesso", "AddControlIdAccess");
-        return Get(_accessClients, name, () =>
-        {
-            var options = _accessOptions.Get(name);
-            var http = CreateHttpClient(ControlIdRegistry.AccessHttpClientName(name), options.Timeout);
-            return Create(() => new AccessClient(options, _loggerFactory, http), "de acesso", name);
-        });
+        return Get(_accessClients, name, () => Create(
+            () =>
+            {
+                var options = _accessOptions.Get(name);
+                var http = CreateHttpClient(ControlIdRegistry.AccessHttpClientName(name), options.Timeout);
+                return new AccessClient(options, _loggerFactory, http);
+            },
+            ControlIdOptionsValidation.AccessKind,
+            name));
     }
 
     public IRepClient GetRepClient(string name = "")
     {
         EnsureRegistered(name ?? throw new ArgumentNullException(nameof(name)), _registry.RepDevices, "REP", "AddControlIdRep");
-        return Get(_repClients, name, () =>
-        {
-            var options = _repOptions.Get(name);
-            var http = CreateHttpClient(ControlIdRegistry.RepHttpClientName(name), options.Timeout);
-            return Create(() => new RepClient(options.ToDeviceOptions(), options.Mode, _loggerFactory, http), "REP", name);
-        });
+        return Get(_repClients, name, () => Create(
+            () =>
+            {
+                var options = _repOptions.Get(name);
+                var http = CreateHttpClient(ControlIdRegistry.RepHttpClientName(name), options.Timeout);
+                return new RepClient(options.ToDeviceOptions(), options.Mode, _loggerFactory, http);
+            },
+            ControlIdOptionsValidation.RepKind,
+            name));
     }
 
     public void Dispose()
@@ -121,9 +127,14 @@ internal sealed class ControlIdClientFactory : IControlIdClientFactory, IDisposa
         {
             return create();
         }
+        catch (OptionsValidationException ex)
+        {
+            // O validador (ControlIdOptionsValidation) já monta a mensagem citando o equipamento.
+            throw new InvalidOperationException(ex.Message, ex);
+        }
         catch (ArgumentException ex)
         {
-            throw new InvalidOperationException($"Configuração inválida do equipamento {kind} {Describe(name)}: {ex.Message}", ex);
+            throw new InvalidOperationException(ControlIdOptionsValidation.Message(kind, name, ex.Message), ex);
         }
     }
 
@@ -139,5 +150,5 @@ internal sealed class ControlIdClientFactory : IControlIdClientFactory, IDisposa
             $"Equipamento {kind} {Describe(name)} não registrado. Registre com services.{method}(...). Registrados: {known}.");
     }
 
-    private static string Describe(string name) => name.Length == 0 ? "padrão" : $"'{name}'";
+    private static string Describe(string name) => ControlIdOptionsValidation.Describe(name);
 }

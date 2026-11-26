@@ -39,7 +39,7 @@ public class CircuitBreakerTests
         device.OnCommand = _ => Status(HttpStatusCode.ServiceUnavailable);
         for (var i = 0; i < failures; i++)
         {
-            var error = await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+            var error = await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
             Assert.Equal(HttpStatusCode.ServiceUnavailable, error.StatusCode);
         }
     }
@@ -62,7 +62,7 @@ public class CircuitBreakerTests
 
         for (var i = 0; i < 10; i++)
         {
-            await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+            await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
         }
 
         Assert.Equal(10, device.Commands);
@@ -120,13 +120,13 @@ public class CircuitBreakerTests
         device.OnCommand = _ => Status(HttpStatusCode.BadRequest, """{"error":"Invalid door","code":7}""");
         for (var i = 0; i < 5; i++)
         {
-            await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+            await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
         }
 
         device.OnCommand = _ => Status(HttpStatusCode.Unauthorized);
         for (var i = 0; i < 5; i++)
         {
-            await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+            await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
         }
 
         Assert.Equal(ControlIdCircuitState.Closed, client.CircuitState);
@@ -184,8 +184,8 @@ public class CircuitBreakerTests
         };
         using var client = Client(Options(clock, threshold: 2), device);
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
-        await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
 
         Assert.Equal(ControlIdCircuitState.Open, client.CircuitState);
         await Assert.ThrowsAsync<ControlIdCircuitOpenException>(() => client.GetUsersAsync());
@@ -252,7 +252,7 @@ public class CircuitBreakerTests
 
         clock.Advance(BreakDuration);
         var before = device.Commands;
-        var error = await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+        var error = await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, error.StatusCode);
         Assert.Equal(before + 1, device.Commands);
@@ -312,7 +312,7 @@ public class CircuitBreakerTests
 
         for (var i = 0; i < 3; i++)
         {
-            await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+            await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
         }
 
         Assert.Equal(ControlIdCircuitState.Open, client.CircuitState);
@@ -330,8 +330,8 @@ public class CircuitBreakerTests
         var device = new Device { OnCommand = _ => Status(HttpStatusCode.ServiceUnavailable) };
         using var client = new RepClient(Options(clock, threshold: 2), RepMode.Portaria671, new HttpClient(device));
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.OpenAfdStreamAsync());
-        await Assert.ThrowsAsync<ControlIdException>(() => client.OpenAfdStreamAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.OpenAfdStreamAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.OpenAfdStreamAsync());
         Assert.Equal(ControlIdCircuitState.Open, client.CircuitState);
 
         await Assert.ThrowsAsync<ControlIdCircuitOpenException>(() => client.OpenAfdStreamAsync());
@@ -357,8 +357,8 @@ public class CircuitBreakerTests
         var device = new Device { OnCommand = _ => Status(HttpStatusCode.ServiceUnavailable) };
         using var client = Client(options, device);
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
-        await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
         await Assert.ThrowsAsync<ControlIdCircuitOpenException>(() => client.GetUsersAsync());
 
         clock.Advance(BreakDuration);
@@ -389,7 +389,7 @@ public class CircuitBreakerTests
         var device = new Device { OnCommand = _ => Status(HttpStatusCode.ServiceUnavailable) };
         using var client = Client(options, device);
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
         clock.Advance(BreakDuration);
         device.OnCommand = _ => Status(HttpStatusCode.OK, """{"users":[]}""");
         await client.GetUsersAsync();
@@ -397,6 +397,128 @@ public class CircuitBreakerTests
         Assert.Contains((1007, LogLevel.Warning), logs.Entries);
         Assert.Contains((1008, LogLevel.Debug), logs.Entries);
         Assert.Contains((1009, LogLevel.Information), logs.Entries);
+    }
+
+    [Theory]
+    [InlineData(10_000, 20_000)]
+    [InlineData(100, 1_000)] // mínimo de 1 s
+    [InlineData(400, 1_000)]
+    [InlineData(-1, 300_000)] // Timeout.InfiniteTimeSpan: teto de 5 min
+    [InlineData(0, 300_000)]
+    public void Probe_deadline_is_twice_the_timeout(int timeoutMs, int expectedMs)
+    {
+        Assert.Equal(TimeSpan.FromMilliseconds(expectedMs), Internal.CircuitBreaker.ProbeDeadlineFor(TimeSpan.FromMilliseconds(timeoutMs)));
+        Assert.Equal(TimeSpan.MaxValue, Internal.CircuitBreaker.ProbeDeadlineFor(TimeSpan.MaxValue));
+    }
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(-1)] // timeout infinito: a sonda presa não prende o HalfOpen para sempre
+    public async Task An_abandoned_probe_counts_as_a_failure_and_reopens(int timeoutSeconds)
+    {
+        var clock = new FakeClock();
+        var device = new Device();
+        var options = Options(clock);
+        options.Timeout = timeoutSeconds < 0 ? Timeout.InfiniteTimeSpan : TimeSpan.FromSeconds(timeoutSeconds);
+        var deadline = timeoutSeconds < 0 ? TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(timeoutSeconds * 2);
+        using var client = Client(options, device);
+        await TripAsync(client, device, 3);
+
+        clock.Advance(BreakDuration);
+        var gate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var before = device.Commands;
+        device.OnCommand = async _ =>
+        {
+            await gate.Task;
+            return Json("""{"users":[]}""");
+        };
+        var probe = client.GetUsersAsync();
+        await WaitUntilAsync(() => device.Commands == before + 1);
+
+        clock.Advance(deadline - TimeSpan.FromSeconds(1));
+        Assert.Equal(ControlIdCircuitState.HalfOpen, client.CircuitState);
+        Assert.Equal(TimeSpan.Zero, (await Assert.ThrowsAsync<ControlIdCircuitOpenException>(() => client.GetUsersAsync())).RetryAfter);
+
+        clock.Advance(TimeSpan.FromSeconds(1));
+        Assert.Equal(ControlIdCircuitState.Open, client.CircuitState);
+        var rejected = await Assert.ThrowsAsync<ControlIdCircuitOpenException>(() => client.GetUsersAsync());
+        Assert.InRange(rejected.RetryAfter.TotalSeconds, 29.9, 30.0);
+
+        // O sucesso tardio da sonda abandonada não fecha o circuito.
+        gate.SetResult(true);
+        Assert.Empty(await probe);
+        Assert.Equal(ControlIdCircuitState.Open, client.CircuitState);
+        Assert.Equal(before + 1, device.Commands);
+
+        // Passada a nova pausa, uma sonda nova fecha.
+        clock.Advance(BreakDuration);
+        Assert.Empty(await client.GetUsersAsync());
+        Assert.Equal(ControlIdCircuitState.Closed, client.CircuitState);
+    }
+
+    [Fact]
+    public async Task The_late_failure_of_an_abandoned_probe_does_not_affect_the_next_probe()
+    {
+        var clock = new FakeClock();
+        var device = new Device();
+        var options = Options(clock);
+        options.Timeout = TimeSpan.FromSeconds(1);
+        options.MaxConcurrentRequests = 2; // a sonda abandonada segura uma vaga até o equipamento responder
+        using var client = Client(options, device);
+        await TripAsync(client, device, 3);
+
+        clock.Advance(BreakDuration);
+        var first = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        device.OnCommand = async _ =>
+        {
+            await first.Task;
+            return Json(string.Empty, HttpStatusCode.ServiceUnavailable);
+        };
+        var abandoned = client.GetUsersAsync();
+        await WaitUntilAsync(() => device.Commands == 4);
+
+        clock.Advance(TimeSpan.FromSeconds(2)); // prazo da sonda vencido: reabre
+        Assert.Equal(ControlIdCircuitState.Open, client.CircuitState);
+        clock.Advance(BreakDuration); // nova sonda liberada
+
+        var second = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        device.OnCommand = async _ =>
+        {
+            await second.Task;
+            return Json("""{"users":[]}""");
+        };
+        var probe = client.GetUsersAsync();
+        await WaitUntilAsync(() => device.Commands == 5);
+
+        first.SetResult(true);
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => abandoned);
+        Assert.Equal(ControlIdCircuitState.HalfOpen, client.CircuitState); // a falha tardia não reabriu
+
+        second.SetResult(true);
+        await probe;
+        Assert.Equal(ControlIdCircuitState.Closed, client.CircuitState);
+    }
+
+    [Fact]
+    public async Task Transitions_are_logged_outside_the_lock()
+    {
+        var logs = new ReentrantLog();
+        var clock = new FakeClock();
+        var options = Options(clock, threshold: 1);
+        options.LoggerFactory = logs;
+        var device = new Device { OnCommand = _ => Status(HttpStatusCode.ServiceUnavailable) };
+        using var client = Client(options, device);
+        logs.Probe = () => client.CircuitState;
+
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
+        clock.Advance(BreakDuration);
+        device.OnCommand = _ => Status(HttpStatusCode.OK, """{"users":[]}""");
+        await client.GetUsersAsync();
+        client.ResetCircuit();
+
+        // Abertura, meio aberto, fechamento e reset: em cada log, outra thread conseguiu ler o estado (o lock estava livre).
+        Assert.Equal(new[] { 1007, 1008, 1009, 1011 }, logs.Checked.Select(c => c.EventId).ToArray());
+        Assert.All(logs.Checked, c => Assert.True(c.LockWasFree, $"evento {c.EventId} registrado sob o lock"));
     }
 
     [Theory]
@@ -445,8 +567,8 @@ public class CircuitBreakerTests
         await using var provider = services.BuildServiceProvider();
         var rep = Assert.IsType<RepClient>(provider.GetRequiredService<IControlIdClientFactory>().GetRepClient("rh"));
 
-        await Assert.ThrowsAsync<ControlIdException>(() => rep.GetAboutAsync());
-        await Assert.ThrowsAsync<ControlIdException>(() => rep.GetAboutAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => rep.GetAboutAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => rep.GetAboutAsync());
         var rejected = await Assert.ThrowsAsync<ControlIdCircuitOpenException>(() => rep.GetAboutAsync());
 
         Assert.Equal(ControlIdCircuitState.Open, rep.CircuitState);
@@ -486,6 +608,57 @@ public class CircuitBreakerTests
 
             Interlocked.Increment(ref _commands);
             return OnCommand(cancellationToken);
+        }
+    }
+
+    // A cada log do circuito, lê o estado em outra thread: se o log saísse sob o lock, a leitura ficaria presa.
+    private sealed class ReentrantLog : ILoggerFactory, ILogger
+    {
+        private static readonly int[] CircuitEvents = { 1007, 1008, 1009, 1011 };
+        private readonly object _gate = new();
+        private readonly List<(int EventId, bool LockWasFree)> _checked = new();
+
+        public Func<ControlIdCircuitState>? Probe { get; set; }
+
+        public IReadOnlyList<(int EventId, bool LockWasFree)> Checked
+        {
+            get
+            {
+                lock (_gate)
+                {
+                    return _checked.ToList();
+                }
+            }
+        }
+
+        public ILogger CreateLogger(string categoryName) => this;
+
+        public void AddProvider(ILoggerProvider provider)
+        {
+        }
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (Probe is not { } probe || !CircuitEvents.Contains(eventId.Id))
+            {
+                return;
+            }
+
+            var read = Task.Run(probe);
+            var free = read.Wait(TimeSpan.FromSeconds(5));
+            lock (_gate)
+            {
+                _checked.Add((eventId.Id, free));
+            }
+        }
+
+        public void Dispose()
+        {
         }
     }
 

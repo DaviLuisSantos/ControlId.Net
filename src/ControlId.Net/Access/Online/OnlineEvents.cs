@@ -29,6 +29,12 @@ public enum OnlineIdentificationKind
 
     /// <summary><c>new_biometric_template</c> (Enterprise): template da digital (formato Innovatrics).</summary>
     BiometricTemplate,
+
+    /// <summary><c>new_pin</c> (Enterprise): PIN digitado.</summary>
+    Pin,
+
+    /// <summary><c>new_face_template</c> (Enterprise): template facial extraído pelo equipamento.</summary>
+    FaceTemplate,
 }
 
 /// <summary>
@@ -76,7 +82,11 @@ public abstract class OnlineIdentificationEvent
     /// <summary>Momento da tentativa (Unix timestamp).</summary>
     public long? Time { get; }
 
-    /// <summary><see cref="Time"/> como data, em UTC.</summary>
+    /// <summary><see cref="Time"/> como hora local do equipamento (<see cref="DateTimeKind.Unspecified"/>, sem fuso).</summary>
+    public DateTime? LocalTime => Time is { } time ? Internal.DeviceLocalTime.FromEpoch(time) : null;
+
+    /// <summary><see cref="Time"/> lido como UTC. O equipamento grava a hora local dele, não UTC.</summary>
+    [Obsolete("O equipamento grava a hora local dele, não UTC. Use LocalTime.")]
     public DateTimeOffset? TimeUtc => Time is { } time ? DateTimeOffset.FromUnixTimeSeconds(time) : null;
 
     /// <summary>Portal da tentativa.</summary>
@@ -111,7 +121,7 @@ public sealed class UserIdentifiedEvent : OnlineIdentificationEvent
     internal UserIdentifiedEvent(OnlineValues v)
         : base(OnlineIdentificationKind.UserIdentified, v)
     {
-        Event = v.Long("event") is { } e ? (AccessEventType)e : null;
+        Event = v.Long("event") is { } e ? Internal.EnumValues.ToDefined<AccessEventType>(e) : null;
         UserId = v.Long("user_id");
         UserName = v.Text("user_name");
         Duress = v.Flag("duress");
@@ -268,6 +278,72 @@ public sealed class BiometricEvent : OnlineIdentificationEvent
     public long? Variance { get; }
 }
 
+/// <summary><c>new_pin</c> (Enterprise): PIN digitado no equipamento.</summary>
+public sealed class PinEvent : OnlineIdentificationEvent
+{
+    internal PinEvent(OnlineValues v)
+        : base(OnlineIdentificationKind.Pin, v) => Pin = v.Text("pin");
+
+    /// <summary>PIN informado pelo usuário.</summary>
+    public string? Pin { get; }
+}
+
+/// <summary><c>new_face_template</c> (Enterprise): o equipamento extrai o template facial e o servidor identifica a pessoa.</summary>
+public sealed class FaceTemplateEvent : OnlineIdentificationEvent
+{
+    internal FaceTemplateEvent(OnlineValues v)
+        : base(OnlineIdentificationKind.FaceTemplate, v)
+    {
+        Template = v.Text("template");
+        TemplateFF = v.Text("templateFF");
+        TemplateMF = v.Text("templateMF");
+        TemplateMM = v.Text("templateMM");
+    }
+
+    /// <summary>Template facial em Base64 (V7 e V8).</summary>
+    public string? Template { get; }
+
+    /// <summary>Template facial em Base64, usuário sem máscara (só V6).</summary>
+    public string? TemplateFF { get; }
+
+    /// <summary>Template facial em Base64, usuário sem máscara (só V6).</summary>
+    public string? TemplateMF { get; }
+
+    /// <summary>Template facial em Base64, usuário de máscara (só V6); vazio (<c>null</c>) sem máscara.</summary>
+    public string? TemplateMM { get; }
+}
+
+/// <summary>
+/// <c>new_user_enrolled</c> (V7 e V8): usuário concluiu o autocadastro facial no próprio equipamento (modo quiosque).
+/// Use <see cref="OnlineEvents.ParseKioskEnrollment"/> para obter o evento.
+/// </summary>
+public sealed class KioskEnrollmentEvent
+{
+    internal KioskEnrollmentEvent(long? userId, long? deviceId, byte[]? userImage, string? faceTemplate, long? imageTimestamp)
+    {
+        UserId = userId;
+        DeviceId = deviceId;
+        UserImage = userImage;
+        FaceTemplate = faceTemplate;
+        ImageTimestamp = imageTimestamp;
+    }
+
+    /// <summary>Usuário cadastrado.</summary>
+    public long? UserId { get; }
+
+    /// <summary>Equipamento que fez o cadastro.</summary>
+    public long? DeviceId { get; }
+
+    /// <summary>Foto do usuário (decodificada do Base64).</summary>
+    public byte[]? UserImage { get; }
+
+    /// <summary>Template facial em Base64.</summary>
+    public string? FaceTemplate { get; }
+
+    /// <summary>Momento de cadastro da foto (Unix timestamp).</summary>
+    public long? ImageTimestamp { get; }
+}
+
 /// <summary>Interpreta os eventos de identificação do modo online.</summary>
 public static class OnlineEvents
 {
@@ -275,6 +351,7 @@ public static class OnlineEvents
     public static IReadOnlyList<string> IdentificationEndpoints { get; } = new[]
     {
         "new_user_identified", "new_card", "new_qrcode", "new_uhf_tag", "new_user_id_and_password", "new_biometric_image", "new_biometric_template",
+        "new_pin", "new_face_template",
     };
 
     /// <summary>
@@ -301,6 +378,8 @@ public static class OnlineEvents
             "new_user_id_and_password" => new UserIdAndPasswordEvent(v),
             "new_biometric_image" => new BiometricEvent(OnlineIdentificationKind.BiometricImage, v, body ?? Array.Empty<byte>()),
             "new_biometric_template" => new BiometricEvent(OnlineIdentificationKind.BiometricTemplate, v, body ?? Array.Empty<byte>()),
+            "new_pin" => new PinEvent(v),
+            "new_face_template" => new FaceTemplateEvent(v),
             _ => null,
         };
     }
@@ -311,6 +390,7 @@ public static class OnlineEvents
     public static IReadOnlyList<string> EnrollEndpoints { get; } = new[]
     {
         "card_create", "fingerprint_create", "template_create", "face_create", "pin_create", "password_create",
+        "face_template_create", "tag_create",
     };
 
     /// <summary>
@@ -333,6 +413,8 @@ public static class OnlineEvents
             "face_create" => RemoteEnrollType.Face,
             "pin_create" => RemoteEnrollType.Pin,
             "password_create" => RemoteEnrollType.Password,
+            "face_template_create" => RemoteEnrollType.Face,
+            "tag_create" => RemoteEnrollType.Tag,
             _ => null,
         };
 
@@ -349,6 +431,49 @@ public static class OnlineEvents
         {
             throw new ControlIdException($"Resultado de cadastro '{Name(endpoint)}' inválido.", responseBody: json, innerException: ex);
         }
+    }
+
+    /// <summary>
+    /// Interpreta o corpo JSON de <c>new_user_enrolled</c> (autocadastro facial no próprio equipamento, V7 e V8).
+    /// </summary>
+    /// <param name="json">Corpo da requisição.</param>
+    /// <exception cref="ControlIdException">O corpo não é um JSON válido.</exception>
+    public static KioskEnrollmentEvent ParseKioskEnrollment(string json)
+    {
+        if (json is null)
+        {
+            throw new ArgumentNullException(nameof(json));
+        }
+
+        try
+        {
+            var payload = Internal.ControlIdJson.Deserialize<KioskPayload>(json);
+            return payload is null
+                ? throw new ControlIdException("Evento 'new_user_enrolled' inválido: corpo vazio.", responseBody: json)
+                : new KioskEnrollmentEvent(payload.UserId, payload.DeviceId, payload.UserImage, payload.FaceTemplate, payload.ImageTimestamp);
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or FormatException)
+        {
+            throw new ControlIdException("Evento 'new_user_enrolled' inválido.", responseBody: json, innerException: ex);
+        }
+    }
+
+    private sealed class KioskPayload
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("user_id")]
+        public long? UserId { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("device_id")]
+        public long? DeviceId { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("user_image")]
+        public byte[]? UserImage { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("face_template"), System.Text.Json.Serialization.JsonConverter(typeof(Internal.LenientStringConverter))]
+        public string? FaceTemplate { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("image_timestamp")]
+        public long? ImageTimestamp { get; set; }
     }
 
     /// <summary>Decodifica um corpo <c>application/x-www-form-urlencoded</c>.</summary>

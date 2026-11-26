@@ -25,6 +25,14 @@ public sealed class DeviceState
         Reset();
     }
 
+    private readonly Dictionary<string, long> _requests = new(StringComparer.Ordinal);
+
+    /// <summary>Requisições recebidas por comando (sem o <c>.fcgi</c>) desde o início ou o último <see cref="Reset"/>.</summary>
+    public IReadOnlyDictionary<string, long> Requests => _requests;
+
+    /// <summary>Conta uma requisição ao comando. Chamar com o <see cref="Lock"/>.</summary>
+    public void CountRequest(string command) => _requests[command] = _requests.GetValueOrDefault(command) + 1;
+
     /// <summary>Lock de todo o estado.</summary>
     public object Lock { get; } = new();
 
@@ -91,6 +99,103 @@ public sealed class DeviceState
 
     public void DeleteAllImages() => _images.Clear();
 
+    private readonly List<JsonObject> _customTables = new();
+    private long _nextCustomId = 1;
+
+    /// <summary>Tabelas customizadas (<c>object_add</c>), com seus campos; cada uma é <c>{id, object, name, fields[]}</c>.</summary>
+    public IReadOnlyList<JsonObject> CustomTables => _customTables;
+
+    public long AddCustomTable(string table, string name, long? id, IEnumerable<JsonObject> fields)
+    {
+        if (_customTables.Any(t => t["object"]!.GetValue<string>() == table))
+        {
+            throw new DeviceException($"Object already exists: {table}");
+        }
+
+        var tableId = id ?? _nextCustomId++;
+        var list = new JsonArray();
+        foreach (var field in fields)
+        {
+            field["id"] = _nextCustomId++;
+            list.Add(field);
+        }
+
+        _customTables.Add(new JsonObject { ["id"] = tableId, ["object"] = table, ["name"] = name, ["fields"] = list });
+        return tableId;
+    }
+
+    public void RemoveCustomTables(IEnumerable<long> ids)
+    {
+        var set = ids.ToHashSet();
+        _customTables.RemoveAll(t => set.Contains(t["id"]!.GetValue<long>()));
+    }
+
+    public long AddCustomField(string table, JsonObject field)
+    {
+        var owner = _customTables.FirstOrDefault(t => t["object"]!.GetValue<string>() == table)
+            ?? throw new DeviceException($"Object not found: {table}");
+        field["id"] = _nextCustomId;
+        ((JsonArray)owner["fields"]!).Add(field);
+        return _nextCustomId++;
+    }
+
+    public void UpdateCustomField(long id, JsonObject values)
+    {
+        foreach (var table in _customTables)
+        {
+            foreach (var field in ((JsonArray)table["fields"]!).OfType<JsonObject>())
+            {
+                if (field["id"]!.GetValue<long>() == id)
+                {
+                    foreach (var (key, value) in values)
+                    {
+                        if (key != "id")
+                        {
+                            field[key] = value?.DeepClone();
+                        }
+                    }
+
+                    return;
+                }
+            }
+        }
+
+        throw new DeviceException($"Field not found: {id}");
+    }
+
+    public List<long> RemoveCustomFields(IEnumerable<long> ids)
+    {
+        var removed = new List<long>();
+        foreach (var id in ids)
+        {
+            foreach (var table in _customTables)
+            {
+                var fields = (JsonArray)table["fields"]!;
+                var hit = fields.OfType<JsonObject>().FirstOrDefault(f => f["id"]!.GetValue<long>() == id);
+                if (hit is not null)
+                {
+                    fields.Remove(hit);
+                    removed.Add(id);
+                    break;
+                }
+            }
+        }
+
+        return removed;
+    }
+
+    /// <summary>Imagens do slideshow da tela (<c>send_slideshow_images</c>), por nome de arquivo.</summary>
+    public Dictionary<string, byte[]> Slideshow { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>Ícones do quiosque (<c>set_kiosk_icon</c>), por nome de arquivo.</summary>
+    public Dictionary<string, byte[]> KioskIcons { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>Ícone do telefone (<c>set_phone_icon</c>); <c>null</c> sem ícone.</summary>
+    public byte[]? PhoneIcon { get; set; }
+
+    /// <summary>Logotipo do streaming (<c>set_streaming_logo</c>); <c>null</c> sem logotipo.</summary>
+    public byte[]? StreamingLogo { get; set; }
+
     public int DoorCount => _doorOpenUntil.Length;
 
     public bool IsDoorOpen(int door, DateTimeOffset now) =>
@@ -115,10 +220,17 @@ public sealed class DeviceState
         _sessions.Clear();
         _configuration.Clear();
         _images.Clear();
+        _customTables.Clear();
+        _requests.Clear();
+        _nextCustomId = 1;
         _doorOpenUntil = new DateTimeOffset?[_doorOpenUntil.Length];
         _login = _options.Login;
         _password = _options.Password;
         ScreenMessage = null;
+        Slideshow.Clear();
+        KioskIcons.Clear();
+        PhoneIcon = null;
+        StreamingLogo = null;
 
         SetConfiguration("general", "language", "pt_BR");
         SetConfiguration("general", "beep_enabled", "1");

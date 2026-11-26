@@ -1,5 +1,7 @@
 using System.Net;
 using ControlId.Access;
+using ControlId.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace ControlId.Tests;
@@ -96,7 +98,7 @@ public class LoggingTests
         var device = Device().On("create_objects.fcgi", HttpStatusCode.BadRequest, """{"error":"constraint failed","code":5}""");
         using var client = new AccessClient(Options(logs), device.CreateClient());
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.CreateUserAsync(new AccessUser { Name = "Ana" }));
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.CreateUserAsync(new AccessUser { Name = "Ana" }));
 
         var entry = Assert.Single(logs.Entries, e => e.EventId == 1005);
         Assert.Equal(LogLevel.Warning, entry.Level);
@@ -113,7 +115,7 @@ public class LoggingTests
         using var http = new HttpClient(new ThrowingHandler());
         using var client = new AccessClient(Options(logs), http);
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.GetUsersAsync());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetUsersAsync());
 
         var entry = Assert.Single(logs.Entries, e => e.EventId == 1006);
         Assert.Equal(LogLevel.Warning, entry.Level);
@@ -146,6 +148,101 @@ public class LoggingTests
     }
 
     [Fact]
+    public async Task A_logout_without_network_is_logged_at_debug_and_does_not_throw()
+    {
+        var logs = new MemoryLoggerFactory();
+        var device = Device().OnJson("load_objects.fcgi", """{"users":[]}""");
+        var handler = new LogoutFailingHandler(device, new HttpRequestException("sem rede"));
+        using var client = new AccessClient(Options(logs), new HttpClient(handler));
+        await client.GetUsersAsync();
+
+        await client.LogoutAsync();
+
+        Assert.Null(client.Session);
+        var entry = Assert.Single(logs.Entries, e => e.EventId == 1012);
+        Assert.Equal(LogLevel.Debug, entry.Level);
+        Assert.Contains("10.0.0.9:8080", entry.Message);
+        Assert.DoesNotContain(SessionToken, entry.Message);
+        Assert.Null(entry.Exception);
+    }
+
+    [Fact]
+    public async Task A_logout_timeout_is_logged_and_does_not_throw()
+    {
+        var logs = new MemoryLoggerFactory();
+        var device = Device().OnJson("load_objects.fcgi", """{"users":[]}""");
+        var handler = new LogoutFailingHandler(device, new TaskCanceledException("HttpClient.Timeout"));
+        using var client = new AccessClient(Options(logs), new HttpClient(handler));
+        await client.GetUsersAsync();
+
+        await client.LogoutAsync();
+
+        Assert.Contains("timeout", Assert.Single(logs.Entries, e => e.EventId == 1012).Message);
+    }
+
+    [Fact]
+    public void Accept_any_certificate_without_a_fingerprint_warns_once_at_creation()
+    {
+        var logs = new MemoryLoggerFactory();
+        var options = Options(logs);
+        options.BaseAddress = new Uri("https://10.0.0.9");
+        options.AcceptAnyServerCertificate = true;
+
+        using (new Rep.RepClient(options))
+        {
+        }
+
+        var entry = Assert.Single(logs.Entries, e => e.EventId == 1013);
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Contains("10.0.0.9", entry.Message);
+        Assert.Contains("ServerCertificateSha256", entry.Message);
+
+        // Com o HttpClient de fora (caminho do DI) também avisa.
+        using (new AccessClient(options, new HttpClient(new ThrowingHandler())))
+        {
+        }
+
+        Assert.Equal(2, logs.Entries.Count(e => e.EventId == 1013));
+    }
+
+    [Theory]
+    [InlineData(false, null)]
+    [InlineData(true, "ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789")]
+    [InlineData(false, "ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789")]
+    public void No_certificate_warning_when_validated_or_pinned(bool acceptAny, string? sha256)
+    {
+        var logs = new MemoryLoggerFactory();
+        var options = Options(logs);
+        options.BaseAddress = new Uri("https://10.0.0.9");
+        options.AcceptAnyServerCertificate = acceptAny;
+        options.ServerCertificateSha256 = sha256;
+
+        using (new Rep.RepClient(options))
+        {
+        }
+
+        Assert.DoesNotContain(logs.Entries, e => e.EventId == 1013);
+    }
+
+    [Fact]
+    public async Task Accept_any_certificate_registered_by_di_also_warns()
+    {
+        var logs = new MemoryLoggerFactory();
+        var services = new ServiceCollection();
+        services.AddSingleton<ILoggerFactory>(logs);
+        services.AddControlIdRep(o =>
+        {
+            o.BaseAddress = new Uri("https://10.0.0.3");
+            o.AcceptAnyServerCertificate = true;
+        });
+        await using var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<IControlIdClientFactory>().GetRepClient();
+
+        Assert.Contains("10.0.0.3", Assert.Single(logs.Entries, e => e.EventId == 1013).Message);
+    }
+
+    [Fact]
     public async Task Without_a_logger_factory_the_client_works_and_logs_nothing()
     {
         var device = Device().OnJson("load_objects.fcgi", """{"users":[]}""");
@@ -160,6 +257,20 @@ public class LoggingTests
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             throw new HttpRequestException("sem rede");
+    }
+
+    // Repassa ao equipamento falso, mas o logout falha com a exceção dada.
+    private sealed class LogoutFailingHandler : DelegatingHandler
+    {
+        private readonly Exception _failure;
+
+        public LogoutFailingHandler(HttpMessageHandler inner, Exception failure)
+            : base(inner) => _failure = failure;
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            request.RequestUri!.AbsolutePath.EndsWith("/logout.fcgi", StringComparison.Ordinal)
+                ? throw _failure
+                : base.SendAsync(request, cancellationToken);
     }
 
     private sealed class LogEntry

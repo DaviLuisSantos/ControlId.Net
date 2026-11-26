@@ -112,7 +112,8 @@ public sealed class AccessClientEndToEndTests
     {
         await using var sim = await RunningSimulator.StartAsync();
         using var device = sim.CreateClient();
-        byte[] jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3, 4, 0xFF, 0xD9];
+        // JPEG mínimo com cabeçalho SOF0 válido (16x16), que a validação de fotos da biblioteca aceita.
+        byte[] jpeg = [0xFF, 0xD8, 0xFF, 0xC0, 0x00, 0x11, 0x08, 0x00, 0x10, 0x00, 0x10, 0x03, 1, 0x11, 0, 2, 0x11, 0, 3, 0x11, 0, 0xFF, 0xD9];
 
         var result = await device.SetUserImageAsync(1, jpeg);
 
@@ -156,7 +157,7 @@ public sealed class AccessClientEndToEndTests
         await using var sim = await RunningSimulator.StartAsync();
         using var device = sim.CreateClient();
 
-        var error = await Assert.ThrowsAsync<ControlIdException>(() => device.SendRawAsync("nao_existe"));
+        var error = await Assert.ThrowsAnyAsync<ControlIdException>(() => device.SendRawAsync("nao_existe"));
 
         Assert.Contains("Invalid command", error.Message + error.ResponseBody, StringComparison.Ordinal);
     }

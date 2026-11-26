@@ -23,6 +23,12 @@ public enum RemoteEnrollType
 
     /// <summary>Senha (<c>password</c>).</summary>
     Password,
+
+    /// <summary>
+    /// Tag (<c>tag</c>). Só aparece no resultado entregue em <c>tag_create</c> (apenas equipamentos da linha iDAccess);
+    /// <c>remote_enroll.fcgi</c> não aceita esse tipo.
+    /// </summary>
+    Tag,
 }
 
 /// <summary>Parâmetros de <c>remote_enroll.fcgi</c>.</summary>
@@ -74,6 +80,8 @@ public sealed class RemoteEnrollRequest
                 RemoteEnrollType.Biometry => "biometry",
                 RemoteEnrollType.Pin => "pin",
                 RemoteEnrollType.Password => "password",
+                RemoteEnrollType.Tag => throw new ArgumentException(
+                    "O tipo Tag não é aceito por remote_enroll.fcgi: o valor da tag só chega ao servidor pela rota tag_create (modo online)."),
                 _ => throw new ArgumentException($"Tipo de cadastro remoto desconhecido: {Type}."),
             },
             ["save"] = Save,
@@ -183,6 +191,18 @@ public sealed class RemoteEnrollResult
     /// </summary>
     [JsonPropertyName("face")]
     public CapturedImage? Face { get; set; }
+
+    /// <summary>Matrícula da pessoa (<c>face_template_create</c>).</summary>
+    [JsonPropertyName("registration"), JsonConverter(typeof(LenientStringConverter))]
+    public string? Registration { get; set; }
+
+    /// <summary>Valor da tag lida (<c>tag_create</c>; só equipamentos da linha iDAccess).</summary>
+    [JsonPropertyName("tag_value"), JsonConverter(typeof(LenientStringConverter))]
+    public string? TagValue { get; set; }
+
+    /// <summary>Cartão: número de bits lidos, usado para inferir o <c>wiegand_format_id</c> (iDAccess e V7).</summary>
+    [JsonPropertyName("num_bits")]
+    public int? NumBits { get; set; }
 
     /// <summary>JSON original, para campos sem propriedade própria.</summary>
     [JsonIgnore]

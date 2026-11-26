@@ -5,7 +5,7 @@ namespace ControlId.Tests;
 
 public class FacePhase3Tests
 {
-    private static readonly ControlIdDeviceOptions Options = new() { BaseAddress = new Uri("http://10.0.0.5") };
+    private static readonly ControlIdDeviceOptions Options = new() { BaseAddress = new Uri("http://10.0.0.5"), ValidateImages = false };
 
     private static FakeDeviceHandler LoggedDevice() => new FakeDeviceHandler().OnJson("login.fcgi", """{"session":"s"}""");
 

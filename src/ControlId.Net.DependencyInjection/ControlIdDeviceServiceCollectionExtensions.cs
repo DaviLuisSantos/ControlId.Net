@@ -21,6 +21,11 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// <remarks>
 /// Os métodos devolvem o <see cref="IHttpClientBuilder"/> do equipamento, para acrescentar handlers (proxy, retry,
 /// logging). O cliente é criado uma vez e reaproveitado; mudanças posteriores na configuração exigem reiniciar a aplicação.
+/// <para>
+/// As opções de cada equipamento registrado são validadas na partida do host (<c>ValidateOnStart</c>): <c>BaseAddress</c>
+/// ausente ou relativo, impressão digital malformada ou limites fora da faixa fazem o <c>StartAsync</c> lançar
+/// <see cref="OptionsValidationException"/> citando o equipamento, em vez de falhar só no primeiro uso.
+/// </para>
 /// </remarks>
 public static class ControlIdDeviceServiceCollectionExtensions
 {
@@ -64,14 +69,10 @@ public static class ControlIdDeviceServiceCollectionExtensions
     /// Registra um equipamento de acesso para cada filha da seção, usando a chave como nome. Ex.:
     /// <c>"Access": { "portaria": { "BaseAddress": "http://..." }, "garagem": { ... } }</c>.
     /// </summary>
+    /// <exception cref="InvalidOperationException">A seção não existe ou não tem nenhum equipamento.</exception>
     public static IServiceCollection AddControlIdAccessDevices(this IServiceCollection services, IConfiguration section)
     {
-        if (section is null)
-        {
-            throw new ArgumentNullException(nameof(section));
-        }
-
-        foreach (var device in section.GetChildren())
+        foreach (var device in DevicesOf(section, "AddControlIdAccessDevices"))
         {
             services.AddControlIdAccess(device.Key, device);
         }
@@ -115,14 +116,10 @@ public static class ControlIdDeviceServiceCollectionExtensions
     }
 
     /// <summary>Registra um REP para cada filha da seção, usando a chave como nome.</summary>
+    /// <exception cref="InvalidOperationException">A seção não existe ou não tem nenhum equipamento.</exception>
     public static IServiceCollection AddControlIdRepDevices(this IServiceCollection services, IConfiguration section)
     {
-        if (section is null)
-        {
-            throw new ArgumentNullException(nameof(section));
-        }
-
-        foreach (var device in section.GetChildren())
+        foreach (var device in DevicesOf(section, "AddControlIdRepDevices"))
         {
             services.AddControlIdRep(device.Key, device);
         }
@@ -130,54 +127,60 @@ public static class ControlIdDeviceServiceCollectionExtensions
         return services;
     }
 
+    // Seção sem filhas é quase sempre caminho errado (ou appsettings ausente): falha no registro em vez de não registrar nada.
+    private static IConfigurationSection[] DevicesOf(IConfiguration section, string method)
+    {
+        if (section is null)
+        {
+            throw new ArgumentNullException(nameof(section));
+        }
+
+        var devices = section.GetChildren().ToArray();
+        if (devices.Length == 0)
+        {
+            var path = section is IConfigurationSection named ? named.Path : "(raiz)";
+            throw new InvalidOperationException(
+                $"A seção de configuração '{path}' passada a {method} não existe ou não tem nenhum equipamento. Esperado: " +
+                $"\"{path}\": {{ \"portaria\": {{ \"BaseAddress\": \"http://...\" }} }}, com uma filha por equipamento.");
+        }
+
+        return devices;
+    }
+
     private static IHttpClientBuilder RegisterAccess(IServiceCollection services, string name)
     {
         AddCore(services).AccessDevices.Add(name);
+        services.AddOptions<ControlIdDeviceOptions>(name).ValidateOnStart();
         return AddHttpClient(services, ControlIdRegistry.AccessHttpClientName(name), sp =>
         {
             var options = sp.GetRequiredService<IOptionsMonitor<ControlIdDeviceOptions>>().Get(name);
-            return (options.AcceptAnyServerCertificate, options.ServerCertificateSha256, options.MaxConcurrentRequests);
+            return (options.AcceptAnyServerCertificate, options.ServerCertificateSha256, options.MaxConcurrentRequests, options.ConnectTimeout);
         });
     }
 
     private static IHttpClientBuilder RegisterRep(IServiceCollection services, string name)
     {
         AddCore(services).RepDevices.Add(name);
+        services.AddOptions<ControlIdRepOptions>(name).ValidateOnStart();
         return AddHttpClient(services, ControlIdRegistry.RepHttpClientName(name), sp =>
         {
             var options = sp.GetRequiredService<IOptionsMonitor<ControlIdRepOptions>>().Get(name);
-            return (options.AcceptAnyServerCertificate, options.ServerCertificateSha256, options.MaxConcurrentRequests);
+            return (options.AcceptAnyServerCertificate, options.ServerCertificateSha256, options.MaxConcurrentRequests, (TimeSpan?)null);
         });
     }
 
-    private static IHttpClientBuilder AddHttpClient(IServiceCollection services, string httpClientName, Func<IServiceProvider, (bool AcceptAnyCertificate, string? CertificateSha256, int MaxConnections)> handlerSettings)
+    private static IHttpClientBuilder AddHttpClient(IServiceCollection services, string httpClientName, Func<IServiceProvider, (bool AcceptAnyCertificate, string? CertificateSha256, int MaxConnections, TimeSpan? ConnectTimeout)> handlerSettings)
     {
         return services
             .AddHttpClient(httpClientName)
             .ConfigurePrimaryHttpMessageHandler(sp =>
             {
                 var settings = handlerSettings(sp);
-                var handler = new HttpClientHandler();
-                LimitConnections(handler, settings.MaxConnections);
-                CertificatePinning.Configure(handler, settings.CertificateSha256, settings.AcceptAnyCertificate);
-
-                return handler;
+                return HttpHandlers.CreatePrimaryHandler(
+                    settings.MaxConnections, settings.ConnectTimeout, settings.CertificateSha256, settings.AcceptAnyCertificate);
             })
             // O cliente do equipamento guarda o HttpClient (e a sessão) pela vida da aplicação, então o handler não é reciclado.
             .SetHandlerLifetime(Timeout.InfiniteTimeSpan);
-    }
-
-    // Alinha as conexões ao MaxConcurrentRequests (no .NET Framework o padrão seria 2 por servidor).
-    private static void LimitConnections(HttpClientHandler handler, int maxConnections)
-    {
-        try
-        {
-            handler.MaxConnectionsPerServer = maxConnections;
-        }
-        catch (PlatformNotSupportedException)
-        {
-            // Fica o padrão do runtime; o limite do transporte continua valendo.
-        }
     }
 
     private static ControlIdRegistry AddCore(IServiceCollection services)
@@ -199,6 +202,8 @@ public static class ControlIdDeviceServiceCollectionExtensions
             services.AddSingleton(registry);
             services.AddOptions();
             services.TryAddSingleton<IControlIdClientFactory, ControlIdClientFactory>();
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<ControlIdDeviceOptions>, ControlIdDeviceOptionsValidator>());
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<ControlIdRepOptions>, ControlIdRepOptionsValidator>());
         }
 
         return registry;

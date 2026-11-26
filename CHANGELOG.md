@@ -4,6 +4,117 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
+Resolve as issues abertas do repositório. Tem duas mudanças de comportamento: veja **Changed**.
+
+### Added
+- **Exceções por desfecho** (#32, [ADR 0026](docs/adr/0026-excecoes-por-desfecho.md)): `ControlIdTimeoutException`, `ControlIdConnectionException` (o comando não saiu, seguro repetir), `ControlIdOutcomeUnknownException` (escrita enviada sem resposta; confira o estado antes de repetir), `ControlIdDeviceErrorException` e `ControlIdNotSupportedException`, todas derivadas de `ControlIdException`. `ControlIdDeviceOptions.ExceptionResponseBody` (`ErrorOnly`, `Full`, `None`) decide o que vai em `ResponseBody` (#39).
+- **Capacidades por firmware** (#34, [ADR 0027](docs/adr/0027-capacidades-por-firmware.md)): `GetCapabilitiesAsync` e `DeviceCapabilities`; um comando que o firmware conhecido não tem, ou que o equipamento já recusou, lança `ControlIdNotSupportedException` sem fazer requisição.
+- **Upsert e lotes** (#33, #35): `CreateOrModifyObjectsAsync` cai para `modify_objects` e `create_objects` quando o equipamento não tem `create_or_modify_objects`; `CreateObjectsAsync` e o upsert dividem em lotes de `MaxObjectsPerRequest` (200). O `PushServer` volta a envios individuais quando o equipamento recusa `transactions` (`PushServerOptions.UseTransactions`).
+- **Validação e lotes de fotos** (#56, #35): `ValidateImages` confere formato e dimensões (`MaxImageLongSide`, `MaxImageShortSide`, `MaxImageBytes`) antes da requisição e lança `ControlIdImageRejectedException`; `SetUserImagesAsync` valida cada foto, divide em lotes (`MaxImageBatchBytes`, `MaxImagesPerBatch`) e cai para `user_set_image` quando o equipamento recusa o lote.
+- **`ConnectTimeout`** (#53): prazo de conexão separado do `Timeout` (padrão 5 s), no `AccessClient` e no `RepClient` criados direto, no `net8.0` ou superior.
+- **Hora local dos eventos** (#50, [ADR 0028](docs/adr/0028-hora-local-dos-eventos.md)): `AccessLog.LocalTime`, `AccessDeviceEvent.LocalTimestamp`, `AlarmLog.LocalTime`, `ChangeLog.LocalTimestamp`, `ExitButtonLog.LocalTime` e `OnlineIdentificationEvent.LocalTime`, com `Kind` `Unspecified`.
+- **Modo online** (#51, #52): `device_is_alive.fcgi` e `session_is_valid.fcgi` em GET e POST; `ControlIdOnlineOptions` (`FallbackAuthorization`, `DecisionTimeout`), log 2014 e contador `controlid.server.online.fallbacks`.
+- **`CardNumber`** (#57): converte entre `facility,número` e o inteiro do equipamento (`FromFacility`, `ToFacility`, `Parse`, `TryParse`, `Format`).
+- **`EnrollAndWaitAsync`** (#36): cadastro remoto que acompanha o `enroller_state` até o fim, com prazo e cancelamento.
+- **Sincronização de pessoas** (#54): `SyncUserAsync` e `SyncUsersAsync` aplicam só a diferença para o estado desejado (`DesiredUser`), com um resultado por pessoa.
+- **Guardião de configuração** (#55): `AddControlIdConfigurationGuard` no pacote DI confere `general.online`, monitor, seções extras e o relógio a cada ciclo, com log, contador `controlid.guard.corrections` e `AddControlIdConfigurationGuard()` para health checks.
+- **Descoberta de equipamentos** (#58): `ControlIdDiscovery.ScanAsync` e `ExpandCidr`, com os status `Found`, `PortClosed`, `NotControlId`, `CredentialRejected` e `Error`.
+- **Pacote `ControlId.Net.Testing`** (#31): `RecordingHandler`, `ReplayHandler` e `Cassette` gravam e reproduzem a conversa com o equipamento, com segredos mascarados ([migração de um cliente próprio](docs/migrando-de-cliente-proprio.md)).
+- **Versões mínimas no `netstandard2.0`** (#38, [ADR 0030](docs/adr/0030-versoes-minimas-das-dependencias.md)) e projeto `ControlId.Net.MinDeps.Tests` na CI.
+- **Política de compatibilidade e critérios para a 1.0** (#40, [ADR 0029](docs/adr/0029-compatibilidade-e-criterios-para-a-1-0.md)).
+- **Simulador**: `DisabledCommands`, `user_set_image_list`, `set_system_time`, `enroller_state`, contador de requisições em `/simulator/state` e hora local nos eventos.
+
+### Changed
+- **`MaxConcurrentRequests` passa de 4 para 1** (#37, [ADR 0025](docs/adr/0025-uma-requisicao-por-vez.md)): o equipamento atende melhor uma requisição por vez. **Migração:** quem dependia do paralelismo define `MaxConcurrentRequests = 4` (ou o valor desejado) nas opções.
+- **Propriedades `*Utc` dos eventos ficam `[Obsolete]`** (#50): o equipamento grava a hora local dele, então o valor nunca foi UTC. **Migração:** troque pelas propriedades `Local*` (veja **Added**) e converta com o fuso do equipamento quando precisar de UTC.
+- **Exceções mais específicas** (#32): falhas que antes eram `ControlIdException` agora chegam como subtipos dela. Quem captura `ControlIdException` continua funcionando; quem comparava o tipo exato precisa ajustar.
+
+### Fixed
+- **Hora dos eventos** (#50): a hora local do equipamento era devolvida como se fosse UTC.
+- **500 no modo online** (#52): um handler que lança, devolve `null` ou demora responde 200 com a autorização de fallback (`Sistema indisponível`, por padrão), em vez de 500.
+- **405 no `device_is_alive` por GET** (#51): a rota passa a aceitar GET e POST.
+- **`ConnectTimeout` no REP** (#53): o `RepClient` criado direto também respeita o prazo de conexão.
+
+## [0.10.0-alpha.1] - 2026-11-20
+
+Cobertura completa da [documentação da Access API](docs/controlid-api/README.md): os 180 endpoints documentados têm método tipado, e um teste falha quando surge um novo sem cobertura. Tem mudanças que quebram: veja **Changed**.
+
+### Fixed
+- **DNS ignorado pelo equipamento**: `DnsSettings` serializava `dns_primary` e `dns_secondary`; os nomes que o equipamento lê são `primary_dns` e `secondary_dns`.
+
+### Changed
+- **`EnrollFaceTemplatesAsync`**: `rejectExistingFaces` passa a ter padrão `true` (o padrão do equipamento), então o cadastro recusa face já cadastrada. **Migração:** passe `rejectExistingFaces: false` para manter o comportamento anterior.
+- **`AuditLogCategories.All`** passa a incluir `Boot` (128) e `Push` (256), então `ExportAuditLogsAsync()` sem argumentos traz as nove categorias. **Migração:** combine os flags desejados em vez de `All` se quiser o conjunto anterior.
+- **`IAccessClient` ganhou membros** (biometria, schema customizado, rede/NTP/logs, leitura de hardware, senhas de sistema, Wi-Fi e certificados EAP, mídia de tela, SecBox, OSDP, calibração da câmera, licenças, redirecionamento e as sobrecargas abaixo): quem implementa a interface (fakes, decoradores) precisa acrescentá-los. `AccessClient` e `IAccessClient` passaram a ser `partial`.
+
+### Added
+- **Cliente de provisionamento (`IAccessProvisioningClient`, 11 endpoints)**: criado só a pedido com `client.CreateProvisioningClient()`, fora do `IAccessClient` (ADR 0024). Chaves do leitor HID/OMNIKEY (`InjectHidDefaultKekAsync`, `InjectHidCustomKekAsync`, `InjectHidMediaKeyAsync` nos modos plain e wrapped, `GetHidKeyInfoAsync`, `SetHidOidAsync`/`GetHidOidAsync` com `HidOidValue`, `ResetHidConfigAsync`/`RestoreHidConfigAsync` com `WaitHidConfigResetAsync`) e código OEM (`GetOemCodeAsync`, `SetOemCodeAsync`, `GetOemDowngradeApprovedVersionsAsync`, `SetOemApprovedFirmwareAsync`, `ClearOemApprovedFirmwareAsync`). Implementado conforme a documentação, sem teste em leitor HID real. Chaves e licenças nunca vão para exceção nem log.
+- **Específicos de produto (53 endpoints)**: Wi-Fi (`SetWifiSourceAsync`, `ScanWifiAsync`, `SetWifiSettingsAsync`, `GetWifiDataAsync`, `ForgetWifiConnectedNetworkAsync`, `CheckIpConflictAsync`) e certificados EAP (`UploadEapCaCertificateAsync`, `UploadEapCaCertificateWifiAsync`, `UploadEapTlsClientCertificateAsync`, `UploadEapTlsPrivateKeyAsync`, `PersistEapTlsPrivateKeyAsync`, `GetEapTlsCsrAsync`); mídia de tela (slideshow, ícones do quiosque, ícone de telefone, logo do streaming, `MakeSipConferenceAsync`); SecBox (`DeviceHasSecBoxAsync`, `UpdateSecBoxFirmwareAsync` com `WaitSecBoxFirmwareUpdateAsync`, troca e reset de chave) e dual sided; OSDP (`GetOsdpScbkAsync`, `SetOsdpScbkAsync`, `SetOsdpSecureKeyAsync`, `SetOsdpSecureTypeAsync`, `RefreshOsdpAsync` e leituras); calibração da câmera com `WaitCameraCalibrationAsync`; `FaceLicense.Pro20k`, `UpgradeFingerprintCapacityAsync`, `SetProOperationModeAndRebootAsync` (reinicia o equipamento) e `RedirectRequestAsync` (a credencial do destino vai na query string). Troca de chave, esquecer rede e apagar mídia em massa exigem `DataLossConfirmation`; segredos nunca vão para exceção nem log.
+- **Biometria**: `MatchFaceTemplateAsync`, `CountFaceTemplatesAsync`, `MatchFingerprintTemplatesAsync`.
+- **Schema de objetos customizados**: `GetObjectMetadataAsync`, `CreateCustomTableAsync`, `DeleteCustomTablesAsync`, `AddCustomFieldAsync`, `UpdateCustomFieldAsync`, `RemoveCustomFieldsAsync`, `ExportObjectCsvAsync`, `ExportCustomTablesMetadataCsvAsync` (remoções exigem `DataLossConfirmation`).
+- **Rede, NTP e diagnóstico**: `GetNtpServerAsync`, `SetNtpServerAsync`, `GetNtpServerStatusAsync`, `CheckPortAvailabilityAsync`, `GetVpnIpAsync`, `GetSslCertificateAsync`, `Get8021XStatusAsync` e `GetDeviceLogAsync(DeviceLog)`.
+- **Leitura de hardware**: `GetIoStateAsync`, `IsIdentifyingAsync`, `GetTurnstileCountersAsync`, `GetLastSnapshotAsync`, `GetRfidModuleAsync`, `GetHidLastCardAsync`, `GetLastWiegandReadAsync`.
+- **Senhas de sistema**: `SetMasterPasswordAsync`, `GetMasterPasswordInfoAsync`, `SetUpdateModePasswordAsync`, `RemoveUpdateModePasswordAsync`, `GetUpdateModePasswordStatusAsync` (as senhas nunca vão para mensagens de erro nem logs).
+- **Parâmetros novos em métodos existentes**: `NetworkSettings.Interface`/`DhcpEnabled`/`TenMbps`; `Configure8021XAsync(Ieee8021XSettings)` com método EAP; `ResetToFactoryDefaultAsync(confirmation, FactoryResetOptions)`; `ExportAfdAsync(AfdExportOptions)` com `Limit`/`Offset`; `CaptureScreenAsync(ScreenFrame)`; `SetUserImageAsync`/`SetUserImagesAsync` com `UserImageUploadOptions` (`BypassQualityScore`); `AuditLogCategories.Boot` e `Push`.
+- **Objetos e configuração**: `wiegand_modes`, `group_compatibility`, `AccessCard.WiegandFormatId`/`CredentialType`, identificação por grupo e novos parâmetros de `DeviceSettings` (`hid_reader`, `osdp`, `identifier`).
+- **Modo online**: eventos `new_pin` (`PinEvent`) e `new_face_template` (`FaceTemplateEvent`), cadastro remoto de `face_template_create` e `tag_create` (`RemoteEnrollType.Tag`, `RemoteEnrollResult.Registration`/`TagValue`/`NumBits`) e o autocadastro do quiosque (`new_user_enrolled`, `OnlineEvents.ParseKioskEnrollment`, `IOnlineAccessHandler.OnKioskEnrollmentAsync` com implementação padrão vazia).
+- **Guarda de cobertura**: o teste `EndpointCoverageGuardTests` falha quando um endpoint de `docs/controlid-api/endpoints.json` não está em `src/` nem em `Cobertura/pendentes.txt` ou `nao-cobrir.txt`; uma action mensal atualiza o dump da documentação.
+
+## [0.9.0-alpha.1] - 2026-11-19
+
+Correções da [auditoria de 2026-11-19](docs/auditoria-2026-11-19.md): callbacks fechados por padrão, TLS do REP validado, fila de Push com prazos e limites, store EF com claim atômico, validação das opções na partida e núcleo endurecido. Tem mudanças que quebram: leia a seção abaixo antes de atualizar.
+
+### Mudanças que quebram
+
+Cada item traz o caminho de migração.
+
+- **Callbacks fechados por padrão** ([ADR 0021](docs/adr/0021-callbacks-fechados-por-padrao.md)): `MapControlIdPush`, `MapControlIdMonitor` e `MapControlIdOnline` sem `RequireControlIdToken` respondem 401 (com `WWW-Authenticate: Bearer`) e registram o log 2006 uma vez por rota. **Migração:** encadeie `.RequireControlIdToken(...)` e grave o mesmo token no equipamento com `ConfigureCallbackSecurityAsync`. Para manter a rota aberta, só em rede isolada, encadeie `.AllowAnonymousControlIdCallbacks()` (namespace `ControlId.AspNetCore`). Firmware anterior à 6.22 não envia o cabeçalho `Authorization`: use `AllowAnonymousControlIdCallbacks()` com restrição de rede (`RequireHost`, firewall).
+- **`DeviceToken` sem queda no token global**: com `ControlIdTokenOptions.DeviceToken` definido, um equipamento cuja função devolve `null` (ou um callback sem `deviceId`) é recusado em vez de cair no `Token`. **Migração:** devolva um token para cada equipamento ou ligue `AllowTokenFallback = true`.
+- **`Map*` sem `Add*` lança**: `MapControlIdPush` sem `AddControlIdPush()` e `MapControlIdOnline` sem `IOnlineAccessHandler` registrado lançam `InvalidOperationException` no mapeamento, em vez de falhar na primeira requisição. **Migração:** registre o serviço antes de mapear.
+- **Corpo dos callbacks limitado a 4 MiB**: acima disso a resposta é 413. **Migração:** `services.Configure<ControlIdCallbackOptions>(o => o.MaxRequestBodySize = ...)`.
+- **Modo online**: em `*_create.fcgi` e `new_rex_log.fcgi`, `device_id` da query diferente do corpo responde 403; sem `device_id` na query, o token é conferido contra o equipamento do corpo. **Migração:** nenhuma para equipamentos reais, que mandam os dois iguais.
+- **Monitor**: um `IMonitorNotificationHandler` que lança não impede mais os seguintes; a resposta é 500 só depois de todos rodarem. Com token único, o 401 sai antes de ler o corpo. **Migração:** handlers que dependiam de um anterior ter lançado para não rodar precisam checar isso por conta própria.
+- **TLS do REP validado** ([ADR 0022](docs/adr/0022-tls-do-rep-validado.md)): o atalho `new RepClient(string, login, password, mode)` foi trocado por um com `serverCertificateSha256` opcional que valida o certificado, e `ControlIdRepOptions.AcceptAnyServerCertificate` passa a ter padrão `false`. Sem impressão digital, o certificado autoassinado de fábrica é recusado. O código-fonte continua compilando, mas binários compilados contra a 0.8.0-alpha.1 precisam ser recompilados (quebra binária registrada em `CompatibilitySuppressions.xml`). **Migração:** leia a impressão digital uma vez com `ControlIdCertificates.GetServerCertificateSha256Async`, confira no equipamento e passe em `serverCertificateSha256` (ou `"ServerCertificateSha256"` no `appsettings.json`). Aceitar qualquer certificado exige `AcceptAnyServerCertificate = true` explícito e gera o log 1013.
+- **Prazos e limites do Push** ([ADR 0023](docs/adr/0023-limites-da-fila-de-push.md)): `SendAsync`/`SendBatchAsync` falham com `TimeoutException` depois de 5 minutos (`CommandTimeout`, mesmo com token do chamador sem prazo) e o envio sai da fila; pendente com mais de 24 horas (`CommandTtl`) não é entregue; cada equipamento tem no máximo 1.000 envios na fila (`PushQueueFullException`); `GetLastSeen` e o `DeviceContactTracker` acompanham no máximo 10.000 equipamentos. **Migração:** ajuste com `AddControlIdPush(o => ...)` ou `new PushServer(store, new PushServerOptions { ... })`; `null` desliga os prazos e `MaxPendingPerDevice = 0` desliga o limite.
+- **`new PushServer(store, null)` ambíguo**: com o novo construtor `PushServer(store, PushServerOptions, handler)`, o `null` literal no segundo argumento não compila. **Migração:** `new PushServer(store, (IPushResultHandler?)null)` ou só `new PushServer(store)`.
+- **Vários `IPushResultHandler`**: `AddControlIdPushResultHandler<T>` passa de `TryAddSingleton` (só o primeiro valia) para `TryAddEnumerable` com tempo de vida scoped: handlers diferentes rodam todos, em sequência, num escopo por resultado, e `THandler` não é mais registrado como serviço concreto. **Migração:** quem resolvia `THandler` direto do container registra-o à parte; handlers singleton com estado passam a ser criados a cada resultado.
+- **`AddControlIdPush` cria o `PushServer` na partida**: o serviço de varredura é registrado junto, então opções inválidas impedem o host de subir. **Migração:** corrija as opções; `PurgeInterval = null` desliga a varredura.
+- **Opções dos equipamentos validadas na partida**: configuração inválida de um equipamento registrado (ex.: sem `BaseAddress`) faz o `StartAsync` do host lançar `OptionsValidationException` citando o equipamento, em vez de falhar no primeiro uso. `AddControlIdAccessDevices`/`AddControlIdRepDevices` com seção vazia ou inexistente lançam `InvalidOperationException` no registro. **Migração:** corrija a configuração (o nome da seção costuma ser o erro).
+- **Health checks**: `ControlIdHealthCheckOptions.RequireDevices` tem padrão `true`, então zero equipamentos registrados devolve o `failureStatus` (e `AddControlIdDeviceChecks` registra o check `{prefixo}:none`); o check agregado tem prazo total de 30 s (`TotalTimeout`); `SlowThreshold` e `CacheDuration` negativos lançam `ArgumentOutOfRangeException`. **Migração:** `RequireDevices = false` em aplicações sem equipamentos registrados (só Push ou modo online).
+- **`SetAdministratorAsync(id, true)`** passa a alterar o papel com `modify_objects` e só cria quando nada foi alterado, sem apagar antes (a confirmar em equipamento real). **Migração:** nenhuma.
+- **`LogoutAsync`** não lança mais erro de rede nem timeout (log 1012, Debug); cancelamento do chamador continua lançando. **Migração:** remova `catch` que só existia para isso.
+- **Códigos desconhecidos do firmware**: `AccessLog.EventType` e `UserIdentifiedEvent.Event` (`AccessEventType`) e `FaceImageError.CodeType` (`FaceImageErrorCode`) devolvem `Unknown` (0), e `CauseType` (`AlarmCause`, nos alarmes) e `GetVpnStatusAsync` (`VpnStatus`) devolvem `Unknown` (-1) para um código que o enum não tem, em vez de um valor fora do enum. **Migração:** trate `Unknown` onde houver `switch` sobre esses enums.
+- **Cache de parâmetros de configuração ausentes zerado a cada login**: um parâmetro que o firmware passou a ter volta a ser lido depois de atualizar ou reiniciar o equipamento. **Migração:** nenhuma.
+
+### Added
+- **`PushServerOptions`**: `CommandTimeout`, `CommandTtl`, `InFlightTimeout`, `MaxPendingPerDevice`, `MaxTrackedDevices`, `RequireUuid`, `ResultHandlerTimeout`, `PurgeInterval` e `LoggerFactory`, com o construtor `PushServer(store, options, handler)` e a sobrecarga `AddControlIdPush(Action<PushServerOptions>)` ([guia](docs/guia.md#prazos-e-limites-do-push)).
+- **Varredura da fila**: `PushServer.PurgeExpiredAsync` e o contrato `IPushCommandStoreMaintenance` (implementado pelo store em memória e pelo EF). No ASP.NET Core, um serviço de fundo varre a cada `PurgeInterval` (padrão 1 minuto; `null` desliga).
+- `PushQueueFullException`, `DeviceContactTracker(int maxDevices)`, logs 1101–1107 do Push e a métrica `controlid.push.commands` (tag `controlid.push.outcome`).
+- **Store EF**: claim atômico (várias instâncias sobre o mesmo banco não entregam o mesmo envio), varredura de vencidos e erro claro sem `AddDbContextFactory`, sem mudança de esquema. Com SQLite e várias conexões, use `Default Timeout` na connection string.
+- **ASP.NET Core**: `AllowAnonymousControlIdCallbacks()`, `ControlIdTokenOptions.PreviousToken` (rotação) e `AllowTokenFallback`, `ControlIdCallbackOptions` (`MaxRequestBodySize`, `DefaultMaxRequestBodySize`, `IsKnownDevice`), `Cache-Control: no-store` em `/push` e `/result`, logs 2006–2013 e as métricas `controlid.server.callback.requests` e `controlid.server.callback.handler.duration`.
+- **Health checks**: `ControlIdHealthCheckOptions.RequireDevices`, `CacheDuration` (o check agregado e os por equipamento fazem uma requisição por equipamento) e `TotalTimeout`.
+- **Núcleo**: `IControlIdClientDiagnostics` (`Session`, `CircuitState`, `ResetCircuit`), implementada por `AccessClient` e `RepClient` (as interfaces publicadas não mudam); `AccessClient.ClearConfigurationFieldCache()`; `RepAbout.ApiRevisionText`; `Unknown` em `AccessEventType`, `FaceImageErrorCode`, `AlarmCause` e `VpnStatus`; logs 1010–1013.
+- A sonda do circuit breaker sem resposta por mais de `2 × Timeout` (mínimo 1 s; 5 min com timeout infinito) conta como falha e reabre o circuito.
+- Erro de TLS recusado explica como fixar a impressão digital.
+- **Samples**: o Server exige token nas três rotas, protege a API de operação com chave (`X-Api-Key`), tem rate limiting nos callbacks, `/health` detalhado só para chamadas locais e segredos por user-secrets (`--id controlid-net-server-sample`) ou variáveis de ambiente; o Dashboard tem health check real, token nos callbacks (vazio gera um por execução) e senha obrigatória (`Dashboard__DevicePassword`); o compose usa `CONTROLID_DEVICE_PASSWORD` e `CONTROLID_CALLBACK_TOKEN`; o sample do REP ganha o comando `cert` e usa a impressão digital.
+- Build: base da API na 0.8.0-alpha.1, gerenciamento central de pacotes (`Directory.Packages.props`), `global.json`, `nuget.config` só com o nuget.org, cobertura mínima de 89% e nota mínima de mutação de 60 na CI.
+- Testes de ponta a ponta dos callbacks fechados e da robustez do Push contra o simulador.
+
+### Changed
+- `RepAbout.ApiRevision` não lança mais com revisão hexadecimal com `A`–`F` (ex.: `0x10A`): devolve `-1`, e o texto fica em `ApiRevisionText`.
+- `IPushResultHandler` recebe um token próprio que vence em `ResultHandlerTimeout`, sem ligação com a requisição do equipamento, e também é chamado para envios expirados.
+- O circuit breaker emite log e métrica de transição fora do lock.
+- O transporte usa um caminho único de envio (novas tentativas, novo login e circuit breaker) para comandos e para streams de AFD, sem mudança de comportamento.
+- `ConfigureOnlineModeAsync` documenta a aplicação parcial em caso de falha.
+
+### Fixed
+- Um `IPushResultHandler` que lançava derrubava `/push` ou `/result` e fazia o equipamento perder o próximo comando (agora vira log 1101).
+- `deviceId` arbitrário na query fazia a memória do `PushServer` crescer sem limite.
+- Cancelar um `SendAsync` não removia o envio do store; o cancelamento agora libera a tarefa na hora e remove em segundo plano.
+- Handler de resultado scoped registrado direto no container era capturado pelo `PushServer` singleton.
+- Sample Dashboard: o `Urls` do `appsettings.json` tinha precedência sobre `ASPNETCORE_URLS`, e o compose não usava a porta 8080.
+- `dotnet build -warnaserror` sem rede falhava pelo NU1900.
+
 ## [0.8.0-alpha.1] - 2026-11-14
 
 Fase 3, produção: circuit breaker, health check por equipamento, token nos callbacks e fila de Push durável.
@@ -210,7 +321,9 @@ Cobertura completa da documentação pública da API de acesso (veja [docs/COBER
 - `RepClient.GetAfdFileFromNsrAsync`/`GetAfdFileFromDateAsync`/`GetAfdFileAsync` devolvem o AFD interpretado.
 - `RepClient` (REP iDClass): about, informações do sistema, data/hora, usuários (PIS/CPF) e download de AFD (incluindo modo Portaria 671).
 
-[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.8.0-alpha.1...HEAD
+[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.10.0-alpha.1...HEAD
+[0.10.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.9.0-alpha.1...v0.10.0-alpha.1
+[0.9.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.8.0-alpha.1...v0.9.0-alpha.1
 [0.8.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.7.0-alpha.1...v0.8.0-alpha.1
 [0.7.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.6.0-alpha.1...v0.7.0-alpha.1
 [0.6.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.5.0-alpha.1...v0.6.0-alpha.1

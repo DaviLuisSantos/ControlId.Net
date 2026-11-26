@@ -18,7 +18,7 @@ using ControlId.Internal;
 namespace ControlId.Access;
 
 /// <inheritdoc cref="IAccessClient"/>
-public sealed class AccessClient : IAccessClient
+public sealed partial class AccessClient : IAccessClient, IControlIdClientDiagnostics
 {
     /// <summary>Tamanho padrão de página das leituras paginadas (<c>Enumerate*Async</c>).</summary>
     public const int DefaultPageSize = 500;
@@ -37,8 +37,11 @@ public sealed class AccessClient : IAccessClient
     private readonly ControlIdTransport _transport;
     private readonly Uri _baseAddress;
 
-    // Parâmetros ("seção.campo") que o firmware deste equipamento não tem, para não pedi-los de novo.
+    // Parâmetros ("seção.campo") que o firmware deste equipamento não tem, para não pedi-los de novo. Vale para uma sessão
+    // (_missingConfigGeneration): um login novo (reinício, atualização de firmware) zera a lista.
     private readonly ConcurrentDictionary<string, byte> _missingConfigFields = new(StringComparer.Ordinal);
+    private readonly object _missingConfigGate = new();
+    private long _missingConfigGeneration;
 
     /// <summary>Cria o cliente. Se <paramref name="httpClient"/> for informado (ex.: via IHttpClientFactory), ele não é descartado por este cliente.</summary>
     public AccessClient(ControlIdDeviceOptions options, HttpClient? httpClient = null)
@@ -62,6 +65,9 @@ public sealed class AccessClient : IAccessClient
     /// <summary>Sessão atual, ou <c>null</c> se ainda não logou.</summary>
     public string? Session => _transport.Session;
 
+    // Compartilhado com o AccessProvisioningClient, que usa a mesma conexão e sessão (ADR 0024).
+    internal ControlIdTransport Transport => _transport;
+
     /// <summary>
     /// Estado do circuit breaker deste equipamento (<see cref="ControlIdDeviceOptions.CircuitBreakerFailureThreshold"/>).
     /// Sempre <see cref="ControlIdCircuitState.Closed"/> com o circuit breaker desligado.
@@ -69,9 +75,29 @@ public sealed class AccessClient : IAccessClient
     public ControlIdCircuitState CircuitState => _transport.CircuitState;
 
     /// <inheritdoc/>
+    public void ResetCircuit() => _transport.ResetCircuit();
+
+    /// <summary>
+    /// Esquece os parâmetros de configuração que o firmware recusou (<c>Node or attribute not found</c>): a próxima
+    /// leitura de configuração volta a pedir todos. A lista também é zerada sozinha a cada login novo (reinício do
+    /// equipamento, sessão expirada), para pegar parâmetros que uma atualização de firmware trouxe.
+    /// </summary>
+    public void ClearConfigurationFieldCache()
+    {
+        lock (_missingConfigGate)
+        {
+            _missingConfigFields.Clear();
+        }
+    }
+
+    /// <inheritdoc/>
     public Task LoginAsync(CancellationToken cancellationToken = default) => _transport.LoginAsync(cancellationToken);
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Best-effort: a sessão local é descartada antes da requisição, e falha de rede ou timeout não lançam (log 1012, em
+    /// Debug). Só o cancelamento por <paramref name="cancellationToken"/> lança <see cref="OperationCanceledException"/>.
+    /// </remarks>
     public Task LogoutAsync(CancellationToken cancellationToken = default) => _transport.LogoutAsync(cancellationToken);
 
     /// <inheritdoc/>
@@ -115,7 +141,27 @@ public sealed class AccessClient : IAccessClient
     /// <inheritdoc/>
     public async Task<IReadOnlyList<long>> CreateObjectsAsync<T>(string @object, IEnumerable<T> values, CancellationToken cancellationToken = default)
     {
-        var body = new Dictionary<string, object?> { ["object"] = @object, ["values"] = values.ToList() };
+        var list = (values ?? throw new ArgumentNullException(nameof(values))).ToList();
+        var batchSize = _transport.Options.MaxObjectsPerRequest;
+        if (list.Count <= batchSize)
+        {
+            return await CreateObjectsBatchAsync(@object, list, cancellationToken).ConfigureAwait(false);
+        }
+
+        // Lotes de MaxObjectsPerRequest: o equipamento recusa ou trava com pedidos muito grandes (#33).
+        var ids = new List<long>(list.Count);
+        for (var offset = 0; offset < list.Count; offset += batchSize)
+        {
+            var chunk = list.GetRange(offset, Math.Min(batchSize, list.Count - offset));
+            ids.AddRange(await CreateObjectsBatchAsync(@object, chunk, cancellationToken).ConfigureAwait(false));
+        }
+
+        return ids;
+    }
+
+    private async Task<IReadOnlyList<long>> CreateObjectsBatchAsync<T>(string @object, List<T> values, CancellationToken cancellationToken)
+    {
+        var body = new Dictionary<string, object?> { ["object"] = @object, ["values"] = values };
         var response = await _transport.PostAsync<IdsResponse>("create_objects.fcgi", body, cancellationToken).ConfigureAwait(false);
         return response.Ids ?? new List<long>();
     }
@@ -191,32 +237,181 @@ public sealed class AccessClient : IAccessClient
         DeleteByIdAsync("templates", templateId, cancellationToken);
 
     /// <inheritdoc/>
+    public Task<FaceImageResult> SetUserImageAsync(
+        long userId, byte[] image, bool rejectExistingFace = false, DateTimeOffset? timestamp = null, CancellationToken cancellationToken = default) =>
+        SetUserImageAsync(userId, image, new UserImageUploadOptions { RejectExistingFace = rejectExistingFace }, timestamp, cancellationToken);
+
+    /// <inheritdoc/>
     public async Task<FaceImageResult> SetUserImageAsync(
-        long userId, byte[] image, bool rejectExistingFace = false, DateTimeOffset? timestamp = null, CancellationToken cancellationToken = default)
+        long userId, byte[] image, UserImageUploadOptions options, DateTimeOffset? timestamp = null, CancellationToken cancellationToken = default)
     {
-        ValidateImage(image, nameof(image));
+        if (options is null)
+        {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        var deviceOptions = _transport.Options;
+        if (deviceOptions.ValidateImages)
+        {
+            if (image is null || image.Length == 0)
+            {
+                throw new ArgumentException("Informe a imagem.", nameof(image));
+            }
+
+            var rejection = ImageHeader.Check(deviceOptions, userId, image);
+            if (rejection is not null)
+            {
+                throw rejection;
+            }
+        }
+        else
+        {
+            ValidateImage(image, nameof(image));
+        }
+
+        return await SendUserImageAsync(userId, image, options, timestamp ?? DateTimeOffset.UtcNow, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<FaceImageResult> SendUserImageAsync(
+        long userId, byte[] image, UserImageUploadOptions options, DateTimeOffset timestamp, CancellationToken cancellationToken)
+    {
         var query = string.Join(
             "&",
             "user_id=" + userId.ToString(CultureInfo.InvariantCulture),
-            "timestamp=" + (timestamp ?? DateTimeOffset.UtcNow).ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
-            "match=" + (rejectExistingFace ? "1" : "0"));
+            "timestamp=" + timestamp.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
+            "match=" + (options.RejectExistingFace ? "1" : "0")) + (options.BypassQualityScore ? "&bypass_quality_score=1" : string.Empty);
         var text = await _transport.PostBytesAsync("user_set_image.fcgi", image, "application/octet-stream", cancellationToken, query).ConfigureAwait(false);
         return ParseFaceResult(text);
     }
 
     /// <inheritdoc/>
+    public Task<IReadOnlyList<FaceImageResult>> SetUserImagesAsync(
+        IEnumerable<UserImage> images, bool rejectExistingFaces = false, CancellationToken cancellationToken = default) =>
+        SetUserImagesAsync(images, new UserImageUploadOptions { RejectExistingFace = rejectExistingFaces }, cancellationToken);
+
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<FaceImageResult>> SetUserImagesAsync(
-        IEnumerable<UserImage> images, bool rejectExistingFaces = false, CancellationToken cancellationToken = default)
+        IEnumerable<UserImage> images, UserImageUploadOptions options, CancellationToken cancellationToken = default)
     {
         if (images is null)
         {
             throw new ArgumentNullException(nameof(images));
         }
 
-        var body = new Dictionary<string, object> { ["match"] = rejectExistingFaces, ["user_images"] = images.ToList() };
-        var text = await _transport.PostRawAsync("user_set_image_list.fcgi", body, cancellationToken).ConfigureAwait(false);
-        return ParseResults(text);
+        if (options is null)
+        {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        var deviceOptions = _transport.Options;
+        var input = images.ToList();
+
+        // Fotos inválidas viram resultado de falha daquele usuário; as demais seguem em lotes.
+        var rejected = new Dictionary<int, FaceImageResult>();
+        var valid = new List<int>(input.Count);
+        for (var i = 0; i < input.Count; i++)
+        {
+            var rejection = deviceOptions.ValidateImages ? ImageHeader.Check(deviceOptions, input[i].UserId, input[i].Image) : null;
+            if (rejection is null)
+            {
+                valid.Add(i);
+            }
+            else
+            {
+                rejected[i] = FailedImageResult(input[i].UserId, rejection.Message, 0);
+            }
+        }
+
+        // Resultado de cada foto válida, pela posição de entrada. Um lote sem resultados por foto (equipamento não facial) deixa as posições vazias.
+        var accepted = new Dictionary<int, FaceImageResult>();
+        foreach (var batch in SplitImageBatches(input, valid, deviceOptions))
+        {
+            var results = await SendImageBatchAsync(input, batch, options, cancellationToken).ConfigureAwait(false);
+            for (var k = 0; k < batch.Count && k < results.Count; k++)
+            {
+                accepted[batch[k]] = results[k];
+            }
+        }
+
+        var ordered = new List<FaceImageResult>(input.Count);
+        for (var i = 0; i < input.Count; i++)
+        {
+            if (rejected.TryGetValue(i, out var failure))
+            {
+                ordered.Add(failure);
+            }
+            else if (accepted.TryGetValue(i, out var result))
+            {
+                ordered.Add(result);
+            }
+        }
+
+        return ordered;
     }
+
+    // Divide as fotos válidas em lotes: a soma do Base64 não passa de MaxImageBatchBytes e há no máximo MaxImagesPerBatch fotos.
+    // Uma foto que sozinha passa do limite vai num lote só dela.
+    private static List<List<int>> SplitImageBatches(List<UserImage> input, List<int> valid, ControlIdDeviceOptions deviceOptions)
+    {
+        var batches = new List<List<int>>();
+        List<int>? current = null;
+        long currentBytes = 0;
+        foreach (var index in valid)
+        {
+            var size = (input[index].Image.Length + 2L) / 3 * 4;
+            if (current is null || current.Count >= deviceOptions.MaxImagesPerBatch || currentBytes + size > deviceOptions.MaxImageBatchBytes)
+            {
+                current = new List<int>();
+                batches.Add(current);
+                currentBytes = 0;
+            }
+
+            current.Add(index);
+            currentBytes += size;
+        }
+
+        return batches;
+    }
+
+    // Envia um lote; se o equipamento o recusar (exceto "não suportado"), grava as fotos desse lote uma a uma com user_set_image.
+    private async Task<IReadOnlyList<FaceImageResult>> SendImageBatchAsync(
+        List<UserImage> input, List<int> batch, UserImageUploadOptions options, CancellationToken cancellationToken)
+    {
+        var body = new Dictionary<string, object> { ["match"] = options.RejectExistingFace, ["user_images"] = batch.Select(i => input[i]).ToList() };
+        if (options.BypassQualityScore)
+        {
+            body["bypass_quality_score"] = true;
+        }
+
+        try
+        {
+            var text = await _transport.PostRawAsync("user_set_image_list.fcgi", body, cancellationToken).ConfigureAwait(false);
+            return ParseResults(text);
+        }
+        catch (ControlIdDeviceErrorException ex) when (ex is not ControlIdNotSupportedException)
+        {
+            // Segue para o envio foto a foto, só deste lote.
+        }
+
+        var singles = new List<FaceImageResult>(batch.Count);
+        foreach (var index in batch)
+        {
+            var photo = input[index];
+            try
+            {
+                singles.Add(await SendUserImageAsync(photo.UserId, photo.Image, options, DateTimeOffset.FromUnixTimeSeconds(photo.Timestamp), cancellationToken).ConfigureAwait(false));
+            }
+            catch (ControlIdDeviceErrorException ex) when (ex is not ControlIdNotSupportedException)
+            {
+                singles.Add(FailedImageResult(photo.UserId, ex.DeviceMessage ?? ex.Message, ex.DeviceErrorCode ?? 0));
+            }
+        }
+
+        return singles;
+    }
+
+    private static FaceImageResult FailedImageResult(long userId, string message, int code) =>
+        new() { UserId = userId, Success = false, Errors = new List<FaceImageError> { new() { Code = code, Message = message } } };
 
     /// <inheritdoc/>
     public async Task<FaceImageResult> TestUserImageAsync(byte[] image, CancellationToken cancellationToken = default)
@@ -312,7 +507,7 @@ public sealed class AccessClient : IAccessClient
 
     /// <inheritdoc/>
     public async Task<IReadOnlyList<FaceImageResult>> EnrollFaceTemplatesAsync(
-        IEnumerable<FaceTemplateEnrollment> templates, bool rejectExistingFaces = false, CancellationToken cancellationToken = default)
+        IEnumerable<FaceTemplateEnrollment> templates, bool rejectExistingFaces = true, CancellationToken cancellationToken = default)
     {
         // A tabela da documentação escreve "face_tempaltes"; o exemplo usa "face_templates".
         var body = new Dictionary<string, object>
@@ -476,11 +671,22 @@ public sealed class AccessClient : IAccessClient
         CreateOneAsync("pins", pin, cancellationToken);
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Para tornar administrador, altera o papel existente em <c>user_roles</c> (<c>modify_objects</c>) e só cria o registro
+    /// se nada foi alterado: uma falha no meio nunca deixa o usuário sem o papel que ele já tinha. Para tirar o privilégio,
+    /// apaga o registro (<c>user_roles</c> só guarda quem tem privilégio diferente do padrão).
+    /// </remarks>
     public async Task SetAdministratorAsync(long userId, bool isAdministrator, CancellationToken cancellationToken = default)
     {
-        // user_roles só guarda quem tem privilégio diferente do padrão: remover = voltar a usuário comum.
-        await DestroyObjectsAsync("user_roles", Where.Equal("user_roles", "user_id", userId), cancellationToken).ConfigureAwait(false);
-        if (isAdministrator)
+        var where = Where.Equal("user_roles", "user_id", userId);
+        if (!isAdministrator)
+        {
+            await DestroyObjectsAsync("user_roles", where, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var changed = await ModifyObjectsAsync("user_roles", new Dictionary<string, object> { ["role"] = 1 }, where, cancellationToken).ConfigureAwait(false);
+        if (changed == 0)
         {
             await CreateObjectsAsync("user_roles", new[] { new UserRole { UserId = userId, Role = 1 } }, cancellationToken).ConfigureAwait(false);
         }
@@ -614,6 +820,18 @@ public sealed class AccessClient : IAccessClient
     }
 
     /// <inheritdoc/>
+    public async Task<byte[]> CaptureScreenAsync(ScreenFrame frame = ScreenFrame.Screen, CancellationToken cancellationToken = default)
+    {
+        var body = new Dictionary<string, object>
+        {
+            ["frame_type"] = frame == ScreenFrame.Display ? "display" : "screen",
+            ["format_type"] = "png",
+        };
+        var (content, _) = await _transport.PostForBytesAsync("save_screenshot.fcgi", body, cancellationToken).ConfigureAwait(false);
+        return content;
+    }
+
+    /// <inheritdoc/>
     public async Task<string> GenerateReportAsync(ReportRequest request, CancellationToken cancellationToken = default)
     {
         if (request is null)
@@ -626,27 +844,46 @@ public sealed class AccessClient : IAccessClient
     }
 
     /// <inheritdoc/>
-    public async Task<string> ExportAfdAsync(
-        long? initialNsr = null, DateTime? initialDate = null, bool portaria671 = true, CancellationToken cancellationToken = default)
+    public Task<string> ExportAfdAsync(
+        long? initialNsr = null, DateTime? initialDate = null, bool portaria671 = true, CancellationToken cancellationToken = default) =>
+        ExportAfdAsync(new AfdExportOptions { InitialNsr = initialNsr, InitialDate = initialDate, Portaria671 = portaria671 }, cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<string> ExportAfdAsync(AfdExportOptions options, CancellationToken cancellationToken = default)
     {
-        if (initialNsr is not null && initialDate is not null)
+        if (options is null)
         {
-            throw new ArgumentException("Filtre por NSR ou por data, não pelos dois.", nameof(initialDate));
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        if (options.InitialNsr is not null && options.InitialDate is not null)
+        {
+            throw new ArgumentException("Filtre por NSR ou por data, não pelos dois.", nameof(options));
         }
 
         var body = new Dictionary<string, object>();
-        if (initialNsr is { } nsr)
+        if (options.InitialNsr is { } nsr)
         {
             body["initial_nsr"] = nsr;
         }
 
-        if (initialDate is { } date)
+        if (options.InitialDate is { } date)
         {
             body["initial_date"] = new Dictionary<string, int> { ["day"] = date.Day, ["month"] = date.Month, ["year"] = date.Year };
         }
 
+        if (options.Limit is { } limit)
+        {
+            body["limit"] = limit;
+        }
+
+        if (options.Offset is { } offset)
+        {
+            body["offset"] = offset;
+        }
+
         var (content, charSet) = await _transport.PostForBytesAsync(
-            "export_afd.fcgi", body, cancellationToken, portaria671 ? "mode=671" : null).ConfigureAwait(false);
+            "export_afd.fcgi", body, cancellationToken, options.Portaria671 ? "mode=671" : null).ConfigureAwait(false);
         return TextDecoding.Decode(content, charSet);
     }
 
@@ -673,6 +910,8 @@ public sealed class AccessClient : IAccessClient
             ["time"] = Flag(AuditLogCategories.Time),
             ["online"] = Flag(AuditLogCategories.Online),
             ["menu"] = Flag(AuditLogCategories.Menu),
+            ["boot"] = Flag(AuditLogCategories.Boot),
+            ["push"] = Flag(AuditLogCategories.Push),
         };
 
         var (content, charSet) = await _transport.PostForBytesAsync("export_audit_logs.fcgi", body, cancellationToken).ConfigureAwait(false);
@@ -742,9 +981,108 @@ public sealed class AccessClient : IAccessClient
     /// <inheritdoc/>
     public async Task<int> CreateOrModifyObjectsAsync<T>(string @object, IEnumerable<T> values, CancellationToken cancellationToken = default)
     {
-        var body = new Dictionary<string, object?> { ["object"] = @object, ["values"] = (values ?? throw new ArgumentNullException(nameof(values))).ToList() };
-        var response = await _transport.PostAsync<ChangesResponse>("create_or_modify_objects.fcgi", body, cancellationToken).ConfigureAwait(false);
-        return response.Changes;
+        var list = (values ?? throw new ArgumentNullException(nameof(values))).ToList();
+        var batchSize = _transport.Options.MaxObjectsPerRequest;
+        var total = 0;
+        var done = 0;
+
+        if (!_transport.IsKnownUnsupported(CreateOrModifyCommand))
+        {
+            try
+            {
+                do
+                {
+                    var chunk = list.GetRange(done, Math.Min(batchSize, list.Count - done));
+                    var body = new Dictionary<string, object?> { ["object"] = @object, ["values"] = chunk };
+                    var response = await _transport.PostAsync<ChangesResponse>("create_or_modify_objects.fcgi", body, cancellationToken).ConfigureAwait(false);
+                    total += response.Changes;
+                    done += chunk.Count;
+                }
+                while (done < list.Count);
+
+                return total;
+            }
+            catch (ControlIdNotSupportedException) when (_transport.IsKnownUnsupported(CreateOrModifyCommand))
+            {
+                // "Invalid command" ou 404 (o transporte já marcou o comando): segue pelo fallback com o que faltou.
+            }
+        }
+
+        return total + await UpsertByIdAsync(@object, list.GetRange(done, list.Count - done), batchSize, cancellationToken).ConfigureAwait(false);
+    }
+
+    private const string CreateOrModifyCommand = "create_or_modify_objects";
+
+    // Fallback do upsert: modify_objects por id e create_objects só para quem não existia. Não é atômico (ver o XML doc).
+    private async Task<int> UpsertByIdAsync<T>(string @object, List<T> values, int batchSize, CancellationToken cancellationToken)
+    {
+        var ids = new List<long>(values.Count);
+        foreach (var value in values)
+        {
+            ids.Add(ReadObjectId(value));
+        }
+
+        var total = 0;
+        var missing = new List<T>();
+        for (var i = 0; i < values.Count; i++)
+        {
+            var changes = await ModifyObjectsAsync(@object, values[i]!, Where.Equal(@object, "id", ids[i]), cancellationToken).ConfigureAwait(false);
+            if (changes == 0)
+            {
+                missing.Add(values[i]);
+            }
+            else
+            {
+                total += changes;
+            }
+        }
+
+        for (var offset = 0; offset < missing.Count; offset += batchSize)
+        {
+            var chunk = missing.GetRange(offset, Math.Min(batchSize, missing.Count - offset));
+            await CreateObjectsBatchAsync(@object, chunk, cancellationToken).ConfigureAwait(false);
+            total += chunk.Count;
+        }
+
+        return total;
+    }
+
+    private static long ReadObjectId<T>(T value)
+    {
+        if (value is null)
+        {
+#pragma warning disable CA2208 // "values" é o parâmetro do método público que chamou; este auxiliar privado recebe um item.
+            throw new ArgumentException("Há um valor nulo na lista; o upsert por id precisa que cada item tenha o campo \"id\".", "values");
+#pragma warning restore CA2208
+        }
+
+        using var doc = JsonDocument.Parse(JsonSerializer.Serialize(value, value.GetType(), ControlIdJson.Options));
+        if (doc.RootElement.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in doc.RootElement.EnumerateObject())
+            {
+                if (!string.Equals(property.Name, "id", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (property.Value.ValueKind == JsonValueKind.Number && property.Value.TryGetInt64(out var number))
+                {
+                    return number;
+                }
+
+                if (property.Value.ValueKind == JsonValueKind.String
+                    && long.TryParse(property.Value.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+                {
+                    return parsed;
+                }
+            }
+        }
+
+#pragma warning disable CA2208 // "values" é o parâmetro do método público que chamou.
+        throw new ArgumentException(
+            "Este equipamento não tem create_or_modify_objects e o upsert por id precisa que cada item tenha o campo \"id\".", "values");
+#pragma warning restore CA2208
     }
 
     /// <inheritdoc/>
@@ -808,11 +1146,30 @@ public sealed class AccessClient : IAccessClient
         ResetToFactoryDefaultAsync(DataLossConfirmation.Confirmed, keepNetworkSettings, cancellationToken);
 
     /// <inheritdoc/>
-    public Task ResetToFactoryDefaultAsync(DataLossConfirmation confirmation, bool keepNetworkSettings, CancellationToken cancellationToken = default)
+    public Task ResetToFactoryDefaultAsync(DataLossConfirmation confirmation, bool keepNetworkSettings, CancellationToken cancellationToken = default) =>
+        ResetToFactoryDefaultAsync(confirmation, new FactoryResetOptions { KeepNetworkSettings = keepNetworkSettings }, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task ResetToFactoryDefaultAsync(DataLossConfirmation confirmation, FactoryResetOptions options, CancellationToken cancellationToken = default)
     {
         DataLoss.Require(confirmation, nameof(ResetToFactoryDefaultAsync));
-        return _transport.PostRawAsync(
-            "reset_to_factory_default.fcgi", new Dictionary<string, object> { ["keep_network_info"] = keepNetworkSettings }, cancellationToken);
+        if (options is null)
+        {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        var body = new Dictionary<string, object> { ["keep_network_info"] = options.KeepNetworkSettings };
+        if (options.KeepAllConfiguration)
+        {
+            body["keep_all_config"] = true;
+        }
+
+        if (options.KeepOsdpSettings)
+        {
+            body["keep_osdp_info"] = true;
+        }
+
+        return _transport.PostRawAsync("reset_to_factory_default.fcgi", body, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -1052,7 +1409,7 @@ public sealed class AccessClient : IAccessClient
 
     /// <inheritdoc/>
     public async Task<VpnStatus> GetVpnStatusAsync(CancellationToken cancellationToken = default) =>
-        (VpnStatus)(await GetJsonAsync<VpnStatusResponse>("get_vpn_status.fcgi", cancellationToken).ConfigureAwait(false)).Status;
+        EnumValues.ToDefined<VpnStatus>((await GetJsonAsync<VpnStatusResponse>("get_vpn_status.fcgi", cancellationToken).ConfigureAwait(false)).Status);
 
     /// <inheritdoc/>
     public Task UploadVpnFileAsync(byte[] file, VpnFileType fileType, CancellationToken cancellationToken = default) =>
@@ -1078,17 +1435,43 @@ public sealed class AccessClient : IAccessClient
     /// <inheritdoc/>
     public Task Configure8021XAsync(
         bool enabled, string? login = null, string? password = null,
-        Ieee8021XInnerAuthentication innerAuthentication = Ieee8021XInnerAuthentication.MsChapV2, CancellationToken cancellationToken = default)
+        Ieee8021XInnerAuthentication innerAuthentication = Ieee8021XInnerAuthentication.MsChapV2, CancellationToken cancellationToken = default) =>
+        Configure8021XAsync(
+            new Ieee8021XSettings { Enabled = enabled, Login = login, Password = password, InnerAuthentication = innerAuthentication },
+            cancellationToken);
+
+    /// <inheritdoc/>
+    public Task Configure8021XAsync(Ieee8021XSettings settings, CancellationToken cancellationToken = default)
     {
-        var body = new Dictionary<string, object> { ["enabled"] = enabled, ["inner_auth"] = (int)innerAuthentication };
-        if (login is not null)
+        if (settings is null)
         {
-            body["login"] = login;
+            throw new ArgumentNullException(nameof(settings));
         }
 
-        if (password is not null)
+        var body = new Dictionary<string, object> { ["enabled"] = settings.Enabled, ["inner_auth"] = (int)settings.InnerAuthentication };
+        if (settings.Login is not null)
         {
-            body["password"] = password;
+            body["login"] = settings.Login;
+        }
+
+        if (settings.Password is not null)
+        {
+            body["password"] = settings.Password;
+        }
+
+        if (settings.EapMethod is { } eap)
+        {
+            body["eap_auth"] = (int)eap;
+        }
+
+        if (settings.UsesCertificate is { } usesCertificate)
+        {
+            body["uses_certificate"] = usesCertificate;
+        }
+
+        if (settings.Interface is not null)
+        {
+            body["interface"] = settings.Interface;
         }
 
         return _transport.PostRawAsync("configure_802_1X.fcgi", body, cancellationToken);
@@ -1112,6 +1495,7 @@ public sealed class AccessClient : IAccessClient
             FaceLicense.Pro30k => "upgrade_thirty_thousand_face_templates.fcgi",
             FaceLicense.Pro50k => "upgrade_fifty_thousand_face_templates.fcgi",
             FaceLicense.Pro100k => "upgrade_hundred_thousand_face_templates.fcgi",
+            FaceLicense.Pro20k => "upgrade_twenty_thousand_face_templates.fcgi",
             _ => throw new ArgumentOutOfRangeException(nameof(license)),
         };
 
@@ -1142,6 +1526,7 @@ public sealed class AccessClient : IAccessClient
 
         // O firmware recusa a requisição inteira se um único parâmetro não existir nele (o iDFace não tem
         // general.catra_timeout, por exemplo). O erro diz qual é: ele sai da lista e a leitura é repetida.
+        SyncMissingConfigFields();
         var body = new Dictionary<string, List<string>>();
         foreach (var section in fields)
         {
@@ -1168,7 +1553,7 @@ public sealed class AccessClient : IAccessClient
             }
             catch (ControlIdException ex) when (FindMissingConfigField(ex, body) is { } missing)
             {
-                _missingConfigFields.TryAdd(missing.Section + "." + missing.Field, 0);
+                RememberMissingConfigField(missing.Section + "." + missing.Field);
                 body[missing.Section].Remove(missing.Field);
                 if (body[missing.Section].Count == 0)
                 {
@@ -1254,6 +1639,12 @@ public sealed class AccessClient : IAccessClient
         SetConfigurationAsync((configuration ?? throw new ArgumentNullException(nameof(configuration))).ToConfiguration(), cancellationToken);
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Não é atômico: são até três requisições (procurar o servidor em <c>devices</c>, criá-lo se não existir e gravar
+    /// <c>online_client</c> e <c>general</c> num único <c>set_configuration</c>). Se uma falhar, o que veio antes fica
+    /// aplicado — por exemplo, o registro do servidor criado sem o modo online ligado. Chamar de novo é seguro: o registro
+    /// com o mesmo endereço é reaproveitado e a configuração é regravada inteira.
+    /// </remarks>
     public async Task<long> ConfigureOnlineModeAsync(OnlineModeConfiguration configuration, CancellationToken cancellationToken = default)
     {
         if (configuration is null)
@@ -1646,6 +2037,41 @@ public sealed class AccessClient : IAccessClient
         if (image.Length >= MaxImageBytes)
         {
             throw new ArgumentException("O equipamento só aceita imagens menores que 1 MB.", paramName);
+        }
+    }
+
+    // A lista de parâmetros ausentes vale para uma sessão: login novo (equipamento reiniciou, firmware atualizado) a zera.
+    private void SyncMissingConfigFields()
+    {
+        var generation = _transport.SessionGeneration;
+        if (Interlocked.Read(ref _missingConfigGeneration) == generation)
+        {
+            return;
+        }
+
+        lock (_missingConfigGate)
+        {
+            if (_missingConfigGeneration != generation)
+            {
+                _missingConfigFields.Clear();
+                Interlocked.Exchange(ref _missingConfigGeneration, generation);
+            }
+        }
+    }
+
+    private void RememberMissingConfigField(string field)
+    {
+        bool added;
+        lock (_missingConfigGate)
+        {
+            // A sessão em que o firmware recusou o parâmetro (a leitura pode ter feito o primeiro login ou um relogin).
+            SyncMissingConfigFields();
+            added = _missingConfigFields.TryAdd(field, 0);
+        }
+
+        if (added)
+        {
+            Log.ConfigurationFieldMissing(_transport.Logger, _transport.Device, field);
         }
     }
 

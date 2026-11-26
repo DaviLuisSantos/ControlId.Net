@@ -67,7 +67,7 @@ public class IdFaceFirmwareTests
         var device = LoggedDevice().On("get_configuration.fcgi", HttpStatusCode.BadRequest, """{"error":"Invalid session","code":1}""");
         using var client = new AccessClient(Options, device.CreateClient());
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.GetConfigurationSectionAsync<GeneralSettings>());
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.GetConfigurationSectionAsync<GeneralSettings>());
         Assert.Single(device.RequestsTo("get_configuration.fcgi"));
     }
 

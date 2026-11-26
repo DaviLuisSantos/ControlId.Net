@@ -1,78 +1,157 @@
 #nullable enable
-ControlId.ControlIdCircuitState
-ControlId.ControlIdCircuitState.Closed = 0 -> ControlId.ControlIdCircuitState
-ControlId.ControlIdCircuitState.Open = 1 -> ControlId.ControlIdCircuitState
-ControlId.ControlIdCircuitState.HalfOpen = 2 -> ControlId.ControlIdCircuitState
-ControlId.ControlIdCircuitOpenException
-ControlId.ControlIdCircuitOpenException.ControlIdCircuitOpenException(string! message, System.TimeSpan retryAfter) -> void
-ControlId.ControlIdCircuitOpenException.RetryAfter.get -> System.TimeSpan
-const ControlId.ControlIdDeviceOptions.MaxCircuitBreakerFailureThreshold = 100 -> int
-ControlId.ControlIdDeviceOptions.CircuitBreakerFailureThreshold.get -> int
-ControlId.ControlIdDeviceOptions.CircuitBreakerFailureThreshold.set -> void
-ControlId.ControlIdDeviceOptions.CircuitBreakerBreakDuration.get -> System.TimeSpan
-ControlId.ControlIdDeviceOptions.CircuitBreakerBreakDuration.set -> void
-ControlId.Access.AccessClient.CircuitState.get -> ControlId.ControlIdCircuitState
-ControlId.Rep.RepClient.CircuitState.get -> ControlId.ControlIdCircuitState
-ControlId.Access.Push.IPushCommandStore
-ControlId.Access.Push.IPushCommandStore.AddAsync(ControlId.Access.Push.PushEnvelope! envelope, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
-ControlId.Access.Push.IPushCommandStore.CompleteAsync(long deviceId, string? uuid, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<ControlId.Access.Push.PushEnvelope?>!
-ControlId.Access.Push.IPushCommandStore.CountAsync(long deviceId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
-ControlId.Access.Push.IPushCommandStore.RemoveAsync(System.Guid id, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
-ControlId.Access.Push.IPushCommandStore.TakeNextAsync(long deviceId, string? uuid, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<ControlId.Access.Push.PushTake>!
-ControlId.Access.Push.IPushResultHandler
-ControlId.Access.Push.IPushResultHandler.HandleAsync(ControlId.Access.Push.PushCompletion! completion, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
-ControlId.Access.Push.InMemoryPushCommandStore
-ControlId.Access.Push.InMemoryPushCommandStore.AddAsync(ControlId.Access.Push.PushEnvelope! envelope, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
-ControlId.Access.Push.InMemoryPushCommandStore.CompleteAsync(long deviceId, string? uuid, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<ControlId.Access.Push.PushEnvelope?>!
-ControlId.Access.Push.InMemoryPushCommandStore.CountAsync(long deviceId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
-ControlId.Access.Push.InMemoryPushCommandStore.InMemoryPushCommandStore() -> void
-ControlId.Access.Push.InMemoryPushCommandStore.RemoveAsync(System.Guid id, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
-ControlId.Access.Push.InMemoryPushCommandStore.TakeNextAsync(long deviceId, string? uuid, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<ControlId.Access.Push.PushTake>!
-ControlId.Access.Push.PushCompletion
-ControlId.Access.Push.PushCompletion.CommandId.get -> System.Guid
-ControlId.Access.Push.PushCompletion.DeviceId.get -> long
-ControlId.Access.Push.PushCompletion.Error.get -> string?
-ControlId.Access.Push.PushCompletion.PushCompletion(System.Guid commandId, long deviceId, System.Collections.Generic.IReadOnlyList<ControlId.Access.Push.PushResult!>! results, string? error) -> void
-ControlId.Access.Push.PushCompletion.Results.get -> System.Collections.Generic.IReadOnlyList<ControlId.Access.Push.PushResult!>!
-ControlId.Access.Push.PushEnvelope
-ControlId.Access.Push.PushEnvelope.Batch.get -> bool
-ControlId.Access.Push.PushEnvelope.CreatedAt.get -> System.DateTimeOffset
-ControlId.Access.Push.PushEnvelope.DeliveredAt.get -> System.DateTimeOffset?
-ControlId.Access.Push.PushEnvelope.DeliveredAt.set -> void
-ControlId.Access.Push.PushEnvelope.DeviceId.get -> long
-ControlId.Access.Push.PushEnvelope.Endpoints.get -> System.Collections.Generic.IReadOnlyList<string!>!
-ControlId.Access.Push.PushEnvelope.Id.get -> System.Guid
-ControlId.Access.Push.PushEnvelope.Payload.get -> string!
-ControlId.Access.Push.PushEnvelope.PushEnvelope(System.Guid id, long deviceId, bool batch, System.Collections.Generic.IReadOnlyList<string!>! endpoints, string! payload, System.DateTimeOffset createdAt) -> void
-ControlId.Access.Push.PushEnvelope.Status.get -> ControlId.Access.Push.PushEnvelopeStatus
-ControlId.Access.Push.PushEnvelope.Status.set -> void
-ControlId.Access.Push.PushEnvelope.Uuid.get -> string?
-ControlId.Access.Push.PushEnvelope.Uuid.set -> void
-ControlId.Access.Push.PushEnvelopeStatus
-ControlId.Access.Push.PushEnvelopeStatus.InFlight = 1 -> ControlId.Access.Push.PushEnvelopeStatus
-ControlId.Access.Push.PushEnvelopeStatus.Pending = 0 -> ControlId.Access.Push.PushEnvelopeStatus
-ControlId.Access.Push.PushServer.EnqueueAsync(long deviceId, ControlId.Access.Push.PushCommand! command, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Guid>!
-ControlId.Access.Push.PushServer.EnqueueBatchAsync(long deviceId, System.Collections.Generic.IEnumerable<ControlId.Access.Push.PushCommand!>! commands, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Guid>!
-ControlId.Access.Push.PushServer.GetPendingCountAsync(long deviceId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
-ControlId.Access.Push.PushServer.HandlePushAsync(long deviceId, string? uuid, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
-ControlId.Access.Push.PushServer.HandleResultAsync(long deviceId, string? uuid, string! body, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
-ControlId.Access.Push.PushServer.PushServer(ControlId.Access.Push.IPushCommandStore! store, ControlId.Access.Push.IPushResultHandler? unclaimedResultHandler = null) -> void
-ControlId.Access.Push.PushTake
-ControlId.Access.Push.PushTake.Next.get -> ControlId.Access.Push.PushEnvelope?
-ControlId.Access.Push.PushTake.Orphan.get -> ControlId.Access.Push.PushEnvelope?
-ControlId.Access.Push.PushTake.PushTake() -> void
-ControlId.Access.Push.PushTake.PushTake(ControlId.Access.Push.PushEnvelope? orphan, ControlId.Access.Push.PushEnvelope? next) -> void
-ControlId.Access.AccessClientCallbackSecurityExtensions
-static ControlId.Access.AccessClientCallbackSecurityExtensions.ConfigureCallbackSecurityAsync(this ControlId.Access.IAccessClient! client, string? bearerToken, string? pinnedCertificate = null, string! section = "general", System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-ControlId.Access.DeviceContactSource
-ControlId.Access.DeviceContactSource.Push = 0 -> ControlId.Access.DeviceContactSource
-ControlId.Access.DeviceContactSource.Monitor = 1 -> ControlId.Access.DeviceContactSource
-ControlId.Access.DeviceContactSource.Online = 2 -> ControlId.Access.DeviceContactSource
-ControlId.Access.DeviceContact
-ControlId.Access.DeviceContact.At.get -> System.DateTimeOffset
-ControlId.Access.DeviceContact.Source.get -> ControlId.Access.DeviceContactSource
-ControlId.Access.DeviceContactTracker
-ControlId.Access.DeviceContactTracker.DeviceContactTracker() -> void
-ControlId.Access.DeviceContactTracker.GetAll() -> System.Collections.Generic.IReadOnlyDictionary<long, ControlId.Access.DeviceContact!>!
-ControlId.Access.DeviceContactTracker.GetLastContact(long deviceId) -> ControlId.Access.DeviceContact?
-ControlId.Access.DeviceContactTracker.Record(long deviceId, ControlId.Access.DeviceContactSource source) -> void
+*REMOVED*const ControlId.ControlIdDeviceOptions.DefaultMaxConcurrentRequests = 4 -> int
+ControlId.Access.AccessClient.EnrollAndWaitAsync(ControlId.Access.RemoteEnrollRequest! request, System.TimeSpan? timeout = null, System.TimeSpan? pollInterval = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.RemoteEnrollResult!>!
+ControlId.Access.AccessClient.GetCapabilitiesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.DeviceCapabilities!>!
+ControlId.Access.AccessClient.SyncUserAsync(ControlId.Access.DesiredUser! desired, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.UserSyncResult!>!
+ControlId.Access.AccessClient.SyncUsersAsync(System.Collections.Generic.IEnumerable<ControlId.Access.DesiredUser!>! desired, ControlId.Access.UserSyncOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<ControlId.Access.UserSyncResult!>!>!
+ControlId.Access.AccessDeviceEvent.LocalTimestamp.get -> System.DateTime
+ControlId.Access.AccessLog.LocalTime.get -> System.DateTime
+ControlId.Access.AlarmLog.LocalTime.get -> System.DateTime
+ControlId.Access.CardNumber
+ControlId.Access.CardNumber.CardNumber() -> void
+ControlId.Access.ChangeLog.LocalTimestamp.get -> System.DateTime
+ControlId.Access.DesiredUser
+ControlId.Access.DesiredUser.BeginTime.get -> System.DateTime?
+ControlId.Access.DesiredUser.BeginTime.set -> void
+ControlId.Access.DesiredUser.Cards.get -> System.Collections.Generic.IReadOnlyCollection<long>?
+ControlId.Access.DesiredUser.Cards.set -> void
+ControlId.Access.DesiredUser.DesiredUser() -> void
+ControlId.Access.DesiredUser.EndTime.get -> System.DateTime?
+ControlId.Access.DesiredUser.EndTime.set -> void
+ControlId.Access.DesiredUser.GroupIds.get -> System.Collections.Generic.IReadOnlyCollection<long>?
+ControlId.Access.DesiredUser.GroupIds.set -> void
+ControlId.Access.DesiredUser.Id.get -> long
+ControlId.Access.DesiredUser.Id.set -> void
+ControlId.Access.DesiredUser.Name.get -> string?
+ControlId.Access.DesiredUser.Name.set -> void
+ControlId.Access.DesiredUser.Password.get -> string?
+ControlId.Access.DesiredUser.Password.set -> void
+ControlId.Access.DesiredUser.Photo.get -> byte[]?
+ControlId.Access.DesiredUser.Photo.set -> void
+ControlId.Access.DesiredUser.Registration.get -> string?
+ControlId.Access.DesiredUser.Registration.set -> void
+ControlId.Access.DeviceCapabilities
+ControlId.Access.DeviceCapabilities.DeviceCapabilities(string? model, string? firmware, System.Collections.Generic.IEnumerable<string!>! unsupportedCommands) -> void
+ControlId.Access.DeviceCapabilities.Firmware.get -> string?
+ControlId.Access.DeviceCapabilities.Model.get -> string?
+ControlId.Access.DeviceCapabilities.Supports(string! command) -> bool
+ControlId.Access.DeviceCapabilities.UnsupportedCommands.get -> System.Collections.Generic.IReadOnlyCollection<string!>!
+ControlId.Access.IAccessClient.EnrollAndWaitAsync(ControlId.Access.RemoteEnrollRequest! request, System.TimeSpan? timeout = null, System.TimeSpan? pollInterval = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.RemoteEnrollResult!>!
+ControlId.Access.IAccessClient.GetCapabilitiesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.DeviceCapabilities!>!
+ControlId.Access.IAccessClient.SyncUserAsync(ControlId.Access.DesiredUser! desired, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.UserSyncResult!>!
+ControlId.Access.IAccessClient.SyncUsersAsync(System.Collections.Generic.IEnumerable<ControlId.Access.DesiredUser!>! desired, ControlId.Access.UserSyncOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<ControlId.Access.UserSyncResult!>!>!
+ControlId.Access.Online.ExitButtonLog.LocalTime.get -> System.DateTime
+ControlId.Access.Online.OnlineIdentificationEvent.LocalTime.get -> System.DateTime?
+ControlId.Access.Push.PushServerOptions.UseTransactions.get -> bool?
+ControlId.Access.Push.PushServerOptions.UseTransactions.set -> void
+ControlId.Access.UserSyncError
+ControlId.Access.UserSyncError.Exception.get -> System.Exception?
+ControlId.Access.UserSyncError.Item.get -> string!
+ControlId.Access.UserSyncError.Message.get -> string!
+ControlId.Access.UserSyncOptions
+ControlId.Access.UserSyncOptions.DataLossConfirmation.get -> ControlId.DataLossConfirmation
+ControlId.Access.UserSyncOptions.DataLossConfirmation.set -> void
+ControlId.Access.UserSyncOptions.RemoveMissing.get -> bool
+ControlId.Access.UserSyncOptions.RemoveMissing.set -> void
+ControlId.Access.UserSyncOptions.UserSyncOptions() -> void
+ControlId.Access.UserSyncResult
+ControlId.Access.UserSyncResult.CardsAdded.get -> System.Collections.Generic.IReadOnlyList<long>!
+ControlId.Access.UserSyncResult.CardsRemoved.get -> System.Collections.Generic.IReadOnlyList<long>!
+ControlId.Access.UserSyncResult.Changed.get -> bool
+ControlId.Access.UserSyncResult.ChangedFields.get -> System.Collections.Generic.IReadOnlyList<string!>!
+ControlId.Access.UserSyncResult.Created.get -> bool
+ControlId.Access.UserSyncResult.Errors.get -> System.Collections.Generic.IReadOnlyList<ControlId.Access.UserSyncError!>!
+ControlId.Access.UserSyncResult.GroupsAdded.get -> System.Collections.Generic.IReadOnlyList<long>!
+ControlId.Access.UserSyncResult.GroupsRemoved.get -> System.Collections.Generic.IReadOnlyList<long>!
+ControlId.Access.UserSyncResult.PhotoUpdated.get -> bool
+ControlId.Access.UserSyncResult.Removed.get -> bool
+ControlId.Access.UserSyncResult.Success.get -> bool
+ControlId.Access.UserSyncResult.UserId.get -> long
+ControlId.ControlIdConnectionException
+ControlId.ControlIdConnectionException.ControlIdConnectionException(string! message, System.Exception? innerException = null) -> void
+ControlId.ControlIdDeviceErrorException
+ControlId.ControlIdDeviceErrorException.ControlIdDeviceErrorException(string! message, System.Net.HttpStatusCode? statusCode, int? deviceErrorCode, string? deviceMessage, string? responseBody) -> void
+ControlId.ControlIdDeviceErrorException.DeviceMessage.get -> string?
+ControlId.ControlIdDeviceOptions.ConnectTimeout.get -> System.TimeSpan
+ControlId.ControlIdDeviceOptions.ConnectTimeout.set -> void
+ControlId.ControlIdDeviceOptions.ExceptionResponseBody.get -> ControlId.ExceptionResponseBody
+ControlId.ControlIdDeviceOptions.ExceptionResponseBody.set -> void
+ControlId.ControlIdDeviceOptions.MaxImageBatchBytes.get -> long
+ControlId.ControlIdDeviceOptions.MaxImageBatchBytes.set -> void
+ControlId.ControlIdDeviceOptions.MaxImageBytes.get -> long
+ControlId.ControlIdDeviceOptions.MaxImageBytes.set -> void
+ControlId.ControlIdDeviceOptions.MaxImageLongSide.get -> int
+ControlId.ControlIdDeviceOptions.MaxImageLongSide.set -> void
+ControlId.ControlIdDeviceOptions.MaxImageShortSide.get -> int
+ControlId.ControlIdDeviceOptions.MaxImageShortSide.set -> void
+ControlId.ControlIdDeviceOptions.MaxImagesPerBatch.get -> int
+ControlId.ControlIdDeviceOptions.MaxImagesPerBatch.set -> void
+ControlId.ControlIdDeviceOptions.MaxObjectsPerRequest.get -> int
+ControlId.ControlIdDeviceOptions.MaxObjectsPerRequest.set -> void
+ControlId.ControlIdDeviceOptions.ValidateImages.get -> bool
+ControlId.ControlIdDeviceOptions.ValidateImages.set -> void
+ControlId.ControlIdImageRejectedException
+ControlId.ControlIdImageRejectedException.ByteCount.get -> long
+ControlId.ControlIdImageRejectedException.ControlIdImageRejectedException(ControlId.ImageRejectionReason reason, long? userId, int? width, int? height, long byteCount, string! message) -> void
+ControlId.ControlIdImageRejectedException.Height.get -> int?
+ControlId.ControlIdImageRejectedException.Reason.get -> ControlId.ImageRejectionReason
+ControlId.ControlIdImageRejectedException.UserId.get -> long?
+ControlId.ControlIdImageRejectedException.Width.get -> int?
+ControlId.ControlIdNotSupportedException
+ControlId.ControlIdNotSupportedException.Command.get -> string!
+ControlId.ControlIdNotSupportedException.ControlIdNotSupportedException(string! command, string? firmware, System.Net.HttpStatusCode? statusCode, string? deviceMessage, string? responseBody) -> void
+ControlId.ControlIdNotSupportedException.Firmware.get -> string?
+ControlId.ControlIdOutcomeUnknownException
+ControlId.ControlIdOutcomeUnknownException.Command.get -> string!
+ControlId.ControlIdOutcomeUnknownException.ControlIdOutcomeUnknownException(string! message, string! command, bool timedOut, System.Exception? innerException = null) -> void
+ControlId.ControlIdOutcomeUnknownException.TimedOut.get -> bool
+ControlId.ControlIdTimeoutException
+ControlId.ControlIdTimeoutException.ControlIdTimeoutException(string! message, System.Exception? innerException = null) -> void
+ControlId.Discovery.ControlIdDiscovery
+ControlId.Discovery.DiscoveredDevice
+ControlId.Discovery.DiscoveredDevice.Address.get -> System.Uri!
+ControlId.Discovery.DiscoveredDevice.CredentialLogin.get -> string?
+ControlId.Discovery.DiscoveredDevice.DiscoveredDevice(System.Uri! address, ControlId.Discovery.DiscoveryStatus status, string? model = null, string? firmware = null, string? serial = null, string? mac = null, string? credentialLogin = null) -> void
+ControlId.Discovery.DiscoveredDevice.Firmware.get -> string?
+ControlId.Discovery.DiscoveredDevice.Mac.get -> string?
+ControlId.Discovery.DiscoveredDevice.Model.get -> string?
+ControlId.Discovery.DiscoveredDevice.Serial.get -> string?
+ControlId.Discovery.DiscoveredDevice.Status.get -> ControlId.Discovery.DiscoveryStatus
+ControlId.Discovery.DiscoveryCredential
+ControlId.Discovery.DiscoveryCredential.DiscoveryCredential(string! login, string! password) -> void
+ControlId.Discovery.DiscoveryCredential.Login.get -> string!
+ControlId.Discovery.DiscoveryCredential.Password.get -> string!
+ControlId.Discovery.DiscoveryOptions
+ControlId.Discovery.DiscoveryOptions.ConnectTimeout.get -> System.TimeSpan
+ControlId.Discovery.DiscoveryOptions.ConnectTimeout.set -> void
+ControlId.Discovery.DiscoveryOptions.DiscoveryOptions() -> void
+ControlId.Discovery.DiscoveryOptions.MaxParallelism.get -> int
+ControlId.Discovery.DiscoveryOptions.MaxParallelism.set -> void
+ControlId.Discovery.DiscoveryOptions.Timeout.get -> System.TimeSpan
+ControlId.Discovery.DiscoveryOptions.Timeout.set -> void
+ControlId.Discovery.DiscoveryOptions.TryFactoryDefaults.get -> bool
+ControlId.Discovery.DiscoveryOptions.TryFactoryDefaults.set -> void
+ControlId.Discovery.DiscoveryStatus
+ControlId.Discovery.DiscoveryStatus.CredentialRejected = 3 -> ControlId.Discovery.DiscoveryStatus
+ControlId.Discovery.DiscoveryStatus.Error = 4 -> ControlId.Discovery.DiscoveryStatus
+ControlId.Discovery.DiscoveryStatus.Found = 0 -> ControlId.Discovery.DiscoveryStatus
+ControlId.Discovery.DiscoveryStatus.NotControlId = 2 -> ControlId.Discovery.DiscoveryStatus
+ControlId.Discovery.DiscoveryStatus.PortClosed = 1 -> ControlId.Discovery.DiscoveryStatus
+ControlId.ExceptionResponseBody
+ControlId.ExceptionResponseBody.ErrorOnly = 0 -> ControlId.ExceptionResponseBody
+ControlId.ExceptionResponseBody.Full = 1 -> ControlId.ExceptionResponseBody
+ControlId.ExceptionResponseBody.None = 2 -> ControlId.ExceptionResponseBody
+ControlId.ImageRejectionReason
+ControlId.ImageRejectionReason.Dimensions = 1 -> ControlId.ImageRejectionReason
+ControlId.ImageRejectionReason.Format = 0 -> ControlId.ImageRejectionReason
+ControlId.ImageRejectionReason.Size = 2 -> ControlId.ImageRejectionReason
+const ControlId.ControlIdDeviceOptions.DefaultMaxConcurrentRequests = 1 -> int
+override ControlId.Access.UserSyncError.ToString() -> string!
+override ControlId.Discovery.DiscoveryCredential.ToString() -> string!
+static ControlId.Access.CardNumber.Format(long value) -> string!
+static ControlId.Access.CardNumber.FromFacility(int facility, int number) -> long
+static ControlId.Access.CardNumber.Parse(string! text) -> long
+static ControlId.Access.CardNumber.ToFacility(long value) -> (int Facility, int Number)
+static ControlId.Access.CardNumber.TryParse(string? text, out long value) -> bool
+static ControlId.Discovery.ControlIdDiscovery.ExpandCidr(string! cidr, int port = 80, string! scheme = "http") -> System.Collections.Generic.IEnumerable<System.Uri!>!
+static ControlId.Discovery.ControlIdDiscovery.ScanAsync(System.Collections.Generic.IEnumerable<System.Uri!>! addresses, System.Collections.Generic.IEnumerable<ControlId.Discovery.DiscoveryCredential!>! credentials, ControlId.Discovery.DiscoveryOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<ControlId.Discovery.DiscoveredDevice!>!>!

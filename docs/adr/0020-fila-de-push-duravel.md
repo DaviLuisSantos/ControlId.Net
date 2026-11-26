@@ -1,6 +1,6 @@
 # 0020. Fila de Push durável (`IPushCommandStore`)
 
-Status: Aceita (2026-11-14)
+Status: Aceita (2026-11-14). Complementada pela [0023](0023-limites-da-fila-de-push.md) (2026-11-19): prazos, limites e claim atômico.
 
 ## Contexto
 

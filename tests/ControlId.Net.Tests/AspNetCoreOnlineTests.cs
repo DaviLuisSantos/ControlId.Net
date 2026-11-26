@@ -25,7 +25,7 @@ public sealed class AspNetCoreOnlineTests : IAsyncDisposable
         builder.Services.AddControlIdOnline<ScopedHandler>();
 
         _app = builder.Build();
-        _app.MapControlIdOnline("/api");
+        _app.MapControlIdOnline("/api").AllowAnonymousControlIdCallbacks();
         await _app.StartAsync();
         return _app.GetTestClient();
     }

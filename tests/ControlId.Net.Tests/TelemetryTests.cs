@@ -61,7 +61,7 @@ public class TelemetryTests
             .On("execute_actions.fcgi", HttpStatusCode.BadRequest, """{"error":"Invalid door","code":7}""");
         using var client = new AccessClient(telemetry.Options(), device.CreateClient());
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.OpenDoorAsync(9));
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.OpenDoorAsync(9));
 
         var span = Assert.Single(telemetry.Activities, a => a.DisplayName == "execute_actions");
         Assert.Equal(ActivityStatusCode.Error, span.Status);

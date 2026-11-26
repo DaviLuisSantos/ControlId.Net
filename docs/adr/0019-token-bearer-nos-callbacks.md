@@ -1,6 +1,6 @@
 # 0019. Token Bearer nas rotas de callback
 
-Status: Aceita (2026-11-14)
+Status: Aceita (2026-11-14). Complementada pela [0021](0021-callbacks-fechados-por-padrao.md) (2026-11-19): as rotas passam a ser fechadas por padrão.
 
 ## Contexto
 

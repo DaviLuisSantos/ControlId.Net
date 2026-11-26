@@ -4,12 +4,12 @@
 - [REP iDClass](#rep-idclass): relógios de ponto.
 
 
-Levantamento feito em 2026-10-12 sobre as **74 páginas** da [documentação oficial da linha de acesso](https://www.controlid.com.br/docs/access-api-pt/). Cada endpoint, objeto, evento e seção de configuração
+Levantamento atualizado em 2026-11-20 sobre as **96 páginas** (dump em [`docs/controlid-api`](controlid-api/README.md)) da [documentação oficial da linha de acesso](https://www.controlid.com.br/docs/access-api-pt/). Cada endpoint, objeto, evento e seção de configuração
 documentados tem um método, modelo ou rota tipados no pacote.
 
 | Item | Cobertura |
 | --- | --- |
-| Endpoints chamados no equipamento | 85 de 85 |
+| Endpoints chamados no equipamento | 180 de 180 (os 11 de chaves HID e OEM pelo `IAccessProvisioningClient`, ADR 0024); 2 fora por decisão: `tests/ControlId.Net.Tests/Cobertura/nao-cobrir.txt` |
 | Rotas que o equipamento chama no seu servidor (Monitor, Push, modo online) | todas, no `ControlId.Net.AspNetCore` |
 | Objetos (`load/create/modify/destroy_objects`) | 37 de 37, com modelo e CRUD tipado |
 | Seções de configuração | 34 seções, 245 parâmetros |
@@ -152,15 +152,130 @@ acrescente-o ao teste.
 | `has_audio_access_messages.fcgi` | POST | `GetAccessAudioStatusAsync()` |
 | `change_idcloud_code.fcgi` | GET | `ChangeIdCloudCodeAsync()` |
 
+### Biometria, schema customizado, rede e leitura de hardware
+
+| Endpoint | HTTP | Método |
+| --- | --- | --- |
+| `face_template_match.fcgi` | POST | `MatchFaceTemplateAsync(faceTemplate, userId)` |
+| `face_template_count_distinct.fcgi` | GET | `CountFaceTemplatesAsync()` |
+| `template_match.fcgi` | POST | `MatchFingerprintTemplatesAsync(templates)` |
+| `object_metadata.fcgi` | POST | `GetObjectMetadataAsync()` |
+| `object_add.fcgi` | POST | `CreateCustomTableAsync(table, label, fields)` |
+| `object_remove.fcgi` | POST | `DeleteCustomTablesAsync(confirmation, tableIds)` |
+| `object_add_field.fcgi` | POST | `AddCustomFieldAsync(table, field)` |
+| `object_update_field.fcgi` | POST | `UpdateCustomFieldAsync(fieldId, field)` |
+| `object_remove_fields.fcgi` | POST | `RemoveCustomFieldsAsync(confirmation, fieldIds)` |
+| `export_object.fcgi` | POST | `ExportObjectCsvAsync(object, columns)` |
+| `export_custom_tables_metadata.fcgi` | GET | `ExportCustomTablesMetadataCsvAsync()` |
+| `get_ntp_server.fcgi` | GET | `GetNtpServerAsync()` |
+| `set_ntp_server.fcgi` | POST | `SetNtpServerAsync(server1, server2)` |
+| `get_ntp_server_status.fcgi` | GET | `GetNtpServerStatusAsync()` |
+| `check_port_availability.fcgi` | POST | `CheckPortAvailabilityAsync(initialPort, finalPort)` |
+| `get_vpn_ip.fcgi` | GET | `GetVpnIpAsync()` |
+| `get_ssl_certificate.fcgi` | GET | `GetSslCertificateAsync()` |
+| `get_802_1X_status.fcgi` | GET | `Get8021XStatusAsync(networkInterface)` |
+| `get_ac_log.fcgi`, `get_openvpn_log.fcgi`, `get_wpa_log.fcgi`, `get_wpasupplicant_log.fcgi` | GET | `GetDeviceLogAsync(DeviceLog)` |
+| `io_state.fcgi` | POST | `GetIoStateAsync()` |
+| `is_identifying.fcgi` | GET | `IsIdentifyingAsync()` |
+| `get_catra_info.fcgi` | GET | `GetTurnstileCountersAsync()` |
+| `get_last_snapshot.fcgi` | GET | `GetLastSnapshotAsync()` |
+| `device_rfid_module.fcgi` | GET | `GetRfidModuleAsync()` |
+| `get_hid_last_card.fcgi` | GET | `GetHidLastCardAsync()` |
+| `get_wiegand_card_read.fcgi` | GET | `GetLastWiegandReadAsync()` |
+| `master_password.fcgi` | POST | `SetMasterPasswordAsync(password)`, `GetMasterPasswordInfoAsync()` |
+| `recovery_password.fcgi` | POST | `SetUpdateModePasswordAsync(password)`, `RemoveUpdateModePasswordAsync()`, `GetUpdateModePasswordStatusAsync()` |
+
+Remover tabela ou campo customizado apaga dados e exige `DataLossConfirmation`. As senhas nunca entram em mensagem de exceção nem em log.
+
+### Específicos de produto: Wi-Fi, EAP, mídia de tela, SecBox, OSDP, licenças e redirecionamento
+
+| Endpoint | HTTP | Método |
+| --- | --- | --- |
+| `set_wifi_source.fcgi` | POST | `SetWifiSourceAsync(source)` |
+| `wifi_scan.fcgi` | POST | `ScanWifiAsync()` |
+| `set_wifi_settings.fcgi` | POST | `SetWifiSettingsAsync(ssid, psk, bssid)` |
+| `get_wifi_data.fcgi` | POST | `GetWifiDataAsync()` |
+| `forget_wifi_connected_network.fcgi` | POST | `ForgetWifiConnectedNetworkAsync(confirmation)` |
+| `check_ip_conflict.fcgi` | POST | `CheckIpConflictAsync(networkInterface, ip)` |
+| `eap_802_1X_certificate_change.fcgi` | POST | `UploadEapCaCertificateAsync(certificate)` |
+| `eap_802_1X_certificate_change_wifi.fcgi` | POST | `UploadEapCaCertificateWifiAsync(certificate)` |
+| `eap_tls_802_1X_certificate_change.fcgi` | POST | `UploadEapTlsClientCertificateAsync(certificate)` |
+| `eap_tls_802_1X_private_key_change.fcgi` | POST | `UploadEapTlsPrivateKeyAsync(privateKey)` |
+| `eap_tls_802_1X_private_key_persist.fcgi` | POST | `PersistEapTlsPrivateKeyAsync()` |
+| `get_eap_tls_csr_file.fcgi` | POST | `GetEapTlsCsrAsync(password)` |
+| `send_slideshow_images.fcgi` | POST | `SendSlideshowImageAsync(filename, jpeg)` |
+| `get_slideshow_images_list.fcgi` | GET | `GetSlideshowImagesAsync()` |
+| `get_slideshow_image.fcgi` | GET | `GetSlideshowImageAsync(filename)` |
+| `delete_slideshow_image.fcgi` | POST | `DeleteSlideshowImageAsync(filename)` |
+| `remove_slideshow_images.fcgi` | POST | `RemoveAllSlideshowImagesAsync(confirmation)` |
+| `set_kiosk_icon.fcgi` | POST | `SetKioskIconAsync(filename, image)` |
+| `get_kiosk_icon.fcgi` | GET | `GetKioskIconAsync(filename)` |
+| `delete_kiosk_icon.fcgi` | POST | `DeleteKioskIconAsync(filename)` |
+| `get_kiosk_icons_list.fcgi` | GET | `GetKioskIconsAsync()` |
+| `set_phone_icon.fcgi` | POST | `SetPhoneIconAsync(png)` |
+| `get_phone_icon.fcgi` | GET | `GetPhoneIconAsync()` |
+| `remove_phone_icon.fcgi` | POST | `RemovePhoneIconAsync()` |
+| `make_sip_conference.fcgi` | POST | `MakeSipConferenceAsync(target)` |
+| `set_streaming_logo.fcgi` | POST | `SetStreamingLogoAsync(png)` |
+| `get_streaming_logo.fcgi` | GET | `GetStreamingLogoAsync()` |
+| `remove_streaming_logo.fcgi` | POST | `RemoveStreamingLogoAsync()` |
+| `device_has_secbox.fcgi` | GET | `DeviceHasSecBoxAsync()` |
+| `secbox_is_active.fcgi` | GET | `IsSecBoxActiveAsync()` |
+| `secbox_serial_number.fcgi` | GET | `GetSecBoxSerialNumberAsync()` |
+| `update_secbox_firmware.fcgi` | POST | `UpdateSecBoxFirmwareAsync()`, `WaitSecBoxFirmwareUpdateAsync()` |
+| `update_secbox_firmware_status.fcgi` | GET | `GetSecBoxFirmwareUpdateStatusAsync()` |
+| `update_secbox_firmware_version.fcgi` | GET | `GetSecBoxFirmwareVersionAsync()` |
+| `change_crypto_key_default.fcgi` | POST | `ChangeSecBoxCryptoKeyToDefaultAsync(confirmation)` |
+| `change_crypto_key_random.fcgi` | POST | `ChangeSecBoxCryptoKeyToRandomAsync(confirmation)` |
+| `reset_crypto_key.fcgi` | POST | `ResetSecBoxCryptoKeyAsync(confirmation)` |
+| `set_dual_sided_secret.fcgi` | POST | `SetDualSidedSecretAsync(secret)` |
+| `get_dual_sided_status.fcgi` | POST | `GetDualSidedStatusAsync()` |
+| `get_osdp_installation_mode.fcgi` | GET | `GetOsdpInstallationModeAsync()` |
+| `osdp_get_connection_status.fcgi` | POST | `GetOsdpConnectionStatusAsync(panelId)` |
+| `osdp_get_output_capabilities.fcgi` | POST | `GetOsdpOutputCapabilitiesAsync(address)` |
+| `osdp_refresh.fcgi` | POST | `RefreshOsdpAsync()` |
+| `osdp_scbk.fcgi` | POST | `GetOsdpScbkAsync()`, `SetOsdpScbkAsync(scbk)` |
+| `osdp_set_secure_key.fcgi` | POST | `SetOsdpSecureKeyAsync(panelId, address, scbkHex)` |
+| `osdp_set_secure_type.fcgi` | POST | `SetOsdpSecureTypeAsync(panelId, address, secureType)` |
+| `remote_camera_calibration.fcgi` | POST | `StartCameraCalibrationAsync(timeoutSeconds)` |
+| `cancel_remote_camera_calibration.fcgi` | POST | `CancelCameraCalibrationAsync()` |
+| `camera_calibration_status.fcgi` | POST | `GetCameraCalibrationStatusAsync()`, `WaitCameraCalibrationAsync()` |
+| `upgrade_twenty_thousand_face_templates.fcgi` | POST | `ApplyFaceLicenseAsync(FaceLicense.Pro20k, password)` |
+| `upgrade_ten_thousand_templates.fcgi` | POST | `UpgradeFingerprintCapacityAsync(password)` |
+| `set_pro_operation_mode_and_reboot.fcgi` | POST | `SetProOperationModeAndRebootAsync(mode)` (reinicia o equipamento) |
+| `request_redirect.fcgi` | POST | `RedirectRequestAsync(target, command, body, query)` |
+
+Operações destrutivas (esquecer a rede Wi-Fi, apagar todos os slides, trocar ou zerar a chave do SecBox) exigem `DataLossConfirmation`. Segredos (`psk`, `scbk`, chave privada EAP, segredo do dual sided, senha do redirecionamento) nunca entram em exceção nem em log e saem mascarados no `ToString` dos modelos. A doc do OSDP escreve `nun_outputs` (sic); o modelo usa o nome literal. 
+
+### Chaves do leitor HID e código OEM (`IAccessProvisioningClient`)
+
+Fora do `IAccessClient`, num cliente criado só a pedido: `client.CreateProvisioningClient()` (ADR 0024). Implementado conforme a documentação, sem teste em leitor HID real.
+
+| Endpoint | HTTP | Método |
+| --- | --- | --- |
+| `hid_inject_default_kek.fcgi` | POST | `InjectHidDefaultKekAsync(key, currentKek, keyId)` |
+| `hid_inject_custom_kek.fcgi` | POST | `InjectHidCustomKekAsync(targetRef, kekRef, key, kek)` |
+| `hid_inject_media_key.fcgi` | POST | `InjectHidMediaKeyAsync(targetRef, kekRef, key, kek)` |
+| `hid_get_key_info.fcgi` | POST | `GetHidKeyInfoAsync(targetRef)` |
+| `hid_set_oid.fcgi` | POST | `SetHidOidAsync(oid, bool/int/byte[])` |
+| `hid_get_oid.fcgi` | POST | `GetHidOidAsync(oid)` |
+| `hid_reset_config.fcgi` | POST | `ResetHidConfigAsync(confirmation)`, `RestoreHidConfigAsync(confirmation, orcoFile)`, `GetHidConfigResetStatusAsync()`, `WaitHidConfigResetAsync()` |
+| `get_oem_code.fcgi` | GET | `GetOemCodeAsync()` |
+| `set_oem_code.fcgi` | POST | `SetOemCodeAsync(oemCode, license)` |
+| `get_oem_downgrade_approved_versions.fcgi` | POST | `GetOemDowngradeApprovedVersionsAsync()` |
+| `set_oem_approved_fw.fcgi` | POST | `SetOemApprovedFirmwareAsync(oemCode, license, version)`, `ClearOemApprovedFirmwareAsync(oemCode, license)` |
+
+Chaves, KEKs e licenças nunca entram em exceção nem em log. O reset e a restauração da configuração do leitor exigem `DataLossConfirmation`.
+
 ## Rotas que o equipamento chama no seu servidor
 
 | Funcionalidade | Rotas | No pacote |
 | --- | --- | --- |
 | Monitor | `api/notifications/{dao, door, secbox, catra_event, operation_mode, device_is_alive, access_photo, usb_drive, template, user_image, face_template, card, pin, password}` | `MonitorNotifications.Parse`, `MapControlIdMonitor` |
 | Push | `GET /push`, `POST /result` (comando avulso ou `transactions`) | `PushServer`, `MapControlIdPush` |
-| Modo online: identificação | `new_user_identified`, `new_card`, `new_qrcode`, `new_uhf_tag`, `new_user_id_and_password`, `new_biometric_image`, `new_biometric_template` | `OnlineEvents.Parse`, `MapControlIdOnline` |
-| Modo online: cadastro remoto | `card_create`, `fingerprint_create`, `template_create`, `face_create`, `pin_create`, `password_create` | `OnlineEvents.ParseEnroll`, `IOnlineAccessHandler.OnRemoteEnrollAsync` |
-| Modo online: outros | `new_rex_log`, `GET user_get_image`, `device_is_alive`, `session_is_valid` | `MapControlIdOnline` |
+| Modo online: identificação | `new_user_identified`, `new_card`, `new_qrcode`, `new_uhf_tag`, `new_user_id_and_password`, `new_biometric_image`, `new_biometric_template`, `new_pin`, `new_face_template` | `OnlineEvents.Parse`, `MapControlIdOnline` |
+| Modo online: cadastro remoto | `card_create`, `fingerprint_create`, `template_create`, `face_create`, `pin_create`, `password_create`, `face_template_create`, `tag_create` | `OnlineEvents.ParseEnroll`, `IOnlineAccessHandler.OnRemoteEnrollAsync` |
+| Modo online: outros | `new_rex_log`, `new_user_enrolled` (autocadastro no quiosque, `OnlineEvents.ParseKioskEnrollment` e `IOnlineAccessHandler.OnKioskEnrollmentAsync`), `GET user_get_image`, `device_is_alive`, `session_is_valid` | `MapControlIdOnline` |
 | Streaming | `rtsp://…/main_stream` (não é HTTP) | `GetRtspStreamUri` |
 
 ## Objetos
@@ -247,6 +362,17 @@ em exemplos, sem descrição, ficam como `string`.
 | Configuração | Módulos de Energia, RS485, RFID, HID e OSDP sem nome | Nome inferido do título e marcado nas classes; o HID foi corrigido para `hid_reader` pela coleção do Postman |
 | `sec_boxs` (configuração) | O site põe `out_mode` e `wiegand_format_size` em `sec_boxs`; o Postman e a descrição de `denied_transaction_code` usam `sec_box` | `sec_box` |
 | `session_is_valid` (servidor) | Resposta não documentada | `{"session_is_valid": true}` |
+
+## Alive, limites de foto e degradações automáticas
+
+Tudo aqui é comportamento do pacote; o que foi observado em equipamento fica nas seções "Observado num iDFace real".
+
+- **`device_is_alive.fcgi` e `session_is_valid.fcgi` no modo online:** o equipamento chama os dois em **POST** (firmware observado) e a documentação mostra **GET**. As rotas aceitam os dois métodos e aplicam a mesma regra de token (#51).
+- **Limites de foto:** não há tabela por modelo; os valores são opções de `ControlIdDeviceOptions` e valem para qualquer modelo: lado maior 1920 px (`MaxImageLongSide`), lado menor 1080 px (`MaxImageShortSide`), 2 MiB por foto (`MaxImageBytes`), 1 MiB de base64 e 100 fotos por lote de `user_set_image_list` (`MaxImageBatchBytes`, `MaxImagesPerBatch`). A foto fora do limite falha com `ControlIdImageRejectedException` antes da requisição; `ValidateImages = false` desliga a checagem para quem sabe que o modelo aceita mais (#56, #35).
+- **Fallback do upsert:** `CreateOrModifyObjectsAsync` usa `create_or_modify_objects`; quando o equipamento responde "Invalid command" ou 404, o comando fica marcado como não suportado e o pacote faz `modify_objects` por `id` e `create_objects` só para quem não foi alterado. O fallback não é atômico (veja o XML doc). Lotes de até `MaxObjectsPerRequest` (200) objetos (#33, #35).
+- **Fallback do Push:** quando o equipamento recusa o lote em `transactions` (o 6.9.12 responde "Invalid member 'endpoint'"), o `PushServer` lembra isso por equipamento e reenfileira os comandos como envios individuais; `PushServerOptions.UseTransactions` força o modo (`null` = automático) (#35).
+- **Matriz em código:** a matriz de comandos não suportados por firmware (`GetCapabilitiesAsync`, `DeviceCapabilities`) espelha as listas das seções "Observado num iDFace real"; o teste `CapabilityMatrixDocsTests` falha se o código e este documento divergirem. Ao observar um comando novo, atualize as duas pontas (#34).
+- **Hora dos eventos:** `time` dos logs e eventos é a hora local do relógio do equipamento, não UTC; use as propriedades `Local*` (#50).
 
 ## Observado num iDFace real (firmware 6.9.12)
 

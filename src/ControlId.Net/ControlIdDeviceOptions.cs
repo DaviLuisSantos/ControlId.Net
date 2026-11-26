@@ -23,11 +23,47 @@ public sealed class ControlIdDeviceOptions
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
-    /// Aceita certificados TLS inválidos/autoassinados. O REP iDClass usa HTTPS com certificado
-    /// autoassinado, então normalmente isso precisa ser <c>true</c> para ele.
+    /// Aceita qualquer certificado TLS, inclusive inválido ou falso. Padrão: <c>false</c>. Evite: login e senha ficam expostos
+    /// a quem se passar pelo equipamento na rede, e o cliente registra o log 1013 (Warning) ao ser criado assim. Para o REP
+    /// iDClass, que sai de fábrica com certificado autoassinado, prefira <see cref="ServerCertificateSha256"/>, que aceita só
+    /// aquele certificado (e faz esta opção ser ignorada).
     /// Só tem efeito quando o cliente cria o próprio <see cref="System.Net.Http.HttpClient"/>.
     /// </summary>
     public bool AcceptAnyServerCertificate { get; set; }
+
+    /// <summary>
+    /// Prazo para estabelecer a conexão com o equipamento. Padrão: 5 segundos. Precisa ser positivo; quando passa de
+    /// <see cref="Timeout"/>, vale o <see cref="Timeout"/>. <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> desliga o prazo. Só tem efeito
+    /// quando o cliente cria o próprio <see cref="System.Net.Http.HttpClient"/> e o runtime o permite (.NET 8 ou superior).
+    /// </summary>
+    public TimeSpan ConnectTimeout { get; set; } = TimeSpan.FromSeconds(5);
+
+    /// <summary>Valida as imagens de usuário (formato, dimensões e tamanho) antes de enviá-las. Padrão: <c>true</c>.</summary>
+    public bool ValidateImages { get; set; } = true;
+
+    /// <summary>Maior lado aceito de uma imagem de usuário, em pixels. Padrão: 1920.</summary>
+    public int MaxImageLongSide { get; set; } = 1920;
+
+    /// <summary>Menor lado aceito de uma imagem de usuário, em pixels. Padrão: 1080.</summary>
+    public int MaxImageShortSide { get; set; } = 1080;
+
+    /// <summary>Tamanho máximo de uma imagem de usuário, em bytes. Padrão: 2 MiB.</summary>
+    public long MaxImageBytes { get; set; } = 2 * 1024 * 1024;
+
+    /// <summary>Soma máxima do base64 das imagens de um lote de <c>user_set_image_list</c>, em bytes. Padrão: 1 MiB.</summary>
+    public long MaxImageBatchBytes { get; set; } = 1024 * 1024;
+
+    /// <summary>Máximo de imagens por lote de <c>user_set_image_list</c>. Padrão: 100.</summary>
+    public int MaxImagesPerBatch { get; set; } = 100;
+
+    /// <summary>Máximo de objetos por requisição de <c>create_objects</c> e <c>create_or_modify_objects</c>. Padrão: 200.</summary>
+    public int MaxObjectsPerRequest { get; set; } = 200;
+
+    /// <summary>
+    /// Quanto do corpo da resposta fica em <see cref="ControlIdException.ResponseBody"/>. Padrão:
+    /// <see cref="ExceptionResponseBody.ErrorOnly"/>, que só guarda o JSON de erro do equipamento.
+    /// </summary>
+    public ExceptionResponseBody ExceptionResponseBody { get; set; } = ExceptionResponseBody.ErrorOnly;
 
     /// <summary>
     /// Impressão digital SHA-256 do certificado do equipamento (hexadecimal; aceita <c>:</c> e espaços). Com ela, só esse
@@ -38,10 +74,10 @@ public sealed class ControlIdDeviceOptions
     public string? ServerCertificateSha256 { get; set; }
 
     /// <summary>Valor padrão de <see cref="MaxConcurrentRequests"/>.</summary>
-    public const int DefaultMaxConcurrentRequests = 4;
+    public const int DefaultMaxConcurrentRequests = 1;
 
     /// <summary>
-    /// Máximo de requisições simultâneas a este equipamento (login incluído). Padrão: 4. As chamadas além do limite
+    /// Máximo de requisições simultâneas a este equipamento (login incluído). Padrão: 1. As chamadas além do limite
     /// esperam a vez, então dá para disparar muitas em paralelo sem sobrecarregar o equipamento. O limite é o mesmo em
     /// qualquer runtime (sozinho, o .NET Framework limitaria a 2 conexões e o .NET Core não limitaria).
     /// <para>
@@ -128,6 +164,50 @@ public sealed class ControlIdDeviceOptions
         if (CircuitBreakerBreakDuration <= TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(CircuitBreakerBreakDuration), CircuitBreakerBreakDuration, $"{nameof(CircuitBreakerBreakDuration)} precisa ser positivo.");
+        }
+
+        if (ConnectTimeout != System.Threading.Timeout.InfiniteTimeSpan && ConnectTimeout <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(ConnectTimeout), ConnectTimeout, $"{nameof(ConnectTimeout)} precisa ser positivo ou Timeout.InfiniteTimeSpan.");
+        }
+
+        if (MaxImageLongSide < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaxImageLongSide), MaxImageLongSide, $"{nameof(MaxImageLongSide)} precisa ser pelo menos 1.");
+        }
+
+        if (MaxImageShortSide < 1 || MaxImageShortSide > MaxImageLongSide)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaxImageShortSide), MaxImageShortSide, $"{nameof(MaxImageShortSide)} precisa estar entre 1 e {nameof(MaxImageLongSide)}.");
+        }
+
+        if (MaxImageBytes < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaxImageBytes), MaxImageBytes, $"{nameof(MaxImageBytes)} precisa ser pelo menos 1.");
+        }
+
+        if (MaxImageBatchBytes < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaxImageBatchBytes), MaxImageBatchBytes, $"{nameof(MaxImageBatchBytes)} precisa ser pelo menos 1.");
+        }
+
+        if (MaxImagesPerBatch < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaxImagesPerBatch), MaxImagesPerBatch, $"{nameof(MaxImagesPerBatch)} precisa ser pelo menos 1.");
+        }
+
+        if (MaxObjectsPerRequest < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaxObjectsPerRequest), MaxObjectsPerRequest, $"{nameof(MaxObjectsPerRequest)} precisa ser pelo menos 1.");
+        }
+
+        #if NET5_0_OR_GREATER
+        if (!Enum.IsDefined(ExceptionResponseBody))
+#else
+        if (!Enum.IsDefined(typeof(ExceptionResponseBody), ExceptionResponseBody))
+#endif
+        {
+            throw new ArgumentOutOfRangeException(nameof(ExceptionResponseBody), ExceptionResponseBody, $"{nameof(ExceptionResponseBody)} tem um valor inválido.");
         }
 
         if (BaseAddress is null)

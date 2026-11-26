@@ -77,7 +77,7 @@ public class DeviceCommandsTests
         var device = LoggedDevice().On("change_login.fcgi", HttpStatusCode.BadRequest, """{"error":"invalid","code":1}""");
         using var client = new AccessClient(Options, device.CreateClient());
 
-        await Assert.ThrowsAsync<ControlIdException>(() => client.ChangeLoginAsync("novo", "x"));
+        await Assert.ThrowsAnyAsync<ControlIdException>(() => client.ChangeLoginAsync("novo", "x"));
         await client.LoginAsync();
 
         Assert.Equal("""{"login":"admin","password":"admin"}""", device.RequestsTo("login.fcgi").Last().Body);
@@ -137,7 +137,7 @@ public class DeviceCommandsTests
         };
 
         Assert.Equal(
-            """{"ip":"192.168.0.33","netmask":"255.255.255.0","gateway":"192.168.0.1","custom_hostname_enabled":true,"device_hostname":"ControlID","web_server_port":80,"ssl_enabled":false,"self_signed_certificate":true,"dns_primary":"1.1.1.1","dns_secondary":"1.1.4.4"}""",
+            """{"ip":"192.168.0.33","netmask":"255.255.255.0","gateway":"192.168.0.1","custom_hostname_enabled":true,"device_hostname":"ControlID","web_server_port":80,"ssl_enabled":false,"self_signed_certificate":true,"primary_dns":"1.1.1.1","secondary_dns":"1.1.4.4"}""",
             (await RunAsync("set_system_network.fcgi", c => c.SetNetworkAsync(settings))).Body);
         Assert.Equal(
             """{"ip":"10.0.0.9","netmask":"255.0.0.0","gateway":"10.0.0.1"}""",

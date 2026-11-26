@@ -30,12 +30,124 @@ public static class AccessApi
         ["set_configuration"] = SetConfiguration,
         ["user_set_image"] = UserSetImage,
         ["user_get_image"] = UserGetImage,
+        ["user_set_image_list"] = UserSetImageList,
+        ["set_system_time"] = SetSystemTime,
+        ["enroller_state"] = _ => Json(new JsonObject { ["enroller_state"] = "NORMAL_STATE", ["biometry_state"] = "NOT_ENROLLING", ["last_enroll"] = 0, ["last_enroll_error"] = "UNKNOWN" }),
         ["user_list_images"] = UserListImages,
         ["user_destroy_image"] = UserDestroyImage,
         ["message_to_screen"] = MessageToScreen,
         ["buzzer_buzz"] = Ok,
         ["change_login"] = ChangeLogin,
         ["reboot"] = Reboot,
+        ["face_template_match"] = FaceTemplateMatch,
+        ["face_template_count_distinct"] = FaceTemplateCount,
+        ["template_match"] = TemplateMatch,
+        ["io_state"] = IoState,
+        ["is_identifying"] = _ => Json(new JsonObject { ["is_identifying"] = false }),
+        ["get_catra_info"] = _ => Json(new JsonObject { ["left_turns"] = 0, ["right_turns"] = 0, ["entrance_turns"] = 0, ["exit_turns"] = 0, ["total_turns"] = 0 }),
+        ["get_last_snapshot"] = _ => Json(new JsonObject { ["image_base64"] = Convert.ToBase64String(new byte[] { 0xFF, 0xD8, 0xFF, 0xD9 }) }),
+        ["device_rfid_module"] = _ => Json(new JsonObject { ["module"] = "MIFARE" }),
+        ["get_hid_last_card"] = _ => Json(new JsonObject { ["csn"] = "0A1B2C3D", ["pac"] = "00112233", ["type"] = "iCLASS", ["bits"] = 26, ["custom"] = "0" }),
+        ["get_wiegand_card_read"] = _ => Json(new JsonObject
+        {
+            ["card_read_value"] = "12345678",
+            ["card_read_num_bits"] = 26,
+            ["facility_code"] = "10",
+            ["card_number"] = "5678",
+            ["parities"] = 3,
+            ["last_read_time"] = "2026-01-01 00:00:00",
+        }),
+        ["object_metadata"] = ObjectMetadata,
+        ["object_add"] = ObjectAdd,
+        ["object_remove"] = ObjectRemove,
+        ["object_add_field"] = ObjectAddField,
+        ["object_update_field"] = ObjectUpdateField,
+        ["object_remove_fields"] = ObjectRemoveFields,
+        ["export_object"] = ExportObject,
+        ["export_custom_tables_metadata"] = ExportCustomTablesMetadata,
+        ["get_ntp_server"] = GetNtpServer,
+        ["set_ntp_server"] = SetNtpServer,
+        ["get_ntp_server_status"] = _ => Json(new JsonObject { ["server_status"] = true }),
+        ["check_port_availability"] = _ => Json(new JsonObject { ["status"] = "OK" }),
+        ["get_vpn_ip"] = _ => Json(new JsonObject { ["ip"] = "10.8.0.2" }),
+        ["get_ssl_certificate"] = _ => Text("-----BEGIN CERTIFICATE-----\nSIMULADOR\n-----END CERTIFICATE-----\n"),
+        ["get_802_1X_status"] = _ => Json(new JsonObject { ["status"] = 11 }),
+        ["get_ac_log"] = _ => Text("ac: simulador iniciado\n"),
+        ["get_openvpn_log"] = _ => Text("openvpn: inativo\n"),
+        ["get_wpa_log"] = _ => Text("wpa: inativo\n"),
+        ["get_wpasupplicant_log"] = _ => Text("wpa_supplicant: inativo\n"),
+        ["master_password"] = MasterPassword,
+        ["recovery_password"] = RecoveryPassword,
+        ["set_wifi_source"] = SetWifiSource,
+        ["wifi_scan"] = _ => Json(new JsonObject { ["networks"] = new JsonArray(new JsonObject { ["ssid"] = WifiKnownSsid, ["bssid"] = "02:00:00:00:00:10", ["freq"] = 2412, ["signal"] = -40 }) }),
+        ["set_wifi_settings"] = SetWifiSettings,
+        ["get_wifi_data"] = GetWifiData,
+        ["forget_wifi_connected_network"] = ForgetWifiConnectedNetwork,
+        ["check_ip_conflict"] = CheckIpConflict,
+        ["eap_802_1X_certificate_change"] = StoreBinary("eap_ca"),
+        ["eap_802_1X_certificate_change_wifi"] = StoreBinary("eap_ca_wifi"),
+        ["eap_tls_802_1X_certificate_change"] = StoreBinary("eap_tls_certificate"),
+        ["eap_tls_802_1X_private_key_change"] = StoreBinary("eap_tls_private_key"),
+        ["get_eap_tls_csr_file"] = _ => Text("-----BEGIN CERTIFICATE REQUEST-----\nSIMULADOR\n-----END CERTIFICATE REQUEST-----\n"),
+        ["eap_tls_802_1X_private_key_persist"] = Ok,
+        ["send_slideshow_images"] = SendSlideshowImage,
+        ["get_slideshow_images_list"] = r => MediaList(r, r.State.Slideshow, "images", 10, asObjects: false),
+        ["get_slideshow_image"] = r => MediaGet(r, r.State.Slideshow, "image/jpeg"),
+        ["delete_slideshow_image"] = r => MediaDelete(r, r.State.Slideshow),
+        ["remove_slideshow_images"] = RemoveSlideshowImages,
+        ["set_kiosk_icon"] = SetKioskIcon,
+        ["get_kiosk_icon"] = GetKioskIcon,
+        ["delete_kiosk_icon"] = r => MediaDelete(r, r.State.KioskIcons),
+        ["get_kiosk_icons_list"] = r => MediaList(r, r.State.KioskIcons, "icons", 20, asObjects: true),
+        ["set_phone_icon"] = r => SetSingleImage(r, (s, b) => s.PhoneIcon = b),
+        ["get_phone_icon"] = r => GetSingleImage(r, s => s.PhoneIcon),
+        ["remove_phone_icon"] = r => SetSingleImage(r, (s, _) => s.PhoneIcon = null, allowEmpty: true),
+        ["make_sip_conference"] = Ok,
+        ["set_streaming_logo"] = r => SetSingleImage(r, (s, b) => s.StreamingLogo = b),
+        ["get_streaming_logo"] = r => GetSingleImage(r, s => s.StreamingLogo),
+        ["remove_streaming_logo"] = r => SetSingleImage(r, (s, _) => s.StreamingLogo = null, allowEmpty: true),
+        ["device_has_secbox"] = _ => Json(new JsonObject { ["has_secbox"] = true }),
+        ["secbox_is_active"] = _ => Json(new JsonObject { ["isActive"] = true }),
+        ["secbox_serial_number"] = _ => Json(new JsonObject { ["serial"] = "SBX-0001" }),
+        ["update_secbox_firmware_version"] = _ => Json(new JsonObject { ["fw_version"] = 12 }),
+        ["update_secbox_firmware"] = _ => Json(new JsonObject { ["isUpdated"] = true }),
+        ["update_secbox_firmware_status"] = _ => Json(new JsonObject { ["isFinished"] = true, ["bitsWritten"] = 1024 }),
+        ["change_crypto_key_default"] = _ => Json(new JsonObject { ["Status Key"] = "00" }),
+        ["change_crypto_key_random"] = _ => Json(new JsonObject { ["Status Key"] = "00" }),
+        ["reset_crypto_key"] = _ => Json(new JsonObject { ["Status Key"] = "00" }),
+        ["set_dual_sided_secret"] = SetDualSidedSecret,
+        ["get_dual_sided_status"] = GetDualSidedStatus,
+        ["get_osdp_installation_mode"] = GetOsdpInstallationMode,
+        ["set_osdp_installation_mode"] = SetOsdpInstallationMode,
+        ["osdp_scbk"] = OsdpScbk,
+        ["osdp_get_connection_status"] = _ => Json(new JsonObject { ["1"] = 1, ["2"] = 0 }),
+        ["osdp_get_output_capabilities"] = _ => Json(new JsonObject { ["nun_outputs"] = 2, ["compliance_level"] = 1 }),
+        ["osdp_set_secure_key"] = OsdpSetSecureKey,
+        ["osdp_set_secure_type"] = OsdpSetSecureType,
+        ["osdp_refresh"] = Ok,
+        ["remote_camera_calibration"] = StartCameraCalibration,
+        ["cancel_remote_camera_calibration"] = CancelCameraCalibration,
+        ["camera_calibration_status"] = CameraCalibrationStatus,
+        ["upgrade_ten_thousand_templates"] = RequirePasswordThenOk,
+        ["upgrade_ten_thousand_face_templates"] = RequirePasswordThenOk,
+        ["upgrade_fifteen_thousand_face_templates"] = RequirePasswordThenOk,
+        ["upgrade_twenty_thousand_face_templates"] = RequirePasswordThenOk,
+        ["upgrade_thirty_thousand_face_templates"] = RequirePasswordThenOk,
+        ["upgrade_fifty_thousand_face_templates"] = RequirePasswordThenOk,
+        ["upgrade_hundred_thousand_face_templates"] = RequirePasswordThenOk,
+        ["set_pro_operation_mode_and_reboot"] = SetProOperationMode,
+        ["request_redirect"] = RequestRedirect,
+        ["hid_inject_default_kek"] = HidInject,
+        ["hid_inject_custom_kek"] = HidInject,
+        ["hid_inject_media_key"] = HidInject,
+        ["hid_get_key_info"] = HidGetKeyInfo,
+        ["hid_set_oid"] = HidSetOid,
+        ["hid_get_oid"] = HidGetOid,
+        ["hid_reset_config"] = HidResetConfig,
+        ["get_oem_code"] = GetOemCode,
+        ["set_oem_code"] = SetOemCode,
+        ["get_oem_downgrade_approved_versions"] = _ => Json(new JsonObject { ["versions"] = new JsonArray("7.12.0", "7.13.2") }),
+        ["set_oem_approved_fw"] = SetOemApprovedFirmware,
     };
 
     /// <summary>Comandos atendidos, para o <c>/simulator/state</c> e a documentação.</summary>
@@ -51,6 +163,16 @@ public static class AccessApi
     {
         var body = await ReadBodyAsync(context.Request);
         var session = context.Request.Query["session"].FirstOrDefault();
+
+        lock (state.Lock)
+        {
+            state.CountRequest(command);
+        }
+
+        if (state.Options.IsCommandDisabled(command))
+        {
+            return Error("Invalid command", StatusCodes.Status400BadRequest);
+        }
 
         try
         {
@@ -125,7 +247,7 @@ public static class AccessApi
         IResult result;
         try
         {
-            result = Commands.TryGetValue(command, out var handler)
+            result = Commands.TryGetValue(command, out var handler) && !state.Options.IsCommandDisabled(command)
                 ? await handler(new Request(context, state, monitor, body))
                 : Error("Invalid command", StatusCodes.Status400BadRequest);
         }
@@ -405,6 +527,66 @@ public static class AccessApi
         return Json(new JsonObject { ["user_id"] = userId, ["success"] = true, ["scores"] = new JsonObject { ["bounds_width"] = 400, ["center_pose_quality"] = 100 } });
     }
 
+    private static Task<IResult> UserSetImageList(Request r)
+    {
+        var limit = r.State.Options.MaxImageListBytes;
+        if (r.Body.Length > limit)
+        {
+            return Task.FromResult(Error($"Request entity too large (limit {limit} bytes)", StatusCodes.Status413PayloadTooLarge));
+        }
+
+        var items = r.Json["user_images"] as JsonArray ?? throw new DeviceException("Missing 'user_images'");
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var results = new JsonArray();
+
+        lock (r.State.Lock)
+        {
+            foreach (var item in items.OfType<JsonObject>())
+            {
+                var userId = ObjectStore.TryGetLong(item["user_id"], out var id) ? id : 0;
+                var errors = new JsonArray();
+                byte[]? image = null;
+                try
+                {
+                    image = Convert.FromBase64String(item["image"]?.GetValue<string>() ?? string.Empty);
+                }
+                catch (FormatException)
+                {
+                }
+
+                if (image is null or { Length: 0 })
+                {
+                    errors.Add(new JsonObject { ["code"] = 1, ["message"] = "Empty image" });
+                }
+                else if (!r.State.Objects.Rows("users").Any(u => ObjectStore.TryGetLong(u["id"], out var uid) && uid == userId))
+                {
+                    errors.Add(new JsonObject { ["code"] = 2, ["message"] = "User not found" });
+                }
+                else
+                {
+                    r.State.SetImage(userId, image, timestamp);
+                }
+
+                results.Add(new JsonObject { ["user_id"] = userId, ["success"] = errors.Count == 0, ["errors"] = errors });
+            }
+        }
+
+        return Json(new JsonObject { ["results"] = results });
+    }
+
+    private static Task<IResult> SetSystemTime(Request r)
+    {
+        foreach (var field in new[] { "day", "month", "year", "hour", "minute", "second" })
+        {
+            if (!ObjectStore.TryGetLong(r.Json[field], out _))
+            {
+                throw new DeviceException($"Missing '{field}'");
+            }
+        }
+
+        return Json(new JsonObject());
+    }
+
     private static Task<IResult> UserGetImage(Request r)
     {
         var userId = QueryLong(r.Context, "user_id") ?? throw new DeviceException("Missing 'user_id'");
@@ -501,6 +683,792 @@ public static class AccessApi
         lock (r.State.Lock)
         {
             r.State.ExpireSessions();
+        }
+
+        return Json(new JsonObject());
+    }
+
+    private static Task<IResult> FaceTemplateMatch(Request r)
+    {
+        _ = RequiredString(r.Json, "face_template");
+        long? userId = r.Json["user_id"] is { } node && ObjectStore.TryGetLong(node, out var id) ? id : null;
+        lock (r.State.Lock)
+        {
+            if (userId is { } wanted && r.State.Objects.Rows("users").Any(u => ObjectStore.TryGetLong(u["id"], out var each) && each == wanted))
+            {
+                return Json(new JsonObject
+                {
+                    ["match"] = true,
+                    ["info"] = new JsonObject { ["match_user_id"] = wanted, ["match_score"] = 900, ["match_similarity"] = 95 },
+                });
+            }
+        }
+
+        return Json(new JsonObject { ["match"] = false });
+    }
+
+    private static Task<IResult> FaceTemplateCount(Request r)
+    {
+        int count;
+        lock (r.State.Lock)
+        {
+            count = r.State.UsersWithImage.Count();
+        }
+
+        return Json(new JsonObject { ["count"] = count });
+    }
+
+    private static Task<IResult> TemplateMatch(Request r)
+    {
+        if (r.Body.Length == 0)
+        {
+            throw new DeviceException("Empty template");
+        }
+
+        return Json(new JsonObject { ["template"] = Convert.ToBase64String(r.Body) });
+    }
+
+    private static Task<IResult> IoState(Request r) =>
+        Json(new JsonObject
+        {
+            ["gpios"] = new JsonArray(new JsonObject
+            {
+                ["index"] = 0,
+                ["role"] = "door_sensor",
+                ["enabled"] = true,
+                ["available"] = true,
+                ["in"] = true,
+                ["value"] = 0,
+                ["idle"] = 0,
+                ["active"] = false,
+            }),
+            ["relays"] = new JsonArray(new JsonObject
+            {
+                ["id"] = 1,
+                ["gpio"] = 0,
+                ["enabled"] = true,
+                ["timeout_ms"] = 3000,
+                ["auto_close"] = true,
+                ["output_mode"] = 0,
+                ["available"] = true,
+                ["active"] = false,
+            }),
+            ["sec_boxes"] = new JsonArray(),
+        });
+
+    private static Task<IResult> ObjectMetadata(Request r)
+    {
+        var filter = r.Json["filter"]?.GetValue<string>();
+        var result = new JsonObject();
+        lock (r.State.Lock)
+        {
+            if (filter != "custom")
+            {
+                result["users"] = new JsonObject
+                {
+                    ["fields"] = new JsonObject
+                    {
+                        ["id"] = new JsonObject { ["type"] = "BIGINT", ["primary key"] = true, ["not null"] = true },
+                        ["name"] = new JsonObject { ["type"] = "TEXT" },
+                    },
+                    ["joins"] = new JsonObject(),
+                };
+            }
+
+            if (filter != "default")
+            {
+                foreach (var table in r.State.CustomTables)
+                {
+                    var fields = new JsonObject { ["id"] = new JsonObject { ["type"] = "BIGINT", ["primary key"] = true, ["not null"] = true } };
+                    foreach (var field in ((JsonArray)table["fields"]!).OfType<JsonObject>())
+                    {
+                        fields[field["column_name"]!.GetValue<string>()] = new JsonObject
+                        {
+                            ["type"] = field["type"]?.GetValue<string>() ?? "TEXT",
+                            ["not null"] = field["constraint"]?.GetValue<string>() == "NOT_NULL",
+                            ["unique"] = field["unique"]?.GetValue<bool>() ?? false,
+                        };
+                    }
+
+                    result[table["object"]!.GetValue<string>()] = new JsonObject { ["fields"] = fields, ["joins"] = new JsonObject() };
+                }
+            }
+        }
+
+        return Json(result);
+    }
+
+    private static Task<IResult> ObjectAdd(Request r)
+    {
+        var json = r.Json;
+        var fields = (json["fields"] as JsonArray ?? throw new DeviceException("Missing 'fields'"))
+            .Select(f => f as JsonObject ?? throw new DeviceException("Invalid field"))
+            .Select(f => (JsonObject)f.DeepClone())
+            .ToList();
+        long? given = json["id"] is { } n && ObjectStore.TryGetLong(n, out var value) ? value : null;
+        long id;
+        lock (r.State.Lock)
+        {
+            id = r.State.AddCustomTable(RequiredString(json, "object"), RequiredString(json, "name"), given, fields);
+        }
+
+        return Json(new JsonObject { ["ids"] = new JsonArray((JsonNode)id) });
+    }
+
+    private static Task<IResult> ObjectRemove(Request r)
+    {
+        lock (r.State.Lock)
+        {
+            r.State.RemoveCustomTables(Ids(r.Json));
+        }
+
+        return Json(new JsonObject());
+    }
+
+    private static Task<IResult> ObjectAddField(Request r)
+    {
+        var json = r.Json;
+        var table = RequiredString(json, "object");
+        var field = (JsonObject)json.DeepClone();
+        field.Remove("object");
+        long id;
+        lock (r.State.Lock)
+        {
+            id = r.State.AddCustomField(table, field);
+        }
+
+        return Json(new JsonObject { ["ids"] = new JsonArray((JsonNode)id) });
+    }
+
+    private static Task<IResult> ObjectUpdateField(Request r)
+    {
+        var json = r.Json;
+        var id = json["id"] is { } n && ObjectStore.TryGetLong(n, out var value) ? value : throw new DeviceException("Missing 'id'");
+        lock (r.State.Lock)
+        {
+            r.State.UpdateCustomField(id, json);
+        }
+
+        return Json(new JsonObject());
+    }
+
+    private static Task<IResult> ObjectRemoveFields(Request r)
+    {
+        List<long> removed;
+        lock (r.State.Lock)
+        {
+            removed = r.State.RemoveCustomFields(Ids(r.Json));
+        }
+
+        return Json(new JsonObject { ["ids"] = new JsonArray(removed.Select(i => (JsonNode)i).ToArray()) });
+    }
+
+    private static Task<IResult> ExportObject(Request r)
+    {
+        var table = RequiredString(r.Json, "object");
+        var requested = r.Json["columns"] is JsonArray c ? c.Select(n => n!.GetValue<string>()).ToList() : null;
+        List<JsonObject> rows;
+        lock (r.State.Lock)
+        {
+            rows = r.State.Objects.Rows(table).Select(x => (JsonObject)x.DeepClone()).ToList();
+        }
+
+        var columns = requested ?? rows.SelectMany(x => x.Select(p => p.Key)).Distinct().ToList();
+        var csv = new System.Text.StringBuilder().AppendLine(string.Join(",", columns));
+        foreach (var row in rows)
+        {
+            csv.AppendLine(string.Join(",", columns.Select(col => Csv(NodeComparer.AsString(row[col])))));
+        }
+
+        return Task.FromResult(Results.Bytes(System.Text.Encoding.UTF8.GetBytes(csv.ToString()), "text/csv"));
+    }
+
+    private static Task<IResult> ExportCustomTablesMetadata(Request r)
+    {
+        var csv = new System.Text.StringBuilder().AppendLine("object,name,column_name,type");
+        lock (r.State.Lock)
+        {
+            foreach (var table in r.State.CustomTables)
+            {
+                foreach (var field in ((JsonArray)table["fields"]!).OfType<JsonObject>())
+                {
+                    csv.AppendLine(string.Join(",", Csv(table["object"]!.GetValue<string>()), Csv(table["name"]!.GetValue<string>()), Csv(field["column_name"]?.GetValue<string>()), Csv(field["type"]?.GetValue<string>())));
+                }
+            }
+        }
+
+        return Task.FromResult(Results.Bytes(System.Text.Encoding.UTF8.GetBytes(csv.ToString()), "text/csv"));
+    }
+
+    private static Task<IResult> GetNtpServer(Request r)
+    {
+        lock (r.State.Lock)
+        {
+            return Json(new JsonObject
+            {
+                ["server1"] = r.State.GetConfiguration("ntp", "server1") ?? "pool.ntp.org",
+                ["server2"] = r.State.GetConfiguration("ntp", "server2") ?? string.Empty,
+            });
+        }
+    }
+
+    private static Task<IResult> SetNtpServer(Request r)
+    {
+        var server1 = RequiredString(r.Json, "server1");
+        lock (r.State.Lock)
+        {
+            r.State.SetConfiguration("ntp", "server1", server1);
+            r.State.SetConfiguration("ntp", "server2", r.Json["server2"]?.GetValue<string>() ?? string.Empty);
+        }
+
+        return Json(new JsonObject());
+    }
+
+    // Sem "password": consulta hash e sal; com "password": grava (o simulador guarda só um marcador).
+    private static Task<IResult> MasterPassword(Request r)
+    {
+        lock (r.State.Lock)
+        {
+            if (r.Json["password"]?.GetValue<string>() is { Length: > 0 })
+            {
+                r.State.SetConfiguration("master_password", "set", "1");
+                return Json(new JsonObject());
+            }
+
+            return Json(new JsonObject { ["hash"] = "00000000000000000000000000000000", ["salt"] = "simulador" });
+        }
+    }
+
+    private static Task<IResult> RecoveryPassword(Request r)
+    {
+        lock (r.State.Lock)
+        {
+            if (r.Json["password"]?.GetValue<string>() is { Length: > 0 })
+            {
+                r.State.SetConfiguration("recovery", "enabled", "1");
+                return Json(new JsonObject());
+            }
+
+            if (r.Json["enabled"] is { } flag)
+            {
+                r.State.SetConfiguration("recovery", "enabled", flag.GetValue<bool>() ? "1" : "0");
+                return Json(new JsonObject());
+            }
+
+            return Json(new JsonObject { ["enabled"] = r.State.GetConfiguration("recovery", "enabled") == "1" });
+        }
+    }
+
+    // ---- Rodada 2: Wi-Fi, mídia da tela, SecBox, OSDP, calibração e provisionamento ----
+
+    // A única rede visível do simulador: qualquer outra SSID responde "rede não encontrada".
+    private const string WifiKnownSsid = "Simulador";
+
+    private static Task<IResult> SetWifiSource(Request r)
+    {
+        var source = RequiredString(r.Json, "source");
+        if (source is not ("internal" or "usb" or "disabled"))
+        {
+            throw new DeviceException($"Invalid source: {source}");
+        }
+
+        lock (r.State.Lock)
+        {
+            r.State.SetConfiguration("sim_wifi", "source", source);
+            if (source == "disabled")
+            {
+                r.State.SetConfiguration("sim_wifi", "connected_ssid", string.Empty);
+            }
+        }
+
+        return Json(new JsonObject());
+    }
+
+    private static Task<IResult> SetWifiSettings(Request r)
+    {
+        var ssid = RequiredString(r.Json, "ssid");
+        _ = r.Json["psk"]?.GetValue<string>() ?? throw new DeviceException("Missing 'psk'");
+        var found = ssid == WifiKnownSsid;
+        lock (r.State.Lock)
+        {
+            if (found)
+            {
+                r.State.SetConfiguration("sim_wifi", "ssid", ssid);
+                r.State.SetConfiguration("sim_wifi", "connected_ssid", ssid);
+            }
+        }
+
+        // 0 conectado, 2 rede não encontrada (Access API, set_wifi_settings).
+        return Json(new JsonObject { ["result"] = found ? 0 : 2 });
+    }
+
+    private static Task<IResult> GetWifiData(Request r)
+    {
+        lock (r.State.Lock)
+        {
+            var connected = r.State.GetConfiguration("sim_wifi", "connected_ssid") ?? string.Empty;
+            return Json(new JsonObject
+            {
+                ["available_adapters"] = new JsonArray("internal", "usb"),
+                ["source"] = r.State.GetConfiguration("sim_wifi", "source") ?? "disabled",
+                ["ssid"] = r.State.GetConfiguration("sim_wifi", "ssid") ?? string.Empty,
+                ["psk"] = string.Empty,
+                ["status"] = connected.Length > 0 ? "connected" : "disconnected",
+                ["connected_ssid"] = connected,
+                ["priority"] = "wired",
+            });
+        }
+    }
+
+    private static Task<IResult> ForgetWifiConnectedNetwork(Request r)
+    {
+        lock (r.State.Lock)
+        {
+            r.State.SetConfiguration("sim_wifi", "ssid", string.Empty);
+            r.State.SetConfiguration("sim_wifi", "connected_ssid", string.Empty);
+        }
+
+        return Json(new JsonObject());
+    }
+
+    // O simulador só vê conflito no 10.0.0.1 (um endereço de gateway típico): dá para exercitar os dois resultados.
+    private static Task<IResult> CheckIpConflict(Request r)
+    {
+        _ = RequiredString(r.Json, "interface");
+        return Json(new JsonObject { ["conflict"] = RequiredString(r.Json, "ip") == "10.0.0.1" });
+    }
+
+    private static Command StoreBinary(string name) => r =>
+    {
+        if (r.Body.Length == 0)
+        {
+            throw new DeviceException("Empty file");
+        }
+
+        lock (r.State.Lock)
+        {
+            r.State.SetConfiguration("sim_eap", name, r.Body.Length.ToString(CultureInfo.InvariantCulture));
+        }
+
+        return Json(new JsonObject());
+    };
+
+    private static string RequiredQuery(Request r, string name) =>
+        r.Context.Request.Query[name].FirstOrDefault() is { Length: > 0 } value ? value : throw new DeviceException($"Missing '{name}'");
+
+    private static Task<IResult> SendSlideshowImage(Request r)
+    {
+        var filename = RequiredQuery(r, "filename");
+        if (r.Body.Length == 0)
+        {
+            throw new DeviceException("Empty image");
+        }
+
+        lock (r.State.Lock)
+        {
+            r.State.Slideshow[filename] = r.Body;
+        }
+
+        return Json(new JsonObject());
+    }
+
+    private static Task<IResult> RemoveSlideshowImages(Request r)
+    {
+        lock (r.State.Lock)
+        {
+            r.State.Slideshow.Clear();
+        }
+
+        return Json(new JsonObject());
+    }
+
+    private static Task<IResult> SetKioskIcon(Request r)
+    {
+        var filename = RequiredQuery(r, "filename");
+        if (r.Body.Length == 0)
+        {
+            throw new DeviceException("Empty image");
+        }
+
+        lock (r.State.Lock)
+        {
+            r.State.KioskIcons[filename] = r.Body;
+        }
+
+        return Json(new JsonObject());
+    }
+
+    private static Task<IResult> GetKioskIcon(Request r)
+    {
+        var filename = RequiredQuery(r, "filename");
+        var contentType = Path.GetExtension(filename).ToLowerInvariant() switch
+        {
+            ".png" => "image/png",
+            ".svg" => "image/svg+xml",
+            _ => "image/jpeg",
+        };
+        return MediaGet(r, r.State.KioskIcons, contentType);
+    }
+
+    private static Task<IResult> MediaList(Request r, Dictionary<string, byte[]> store, string arrayName, int maxFiles, bool asObjects)
+    {
+        string[] names;
+        lock (r.State.Lock)
+        {
+            names = store.Keys.Order(StringComparer.Ordinal).ToArray();
+        }
+
+        var items = new JsonArray(names.Select(n => asObjects ? new JsonObject { ["filename"] = n } : (JsonNode)JsonValue.Create(n)!).ToArray());
+        return Json(new JsonObject { [arrayName] = items, ["max_files"] = maxFiles });
+    }
+
+    private static Task<IResult> MediaGet(Request r, Dictionary<string, byte[]> store, string contentType)
+    {
+        var filename = RequiredQuery(r, "filename");
+        byte[]? content;
+        lock (r.State.Lock)
+        {
+            store.TryGetValue(filename, out content);
+        }
+
+        return content is null
+            ? throw new DeviceException($"File not found: {filename}")
+            : Task.FromResult(Results.Bytes(content, contentType));
+    }
+
+    private static Task<IResult> MediaDelete(Request r, Dictionary<string, byte[]> store)
+    {
+        var filename = RequiredQuery(r, "filename");
+        lock (r.State.Lock)
+        {
+            if (!store.Remove(filename))
+            {
+                throw new DeviceException($"File not found: {filename}");
+            }
+        }
+
+        return Json(new JsonObject());
+    }
+
+    private static Task<IResult> SetSingleImage(Request r, Action<DeviceState, byte[]> apply, bool allowEmpty = false)
+    {
+        if (!allowEmpty && r.Body.Length == 0)
+        {
+            throw new DeviceException("Empty image");
+        }
+
+        lock (r.State.Lock)
+        {
+            apply(r.State, r.Body);
+        }
+
+        return Json(new JsonObject());
+    }
+
+    private static Task<IResult> GetSingleImage(Request r, Func<DeviceState, byte[]?> read)
+    {
+        byte[]? image;
+        lock (r.State.Lock)
+        {
+            image = read(r.State);
+        }
+
+        return image is null ? throw new DeviceException("Image not found") : Task.FromResult(Results.Bytes(image, "image/png"));
+    }
+
+    private static Task<IResult> SetDualSidedSecret(Request r)
+    {
+        var secret = RequiredString(r.Json, "secret");
+        if (secret.Length != 64 || !secret.All(Uri.IsHexDigit))
+        {
+            throw new DeviceException("Invalid secret");
+        }
+
+        lock (r.State.Lock)
+        {
+            r.State.SetConfiguration("sim_secbox", "dual_sided_secret", "1");
+        }
+
+        return Json(new JsonObject());
+    }
+
+    private static Task<IResult> GetDualSidedStatus(Request r)
+    {
+        lock (r.State.Lock)
+        {
+            return Json(new JsonObject
+            {
+                ["secret_configured"] = r.State.GetConfiguration("sim_secbox", "dual_sided_secret") == "1",
+                ["door1_peer_address_valid"] = false,
+            });
+        }
+    }
+
+    private static Task<IResult> GetOsdpInstallationMode(Request r)
+    {
+        lock (r.State.Lock)
+        {
+            return Json(new JsonObject { ["installation_mode"] = r.State.GetConfiguration("sim_osdp", "installation_mode") == "1" });
+        }
+    }
+
+    private static Task<IResult> SetOsdpInstallationMode(Request r)
+    {
+        var enabled = r.Json["enabled"]?.GetValue<bool>() ?? throw new DeviceException("Missing 'enabled'");
+        lock (r.State.Lock)
+        {
+            r.State.SetConfiguration("sim_osdp", "installation_mode", enabled ? "1" : "0");
+        }
+
+        return Json(new JsonObject());
+    }
+
+    // Sem "scbk": consulta; com "scbk": grava.
+    private static Task<IResult> OsdpScbk(Request r)
+    {
+        lock (r.State.Lock)
+        {
+            if (r.Json["scbk"]?.GetValue<string>() is { } scbk)
+            {
+                RequireHex(scbk);
+                r.State.SetConfiguration("sim_osdp", "scbk", scbk);
+                return Json(new JsonObject());
+            }
+
+            return Json(new JsonObject { ["scbk"] = r.State.GetConfiguration("sim_osdp", "scbk") ?? "303132333435363738393A3B3C3D3E3F" });
+        }
+    }
+
+    private static Task<IResult> OsdpSetSecureKey(Request r)
+    {
+        _ = Int(r.Json["panel_id"]) ?? throw new DeviceException("Missing 'panel_id'");
+        _ = Int(r.Json["address"]) ?? throw new DeviceException("Missing 'address'");
+        RequireHex(RequiredString(r.Json, "scbk_hex"));
+        return Json(new JsonObject());
+    }
+
+    private static Task<IResult> OsdpSetSecureType(Request r)
+    {
+        _ = Int(r.Json["panel_id"]) ?? throw new DeviceException("Missing 'panel_id'");
+        _ = Int(r.Json["address"]) ?? throw new DeviceException("Missing 'address'");
+        if (Int(r.Json["secure_type"]) is not (0 or 1 or 2))
+        {
+            throw new DeviceException("Invalid secure_type");
+        }
+
+        return Json(new JsonObject());
+    }
+
+    private static void RequireHex(string value)
+    {
+        if (value.Length == 0 || value.Length % 2 != 0 || !value.All(Uri.IsHexDigit))
+        {
+            throw new DeviceException("Invalid hexadecimal key");
+        }
+    }
+
+    // A calibração termina na primeira sondagem: já aparece calibrada e fora de execução.
+    private static Task<IResult> StartCameraCalibration(Request r)
+    {
+        if (Int(r.Json["timeout"]) is { } timeout && (timeout < 10 || timeout > 600))
+        {
+            throw new DeviceException("Invalid timeout");
+        }
+
+        lock (r.State.Lock)
+        {
+            r.State.SetConfiguration("sim_camera", "calibrated", "1");
+        }
+
+        return Json(new JsonObject());
+    }
+
+    private static Task<IResult> CancelCameraCalibration(Request r)
+    {
+        lock (r.State.Lock)
+        {
+            r.State.SetConfiguration("sim_camera", "calibrated", "0");
+        }
+
+        return Json(new JsonObject());
+    }
+
+    private static Task<IResult> CameraCalibrationStatus(Request r)
+    {
+        lock (r.State.Lock)
+        {
+            return Json(new JsonObject
+            {
+                ["calibrated"] = r.State.GetConfiguration("sim_camera", "calibrated") == "1",
+                ["discrepancy_offset"] = 0.5,
+                ["running"] = false,
+            });
+        }
+    }
+
+    private static Task<IResult> RequirePasswordThenOk(Request r)
+    {
+        _ = RequiredString(r.Json, "password");
+        return Json(new JsonObject());
+    }
+
+    private static Task<IResult> SetProOperationMode(Request r)
+    {
+        var mode = RequiredString(r.Json, "pro_operation_mode");
+        if (Array.IndexOf(new[] { "10k", "15k", "30k", "20k", "50k", "100k" }, mode) < 0)
+        {
+            throw new DeviceException($"Invalid mode: {mode}");
+        }
+
+        lock (r.State.Lock)
+        {
+            r.State.SetConfiguration("sim_provisioning", "pro_operation_mode", mode);
+        }
+
+        return Json(new JsonObject());
+    }
+
+    // O simulador não encaminha de verdade: valida o roteamento e devolve o comando pedido.
+    private static Task<IResult> RequestRedirect(Request r)
+    {
+        var query = r.Context.Request.Query;
+        var command = query["command"].FirstOrDefault() ?? throw new DeviceException("Missing 'command'");
+        var hasTarget = query["device_id"].Count > 0
+            || (query["address"].Count > 0 && query["login"].Count > 0 && query["password"].Count > 0);
+        if (!hasTarget)
+        {
+            throw new DeviceException("Missing redirect target");
+        }
+
+        return Json(new JsonObject { ["redirected"] = true, ["command"] = command });
+    }
+
+    private static List<long> Ids(JsonObject json) =>
+        (json["ids"] as JsonArray ?? throw new DeviceException("Missing 'ids'"))
+            .Select(n => ObjectStore.TryGetLong(n, out var id) ? id : throw new DeviceException("Invalid id"))
+            .ToList();
+
+    private static string Csv(string? value) =>
+        value is not null && value.IndexOfAny(new[] { ',', '"', '\n' }) >= 0 ? "\"" + value.Replace("\"", "\"\"") + "\"" : value ?? string.Empty;
+
+    private static Task<IResult> Text(string text) =>
+        Task.FromResult(Results.Text(text, "text/plain"));
+
+    // Chaves do leitor HID (ADR 0024): o simulador guarda só o tipo e o identificador de cada referência, nunca a chave.
+    private static Task<IResult> HidInject(Request r)
+    {
+        RequiredString(r.Json, "key");
+        var path = r.Context.Request.Path.Value ?? string.Empty;
+        var target = path.Contains("default_kek", StringComparison.Ordinal) ? "03F000" : RequiredString(r.Json, "target_ref");
+        var type = path.Contains("media_key", StringComparison.Ordinal) ? "MEDIA" : "KEK";
+        var keyId = r.Json["key_id"]?.GetValue<string>() ?? string.Empty;
+        lock (r.State.Lock)
+        {
+            r.State.SetConfiguration("sim_hid_keys", target, type + ":" + keyId);
+        }
+
+        return Json(new JsonObject { ["success"] = true });
+    }
+
+    private static Task<IResult> HidGetKeyInfo(Request r)
+    {
+        var target = RequiredString(r.Json, "target_ref");
+        string? stored;
+        lock (r.State.Lock)
+        {
+            stored = r.State.GetConfiguration("sim_hid_keys", target);
+        }
+
+        if (stored is null)
+        {
+            throw new DeviceException("Key not found");
+        }
+
+        var parts = stored.Split(':', 2);
+        return Json(new JsonObject { ["key_type"] = parts[0], ["key_id"] = parts[1] });
+    }
+
+    private static Task<IResult> HidSetOid(Request r)
+    {
+        var oid = RequiredString(r.Json, "oid");
+        var value = r.Json["value"] ?? throw new DeviceException("Invalid value: must be a bool, an int or a hex string");
+        lock (r.State.Lock)
+        {
+            r.State.SetConfiguration("sim_hid_oids", oid, value.ToJsonString());
+        }
+
+        return Json(new JsonObject { ["success"] = true });
+    }
+
+    private static Task<IResult> HidGetOid(Request r)
+    {
+        var oid = RequiredString(r.Json, "oid");
+        string? stored;
+        lock (r.State.Lock)
+        {
+            stored = r.State.GetConfiguration("sim_hid_oids", oid);
+        }
+
+        return Json(new JsonObject { ["value"] = stored is null ? JsonValue.Create(false) : JsonNode.Parse(stored) });
+    }
+
+    // O reset termina na consulta seguinte, como a calibração e o firmware do SecBox.
+    private static Task<IResult> HidResetConfig(Request r)
+    {
+        var isFile = r.Context.Request.ContentType?.StartsWith("application/octet-stream", StringComparison.OrdinalIgnoreCase) == true;
+        var start = isFile || (r.Body.Length > 0 && r.Json["start"]?.GetValue<bool>() == true);
+        lock (r.State.Lock)
+        {
+            var running = r.State.GetConfiguration("sim_hid", "resetting") == "1";
+            if (start)
+            {
+                if (running)
+                {
+                    throw new DeviceException("HID reader config reset already in progress");
+                }
+
+                r.State.SetConfiguration("sim_hid", "resetting", "1");
+                return Json(new JsonObject { ["resetting"] = true, ["status"] = "running" });
+            }
+
+            r.State.SetConfiguration("sim_hid", "resetting", "0");
+            return Json(new JsonObject { ["resetting"] = false, ["status"] = "done" });
+        }
+    }
+
+    private static Task<IResult> GetOemCode(Request r)
+    {
+        lock (r.State.Lock)
+        {
+            return Json(new JsonObject { ["oem_code"] = r.State.GetConfiguration("sim_oem", "code") ?? "CID" });
+        }
+    }
+
+    private static Task<IResult> SetOemCode(Request r)
+    {
+        var code = RequiredString(r.Json, "oem_code");
+        RequiredString(r.Json, "license");
+        lock (r.State.Lock)
+        {
+            r.State.SetConfiguration("sim_oem", "code", code);
+        }
+
+        return Json(new JsonObject());
+    }
+
+    private static Task<IResult> SetOemApprovedFirmware(Request r)
+    {
+        var code = RequiredString(r.Json, "oem_code");
+        RequiredString(r.Json, "license");
+        var approved = r.Json["approved_fw"]?.GetValue<string>() ?? throw new DeviceException("approved_fw is required");
+        lock (r.State.Lock)
+        {
+            if (!string.Equals(code, r.State.GetConfiguration("sim_oem", "code") ?? "CID", StringComparison.Ordinal))
+            {
+                throw new DeviceException("Cannot set an approved firmware version: OEM code does not match the equipment's linked OEM code");
+            }
+
+            r.State.SetConfiguration("sim_oem", "approved_fw", approved);
         }
 
         return Json(new JsonObject());

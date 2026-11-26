@@ -7,9 +7,10 @@ using ControlId.Rep.Afd;
 namespace ControlId.Rep;
 
 /// <summary>
-/// Cliente da API dos relógios de ponto REP iDClass. A API roda em HTTPS com certificado
-/// autoassinado — fixe a impressão digital dele com <see cref="ControlIdDeviceOptions.ServerCertificateSha256"/>
-/// (ou aceite qualquer certificado com <see cref="ControlIdDeviceOptions.AcceptAnyServerCertificate"/>).
+/// Cliente da API dos relógios de ponto REP iDClass. A API roda em HTTPS com certificado autoassinado, que a validação
+/// padrão recusa: fixe a impressão digital dele com <see cref="ControlIdDeviceOptions.ServerCertificateSha256"/> (obtenha com
+/// <see cref="ControlIdCertificates.GetServerCertificateSha256Async"/>). Aceitar qualquer certificado com
+/// <see cref="ControlIdDeviceOptions.AcceptAnyServerCertificate"/> expõe login e senha e não é recomendado.
 /// </summary>
 public interface IRepClient : IControlIdClient
 {

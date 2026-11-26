@@ -91,7 +91,6 @@ ControlId.Access.AccessClient.DisableOnlineModeAsync(System.Threading.Cancellati
 ControlId.Access.AccessClient.Dispose() -> void
 ControlId.Access.AccessClient.DownloadAsync(string! endpoint, object? body = null, string? queryString = null, System.Net.Http.HttpMethod? method = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
 ControlId.Access.AccessClient.EndTemplateSyncAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-ControlId.Access.AccessClient.EnrollFaceTemplatesAsync(System.Collections.Generic.IEnumerable<ControlId.Access.FaceTemplateEnrollment!>! templates, bool rejectExistingFaces = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<ControlId.Access.FaceImageResult!>!>!
 ControlId.Access.AccessClient.EnumerateAccessLogsAsync(long afterId = 0, int pageSize = 500, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<ControlId.Access.AccessLog!>!
 ControlId.Access.AccessClient.EnumerateObjectsAsync<T>(ControlId.Access.LoadObjectsRequest! request, int pageSize = 500, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<T>!
 ControlId.Access.AccessClient.EnumerateObjectsAsync<T>(object? where = null, int pageSize = 500, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<T>!
@@ -536,7 +535,6 @@ ControlId.Access.AlarmZone.Enabled.set -> void
 ControlId.Access.AlarmZone.Zone.get -> long
 ControlId.Access.AlarmZone.Zone.set -> void
 ControlId.Access.AuditLogCategories
-ControlId.Access.AuditLogCategories.All = ControlId.Access.AuditLogCategories.Config | ControlId.Access.AuditLogCategories.Api | ControlId.Access.AuditLogCategories.Usb | ControlId.Access.AuditLogCategories.Network | ControlId.Access.AuditLogCategories.Time | ControlId.Access.AuditLogCategories.Online | ControlId.Access.AuditLogCategories.Menu -> ControlId.Access.AuditLogCategories
 ControlId.Access.AuditLogCategories.Api = 2 -> ControlId.Access.AuditLogCategories
 ControlId.Access.AuditLogCategories.Config = 1 -> ControlId.Access.AuditLogCategories
 ControlId.Access.AuditLogCategories.Menu = 64 -> ControlId.Access.AuditLogCategories
@@ -1332,7 +1330,6 @@ ControlId.Access.IAccessClient.DeleteUserImagesAsync(System.Collections.Generic.
 ControlId.Access.IAccessClient.DestroyObjectsAsync(string! object, object! where, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
 ControlId.Access.IAccessClient.DisableOnlineModeAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 ControlId.Access.IAccessClient.EndTemplateSyncAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-ControlId.Access.IAccessClient.EnrollFaceTemplatesAsync(System.Collections.Generic.IEnumerable<ControlId.Access.FaceTemplateEnrollment!>! templates, bool rejectExistingFaces = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<ControlId.Access.FaceImageResult!>!>!
 ControlId.Access.IAccessClient.EnumerateAccessLogsAsync(long afterId = 0, int pageSize = 500, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<ControlId.Access.AccessLog!>!
 ControlId.Access.IAccessClient.EnumerateObjectsAsync<T>(ControlId.Access.LoadObjectsRequest! request, int pageSize = 500, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<T>!
 ControlId.Access.IAccessClient.EnumerateObjectsAsync<T>(object? where = null, int pageSize = 500, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<T>!
@@ -2366,7 +2363,6 @@ ControlId.Rep.RepClient.OpenAfdStreamAsync(ControlId.Rep.RepAfdQuery? query = nu
 ControlId.Rep.RepClient.RemoveAdminsAsync(ControlId.DataLossConfirmation confirmation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 ControlId.Rep.RepClient.RemoveUsersAsync(System.Collections.Generic.IEnumerable<long>! identifiers, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 ControlId.Rep.RepClient.RepClient(ControlId.ControlIdDeviceOptions! options, ControlId.Rep.RepMode mode = ControlId.Rep.RepMode.Portaria671, System.Net.Http.HttpClient? httpClient = null) -> void
-ControlId.Rep.RepClient.RepClient(string! baseAddress, string! login = "admin", string! password = "admin", ControlId.Rep.RepMode mode = ControlId.Rep.RepMode.Portaria671) -> void
 ControlId.Rep.RepClient.SendAsync<T>(string! endpoint, object? body = null, string? queryString = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T>!
 ControlId.Rep.RepClient.SendBytesAsync(string! endpoint, byte[]! content, string! contentType = "application/octet-stream", string? queryString = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
 ControlId.Rep.RepClient.SendRawAsync(string! endpoint, object? body = null, string? queryString = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
@@ -2670,3 +2666,802 @@ static ControlId.Rep.Afd.AfdParser.ReadRecords(System.IO.TextReader! reader) -> 
 const ControlId.ControlIdTelemetry.LoggerCategory = "ControlId.Net" -> string!
 ControlId.ControlIdDeviceOptions.LoggerFactory.get -> Microsoft.Extensions.Logging.ILoggerFactory?
 ControlId.ControlIdDeviceOptions.LoggerFactory.set -> void
+ControlId.ControlIdCircuitState
+ControlId.ControlIdCircuitState.Closed = 0 -> ControlId.ControlIdCircuitState
+ControlId.ControlIdCircuitState.Open = 1 -> ControlId.ControlIdCircuitState
+ControlId.ControlIdCircuitState.HalfOpen = 2 -> ControlId.ControlIdCircuitState
+ControlId.ControlIdCircuitOpenException
+ControlId.ControlIdCircuitOpenException.ControlIdCircuitOpenException(string! message, System.TimeSpan retryAfter) -> void
+ControlId.ControlIdCircuitOpenException.RetryAfter.get -> System.TimeSpan
+const ControlId.ControlIdDeviceOptions.MaxCircuitBreakerFailureThreshold = 100 -> int
+ControlId.ControlIdDeviceOptions.CircuitBreakerFailureThreshold.get -> int
+ControlId.ControlIdDeviceOptions.CircuitBreakerFailureThreshold.set -> void
+ControlId.ControlIdDeviceOptions.CircuitBreakerBreakDuration.get -> System.TimeSpan
+ControlId.ControlIdDeviceOptions.CircuitBreakerBreakDuration.set -> void
+ControlId.Access.AccessClient.CircuitState.get -> ControlId.ControlIdCircuitState
+ControlId.Rep.RepClient.CircuitState.get -> ControlId.ControlIdCircuitState
+ControlId.Access.Push.IPushCommandStore
+ControlId.Access.Push.IPushCommandStore.AddAsync(ControlId.Access.Push.PushEnvelope! envelope, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+ControlId.Access.Push.IPushCommandStore.CompleteAsync(long deviceId, string? uuid, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<ControlId.Access.Push.PushEnvelope?>!
+ControlId.Access.Push.IPushCommandStore.CountAsync(long deviceId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
+ControlId.Access.Push.IPushCommandStore.RemoveAsync(System.Guid id, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.Push.IPushCommandStore.TakeNextAsync(long deviceId, string? uuid, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<ControlId.Access.Push.PushTake>!
+ControlId.Access.Push.IPushResultHandler
+ControlId.Access.Push.IPushResultHandler.HandleAsync(ControlId.Access.Push.PushCompletion! completion, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+ControlId.Access.Push.InMemoryPushCommandStore
+ControlId.Access.Push.InMemoryPushCommandStore.AddAsync(ControlId.Access.Push.PushEnvelope! envelope, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+ControlId.Access.Push.InMemoryPushCommandStore.CompleteAsync(long deviceId, string? uuid, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<ControlId.Access.Push.PushEnvelope?>!
+ControlId.Access.Push.InMemoryPushCommandStore.CountAsync(long deviceId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
+ControlId.Access.Push.InMemoryPushCommandStore.InMemoryPushCommandStore() -> void
+ControlId.Access.Push.InMemoryPushCommandStore.RemoveAsync(System.Guid id, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.Push.InMemoryPushCommandStore.TakeNextAsync(long deviceId, string? uuid, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<ControlId.Access.Push.PushTake>!
+ControlId.Access.Push.PushCompletion
+ControlId.Access.Push.PushCompletion.CommandId.get -> System.Guid
+ControlId.Access.Push.PushCompletion.DeviceId.get -> long
+ControlId.Access.Push.PushCompletion.Error.get -> string?
+ControlId.Access.Push.PushCompletion.PushCompletion(System.Guid commandId, long deviceId, System.Collections.Generic.IReadOnlyList<ControlId.Access.Push.PushResult!>! results, string? error) -> void
+ControlId.Access.Push.PushCompletion.Results.get -> System.Collections.Generic.IReadOnlyList<ControlId.Access.Push.PushResult!>!
+ControlId.Access.Push.PushEnvelope
+ControlId.Access.Push.PushEnvelope.Batch.get -> bool
+ControlId.Access.Push.PushEnvelope.CreatedAt.get -> System.DateTimeOffset
+ControlId.Access.Push.PushEnvelope.DeliveredAt.get -> System.DateTimeOffset?
+ControlId.Access.Push.PushEnvelope.DeliveredAt.set -> void
+ControlId.Access.Push.PushEnvelope.DeviceId.get -> long
+ControlId.Access.Push.PushEnvelope.Endpoints.get -> System.Collections.Generic.IReadOnlyList<string!>!
+ControlId.Access.Push.PushEnvelope.Id.get -> System.Guid
+ControlId.Access.Push.PushEnvelope.Payload.get -> string!
+ControlId.Access.Push.PushEnvelope.PushEnvelope(System.Guid id, long deviceId, bool batch, System.Collections.Generic.IReadOnlyList<string!>! endpoints, string! payload, System.DateTimeOffset createdAt) -> void
+ControlId.Access.Push.PushEnvelope.Status.get -> ControlId.Access.Push.PushEnvelopeStatus
+ControlId.Access.Push.PushEnvelope.Status.set -> void
+ControlId.Access.Push.PushEnvelope.Uuid.get -> string?
+ControlId.Access.Push.PushEnvelope.Uuid.set -> void
+ControlId.Access.Push.PushEnvelopeStatus
+ControlId.Access.Push.PushEnvelopeStatus.InFlight = 1 -> ControlId.Access.Push.PushEnvelopeStatus
+ControlId.Access.Push.PushEnvelopeStatus.Pending = 0 -> ControlId.Access.Push.PushEnvelopeStatus
+ControlId.Access.Push.PushServer.EnqueueAsync(long deviceId, ControlId.Access.Push.PushCommand! command, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Guid>!
+ControlId.Access.Push.PushServer.EnqueueBatchAsync(long deviceId, System.Collections.Generic.IEnumerable<ControlId.Access.Push.PushCommand!>! commands, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Guid>!
+ControlId.Access.Push.PushServer.GetPendingCountAsync(long deviceId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+ControlId.Access.Push.PushServer.HandlePushAsync(long deviceId, string? uuid, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.Push.PushServer.HandleResultAsync(long deviceId, string? uuid, string! body, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.Push.PushServer.PushServer(ControlId.Access.Push.IPushCommandStore! store, ControlId.Access.Push.IPushResultHandler? unclaimedResultHandler = null) -> void
+ControlId.Access.Push.PushTake
+ControlId.Access.Push.PushTake.Next.get -> ControlId.Access.Push.PushEnvelope?
+ControlId.Access.Push.PushTake.Orphan.get -> ControlId.Access.Push.PushEnvelope?
+ControlId.Access.Push.PushTake.PushTake() -> void
+ControlId.Access.Push.PushTake.PushTake(ControlId.Access.Push.PushEnvelope? orphan, ControlId.Access.Push.PushEnvelope? next) -> void
+ControlId.Access.AccessClientCallbackSecurityExtensions
+static ControlId.Access.AccessClientCallbackSecurityExtensions.ConfigureCallbackSecurityAsync(this ControlId.Access.IAccessClient! client, string? bearerToken, string? pinnedCertificate = null, string! section = "general", System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.DeviceContactSource
+ControlId.Access.DeviceContactSource.Push = 0 -> ControlId.Access.DeviceContactSource
+ControlId.Access.DeviceContactSource.Monitor = 1 -> ControlId.Access.DeviceContactSource
+ControlId.Access.DeviceContactSource.Online = 2 -> ControlId.Access.DeviceContactSource
+ControlId.Access.DeviceContact
+ControlId.Access.DeviceContact.At.get -> System.DateTimeOffset
+ControlId.Access.DeviceContact.Source.get -> ControlId.Access.DeviceContactSource
+ControlId.Access.DeviceContactTracker
+ControlId.Access.DeviceContactTracker.DeviceContactTracker() -> void
+ControlId.Access.DeviceContactTracker.GetAll() -> System.Collections.Generic.IReadOnlyDictionary<long, ControlId.Access.DeviceContact!>!
+ControlId.Access.DeviceContactTracker.GetLastContact(long deviceId) -> ControlId.Access.DeviceContact?
+ControlId.Access.DeviceContactTracker.Record(long deviceId, ControlId.Access.DeviceContactSource source) -> void
+ControlId.Access.AccessCard.CredentialType.get -> int?
+ControlId.Access.AccessCard.CredentialType.set -> void
+ControlId.Access.AccessCard.WiegandFormatId.get -> int?
+ControlId.Access.AccessCard.WiegandFormatId.set -> void
+ControlId.Access.AccessClient.AddCustomFieldAsync(string! table, ControlId.Access.CustomFieldDefinition! field, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
+ControlId.Access.AccessClient.CancelCameraCalibrationAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.CaptureScreenAsync(ControlId.Access.ScreenFrame frame = ControlId.Access.ScreenFrame.Screen, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+ControlId.Access.AccessClient.ChangeSecBoxCryptoKeyToDefaultAsync(ControlId.DataLossConfirmation confirmation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.SecBoxKeyChangeResult!>!
+ControlId.Access.AccessClient.ChangeSecBoxCryptoKeyToRandomAsync(ControlId.DataLossConfirmation confirmation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.SecBoxKeyChangeResult!>!
+ControlId.Access.AccessClient.CheckIpConflictAsync(ControlId.Access.NetworkInterfaceKind networkInterface, string! ip, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.AccessClient.CheckPortAvailabilityAsync(int initialPort, int finalPort, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.PortAvailabilityResult!>!
+ControlId.Access.AccessClient.ClearConfigurationFieldCache() -> void
+ControlId.Access.AccessClient.Configure8021XAsync(ControlId.Access.Ieee8021XSettings! settings, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.CountFaceTemplatesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+ControlId.Access.AccessClient.CreateCustomTableAsync(string! table, string! label, System.Collections.Generic.IEnumerable<ControlId.Access.CustomFieldDefinition!>! fields, long? id = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
+ControlId.Access.AccessClient.DeleteCustomTablesAsync(ControlId.DataLossConfirmation confirmation, System.Collections.Generic.IEnumerable<long>! tableIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.DeleteKioskIconAsync(string! filename, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.DeleteSlideshowImageAsync(string! filename, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.DeviceHasSecBoxAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.AccessClient.EnrollFaceTemplatesAsync(System.Collections.Generic.IEnumerable<ControlId.Access.FaceTemplateEnrollment!>! templates, bool rejectExistingFaces = true, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<ControlId.Access.FaceImageResult!>!>!
+ControlId.Access.AccessClient.ExportAfdAsync(ControlId.Access.AfdExportOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.AccessClient.ExportCustomTablesMetadataCsvAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+ControlId.Access.AccessClient.ExportObjectCsvAsync(string! object, System.Collections.Generic.IEnumerable<string!>? columns = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+ControlId.Access.AccessClient.ForgetWifiConnectedNetworkAsync(ControlId.DataLossConfirmation confirmation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.Get8021XStatusAsync(ControlId.Access.NetworkInterfaceKind networkInterface = ControlId.Access.NetworkInterfaceKind.Wired, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.Ieee8021XStatus>!
+ControlId.Access.AccessClient.GetCameraCalibrationStatusAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.CameraCalibrationStatus!>!
+ControlId.Access.AccessClient.GetDeviceLogAsync(ControlId.Access.DeviceLog log, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.AccessClient.GetDualSidedStatusAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.DualSidedStatus!>!
+ControlId.Access.AccessClient.GetEapTlsCsrAsync(string? password = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.AccessClient.GetHidLastCardAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.HidLastCard!>!
+ControlId.Access.AccessClient.GetIoStateAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.IoState!>!
+ControlId.Access.AccessClient.GetKioskIconAsync(string! filename, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+ControlId.Access.AccessClient.GetKioskIconsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.ScreenImageList!>!
+ControlId.Access.AccessClient.GetLastSnapshotAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+ControlId.Access.AccessClient.GetLastWiegandReadAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.WiegandCardRead!>!
+ControlId.Access.AccessClient.GetMasterPasswordInfoAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.MasterPasswordInfo!>!
+ControlId.Access.AccessClient.GetNtpServerAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.NtpServers!>!
+ControlId.Access.AccessClient.GetNtpServerStatusAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.AccessClient.GetObjectMetadataAsync(ControlId.Access.ObjectMetadataFilter filter = ControlId.Access.ObjectMetadataFilter.All, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<string!, ControlId.Access.ObjectMetadata!>!>!
+ControlId.Access.AccessClient.GetOsdpConnectionStatusAsync(int panelId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<int, int>!>!
+ControlId.Access.AccessClient.GetOsdpInstallationModeAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.AccessClient.GetOsdpOutputCapabilitiesAsync(int address, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.OsdpOutputCapabilities!>!
+ControlId.Access.AccessClient.GetOsdpScbkAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.OsdpScbkInfo!>!
+ControlId.Access.AccessClient.GetPhoneIconAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+ControlId.Access.AccessClient.GetRfidModuleAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.AccessClient.GetSecBoxFirmwareUpdateStatusAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.SecBoxFirmwareUpdateStatus!>!
+ControlId.Access.AccessClient.GetSecBoxFirmwareVersionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+ControlId.Access.AccessClient.GetSecBoxSerialNumberAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.AccessClient.GetSlideshowImageAsync(string! filename, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+ControlId.Access.AccessClient.GetSlideshowImagesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.ScreenImageList!>!
+ControlId.Access.AccessClient.GetSslCertificateAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.AccessClient.GetStreamingLogoAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+ControlId.Access.AccessClient.GetTurnstileCountersAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.TurnstileCounters!>!
+ControlId.Access.AccessClient.GetUpdateModePasswordStatusAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.AccessClient.GetVpnIpAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.AccessClient.GetWifiDataAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.WifiData!>!
+ControlId.Access.AccessClient.IsIdentifyingAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.AccessClient.IsSecBoxActiveAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.AccessClient.MakeSipConferenceAsync(string? target = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.MatchFaceTemplateAsync(string! faceTemplate, long? userId = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.FaceTemplateMatchResult!>!
+ControlId.Access.AccessClient.MatchFingerprintTemplatesAsync(System.Collections.Generic.IReadOnlyList<byte[]!>! templates, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.AccessClient.PersistEapTlsPrivateKeyAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.RedirectRequestAsync(ControlId.Access.RedirectTarget! target, string! command, object? body = null, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? query = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.AccessClient.RefreshOsdpAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.RemoveAllSlideshowImagesAsync(ControlId.DataLossConfirmation confirmation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.RemoveCustomFieldsAsync(ControlId.DataLossConfirmation confirmation, System.Collections.Generic.IEnumerable<long>! fieldIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<long>!>!
+ControlId.Access.AccessClient.RemovePhoneIconAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.RemoveStreamingLogoAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.RemoveUpdateModePasswordAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.ResetCircuit() -> void
+ControlId.Access.AccessClient.ResetSecBoxCryptoKeyAsync(ControlId.DataLossConfirmation confirmation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.SecBoxKeyChangeResult!>!
+ControlId.Access.AccessClient.ResetToFactoryDefaultAsync(ControlId.DataLossConfirmation confirmation, ControlId.Access.FactoryResetOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.ScanWifiAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<ControlId.Access.WifiNetwork!>!>!
+ControlId.Access.AccessClient.SendSlideshowImageAsync(string! filename, byte[]! jpeg, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.SetDualSidedSecretAsync(string! secret, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.SetKioskIconAsync(string! filename, byte[]! image, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.SetMasterPasswordAsync(string! password, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.SetNtpServerAsync(string! server1, string? server2 = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.SetOsdpScbkAsync(string! scbk, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.SetOsdpSecureKeyAsync(int panelId, int address, string! scbkHex, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.SetOsdpSecureTypeAsync(int panelId, int address, ControlId.Access.OsdpSecureType secureType, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.SetPhoneIconAsync(byte[]! png, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.SetProOperationModeAndRebootAsync(string! mode, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.SetStreamingLogoAsync(byte[]! png, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.SetUpdateModePasswordAsync(string! password, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.SetUserImageAsync(long userId, byte[]! image, ControlId.Access.UserImageUploadOptions! options, System.DateTimeOffset? timestamp = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.FaceImageResult!>!
+ControlId.Access.AccessClient.SetUserImagesAsync(System.Collections.Generic.IEnumerable<ControlId.Access.UserImage!>! images, ControlId.Access.UserImageUploadOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<ControlId.Access.FaceImageResult!>!>!
+ControlId.Access.AccessClient.SetWifiSettingsAsync(string! ssid, string! psk, string? bssid = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.WifiConnectionResult>!
+ControlId.Access.AccessClient.SetWifiSourceAsync(ControlId.Access.WifiSource source, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.StartCameraCalibrationAsync(int? timeoutSeconds = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.UpdateCustomFieldAsync(long fieldId, ControlId.Access.CustomFieldDefinition! field, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.UpdateSecBoxFirmwareAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.AccessClient.UpgradeFingerprintCapacityAsync(string! password, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.UploadEapCaCertificateAsync(byte[]! certificate, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.UploadEapCaCertificateWifiAsync(byte[]! certificate, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.UploadEapTlsClientCertificateAsync(byte[]! certificate, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.UploadEapTlsPrivateKeyAsync(byte[]! privateKey, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.AccessClient.WaitCameraCalibrationAsync(System.TimeSpan? pollInterval = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.CameraCalibrationStatus!>!
+ControlId.Access.AccessClient.WaitSecBoxFirmwareUpdateAsync(System.TimeSpan? pollInterval = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.SecBoxFirmwareUpdateStatus!>!
+ControlId.Access.AccessEventType.Unknown = 0 -> ControlId.Access.AccessEventType
+ControlId.Access.AccessGroup.IdentificationMode.get -> int?
+ControlId.Access.AccessGroup.IdentificationMode.set -> void
+ControlId.Access.AfdExportOptions
+ControlId.Access.AfdExportOptions.AfdExportOptions() -> void
+ControlId.Access.AfdExportOptions.InitialDate.get -> System.DateTime?
+ControlId.Access.AfdExportOptions.InitialDate.set -> void
+ControlId.Access.AfdExportOptions.InitialNsr.get -> long?
+ControlId.Access.AfdExportOptions.InitialNsr.set -> void
+ControlId.Access.AfdExportOptions.Limit.get -> int?
+ControlId.Access.AfdExportOptions.Limit.set -> void
+ControlId.Access.AfdExportOptions.Offset.get -> int?
+ControlId.Access.AfdExportOptions.Offset.set -> void
+ControlId.Access.AfdExportOptions.Portaria671.get -> bool
+ControlId.Access.AfdExportOptions.Portaria671.set -> void
+ControlId.Access.AlarmCause.Unknown = -1 -> ControlId.Access.AlarmCause
+ControlId.Access.AuditLogCategories.All = ControlId.Access.AuditLogCategories.Config | ControlId.Access.AuditLogCategories.Api | ControlId.Access.AuditLogCategories.Usb | ControlId.Access.AuditLogCategories.Network | ControlId.Access.AuditLogCategories.Time | ControlId.Access.AuditLogCategories.Online | ControlId.Access.AuditLogCategories.Menu | ControlId.Access.AuditLogCategories.Boot | ControlId.Access.AuditLogCategories.Push -> ControlId.Access.AuditLogCategories
+ControlId.Access.AuditLogCategories.Boot = 128 -> ControlId.Access.AuditLogCategories
+ControlId.Access.AuditLogCategories.Push = 256 -> ControlId.Access.AuditLogCategories
+ControlId.Access.CameraCalibrationStatus
+ControlId.Access.CameraCalibrationStatus.Calibrated.get -> bool
+ControlId.Access.CameraCalibrationStatus.Calibrated.set -> void
+ControlId.Access.CameraCalibrationStatus.CameraCalibrationStatus() -> void
+ControlId.Access.CameraCalibrationStatus.DiscrepancyOffset.get -> double
+ControlId.Access.CameraCalibrationStatus.DiscrepancyOffset.set -> void
+ControlId.Access.CameraCalibrationStatus.Running.get -> bool
+ControlId.Access.CameraCalibrationStatus.Running.set -> void
+ControlId.Access.Configuration.HidSettings.CardProcess.get -> int?
+ControlId.Access.Configuration.HidSettings.CardProcess.set -> void
+ControlId.Access.Configuration.HidSettings.CustomUseIndex.get -> int?
+ControlId.Access.Configuration.HidSettings.CustomUseIndex.set -> void
+ControlId.Access.Configuration.HidSettings.TocCryptKey.get -> string?
+ControlId.Access.Configuration.HidSettings.TocCryptKey.set -> void
+ControlId.Access.Configuration.HidSettings.TocCryptMode.get -> int?
+ControlId.Access.Configuration.HidSettings.TocCryptMode.set -> void
+ControlId.Access.Configuration.HidSettings.TocSiteKey.get -> string?
+ControlId.Access.Configuration.HidSettings.TocSiteKey.set -> void
+ControlId.Access.Configuration.IdentifierSettings.TwoPersonAuthEnabled.get -> bool?
+ControlId.Access.Configuration.IdentifierSettings.TwoPersonAuthEnabled.set -> void
+ControlId.Access.Configuration.OsdpSettings.RemoteValidationEnabled.get -> bool?
+ControlId.Access.Configuration.OsdpSettings.RemoteValidationEnabled.set -> void
+ControlId.Access.Configuration.OsdpSettings.RemoteValidationTimeoutMs.get -> int?
+ControlId.Access.Configuration.OsdpSettings.RemoteValidationTimeoutMs.set -> void
+ControlId.Access.CustomFieldDefinition
+ControlId.Access.CustomFieldDefinition.ColumnName.get -> string!
+ControlId.Access.CustomFieldDefinition.ColumnName.set -> void
+ControlId.Access.CustomFieldDefinition.CustomFieldDefinition() -> void
+ControlId.Access.CustomFieldDefinition.DefaultValue.get -> object?
+ControlId.Access.CustomFieldDefinition.DefaultValue.set -> void
+ControlId.Access.CustomFieldDefinition.ForeignKey.get -> ControlId.Access.ForeignKey?
+ControlId.Access.CustomFieldDefinition.ForeignKey.set -> void
+ControlId.Access.CustomFieldDefinition.Name.get -> string?
+ControlId.Access.CustomFieldDefinition.Name.set -> void
+ControlId.Access.CustomFieldDefinition.NotNull.get -> bool
+ControlId.Access.CustomFieldDefinition.NotNull.set -> void
+ControlId.Access.CustomFieldDefinition.Type.get -> ControlId.Access.CustomFieldType
+ControlId.Access.CustomFieldDefinition.Type.set -> void
+ControlId.Access.CustomFieldDefinition.Unique.get -> bool
+ControlId.Access.CustomFieldDefinition.Unique.set -> void
+ControlId.Access.CustomFieldType
+ControlId.Access.CustomFieldType.BigInt = 1 -> ControlId.Access.CustomFieldType
+ControlId.Access.CustomFieldType.Blob = 3 -> ControlId.Access.CustomFieldType
+ControlId.Access.CustomFieldType.Integer = 0 -> ControlId.Access.CustomFieldType
+ControlId.Access.CustomFieldType.Text = 2 -> ControlId.Access.CustomFieldType
+ControlId.Access.DeviceContactTracker.DeviceContactTracker(int maxDevices) -> void
+ControlId.Access.DeviceLog
+ControlId.Access.DeviceLog.AccessControl = 0 -> ControlId.Access.DeviceLog
+ControlId.Access.DeviceLog.OpenVpn = 1 -> ControlId.Access.DeviceLog
+ControlId.Access.DeviceLog.Wpa = 2 -> ControlId.Access.DeviceLog
+ControlId.Access.DeviceLog.WpaSupplicant = 3 -> ControlId.Access.DeviceLog
+ControlId.Access.DualSidedStatus
+ControlId.Access.DualSidedStatus.Door1PeerAddressValid.get -> bool
+ControlId.Access.DualSidedStatus.Door1PeerAddressValid.set -> void
+ControlId.Access.DualSidedStatus.DualSidedStatus() -> void
+ControlId.Access.DualSidedStatus.SecretConfigured.get -> bool
+ControlId.Access.DualSidedStatus.SecretConfigured.set -> void
+ControlId.Access.FaceImageErrorCode.Unknown = 0 -> ControlId.Access.FaceImageErrorCode
+ControlId.Access.FaceLicense.Pro20k = 5 -> ControlId.Access.FaceLicense
+ControlId.Access.FaceTemplateMatchInfo
+ControlId.Access.FaceTemplateMatchInfo.FaceTemplateMatchInfo() -> void
+ControlId.Access.FaceTemplateMatchInfo.MatchScore.get -> int
+ControlId.Access.FaceTemplateMatchInfo.MatchScore.set -> void
+ControlId.Access.FaceTemplateMatchInfo.MatchSimilarity.get -> int
+ControlId.Access.FaceTemplateMatchInfo.MatchSimilarity.set -> void
+ControlId.Access.FaceTemplateMatchInfo.MatchUserId.get -> long
+ControlId.Access.FaceTemplateMatchInfo.MatchUserId.set -> void
+ControlId.Access.FaceTemplateMatchResult
+ControlId.Access.FaceTemplateMatchResult.FaceTemplateMatchResult() -> void
+ControlId.Access.FaceTemplateMatchResult.Info.get -> ControlId.Access.FaceTemplateMatchInfo?
+ControlId.Access.FaceTemplateMatchResult.Info.set -> void
+ControlId.Access.FaceTemplateMatchResult.Match.get -> bool
+ControlId.Access.FaceTemplateMatchResult.Match.set -> void
+ControlId.Access.FactoryResetOptions
+ControlId.Access.FactoryResetOptions.FactoryResetOptions() -> void
+ControlId.Access.FactoryResetOptions.KeepAllConfiguration.get -> bool
+ControlId.Access.FactoryResetOptions.KeepAllConfiguration.set -> void
+ControlId.Access.FactoryResetOptions.KeepNetworkSettings.get -> bool
+ControlId.Access.FactoryResetOptions.KeepNetworkSettings.set -> void
+ControlId.Access.FactoryResetOptions.KeepOsdpSettings.get -> bool
+ControlId.Access.FactoryResetOptions.KeepOsdpSettings.set -> void
+ControlId.Access.ForeignKey
+ControlId.Access.ForeignKey.Field.get -> string!
+ControlId.Access.ForeignKey.Field.set -> void
+ControlId.Access.ForeignKey.ForeignKey() -> void
+ControlId.Access.ForeignKey.Object.get -> string!
+ControlId.Access.ForeignKey.Object.set -> void
+ControlId.Access.GroupCompatibility
+ControlId.Access.GroupCompatibility.CompatibleGroupId.get -> long
+ControlId.Access.GroupCompatibility.CompatibleGroupId.set -> void
+ControlId.Access.GroupCompatibility.GroupCompatibility() -> void
+ControlId.Access.GroupCompatibility.GroupId.get -> long
+ControlId.Access.GroupCompatibility.GroupId.set -> void
+ControlId.Access.HidLastCard
+ControlId.Access.HidLastCard.Bits.get -> int
+ControlId.Access.HidLastCard.Bits.set -> void
+ControlId.Access.HidLastCard.Csn.get -> string?
+ControlId.Access.HidLastCard.Csn.set -> void
+ControlId.Access.HidLastCard.Custom.get -> string?
+ControlId.Access.HidLastCard.Custom.set -> void
+ControlId.Access.HidLastCard.HidLastCard() -> void
+ControlId.Access.HidLastCard.Pac.get -> string?
+ControlId.Access.HidLastCard.Pac.set -> void
+ControlId.Access.HidLastCard.Type.get -> string?
+ControlId.Access.HidLastCard.Type.set -> void
+ControlId.Access.IAccessClient.AddCustomFieldAsync(string! table, ControlId.Access.CustomFieldDefinition! field, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
+ControlId.Access.IAccessClient.CancelCameraCalibrationAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.CaptureScreenAsync(ControlId.Access.ScreenFrame frame = ControlId.Access.ScreenFrame.Screen, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+ControlId.Access.IAccessClient.ChangeSecBoxCryptoKeyToDefaultAsync(ControlId.DataLossConfirmation confirmation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.SecBoxKeyChangeResult!>!
+ControlId.Access.IAccessClient.ChangeSecBoxCryptoKeyToRandomAsync(ControlId.DataLossConfirmation confirmation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.SecBoxKeyChangeResult!>!
+ControlId.Access.IAccessClient.CheckIpConflictAsync(ControlId.Access.NetworkInterfaceKind networkInterface, string! ip, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.IAccessClient.CheckPortAvailabilityAsync(int initialPort, int finalPort, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.PortAvailabilityResult!>!
+ControlId.Access.IAccessClient.Configure8021XAsync(ControlId.Access.Ieee8021XSettings! settings, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.CountFaceTemplatesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+ControlId.Access.IAccessClient.CreateCustomTableAsync(string! table, string! label, System.Collections.Generic.IEnumerable<ControlId.Access.CustomFieldDefinition!>! fields, long? id = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
+ControlId.Access.IAccessClient.DeleteCustomTablesAsync(ControlId.DataLossConfirmation confirmation, System.Collections.Generic.IEnumerable<long>! tableIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.DeleteKioskIconAsync(string! filename, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.DeleteSlideshowImageAsync(string! filename, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.DeviceHasSecBoxAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.IAccessClient.EnrollFaceTemplatesAsync(System.Collections.Generic.IEnumerable<ControlId.Access.FaceTemplateEnrollment!>! templates, bool rejectExistingFaces = true, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<ControlId.Access.FaceImageResult!>!>!
+ControlId.Access.IAccessClient.ExportAfdAsync(ControlId.Access.AfdExportOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.IAccessClient.ExportCustomTablesMetadataCsvAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+ControlId.Access.IAccessClient.ExportObjectCsvAsync(string! object, System.Collections.Generic.IEnumerable<string!>? columns = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+ControlId.Access.IAccessClient.ForgetWifiConnectedNetworkAsync(ControlId.DataLossConfirmation confirmation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.Get8021XStatusAsync(ControlId.Access.NetworkInterfaceKind networkInterface = ControlId.Access.NetworkInterfaceKind.Wired, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.Ieee8021XStatus>!
+ControlId.Access.IAccessClient.GetCameraCalibrationStatusAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.CameraCalibrationStatus!>!
+ControlId.Access.IAccessClient.GetDeviceLogAsync(ControlId.Access.DeviceLog log, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.IAccessClient.GetDualSidedStatusAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.DualSidedStatus!>!
+ControlId.Access.IAccessClient.GetEapTlsCsrAsync(string? password = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.IAccessClient.GetHidLastCardAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.HidLastCard!>!
+ControlId.Access.IAccessClient.GetIoStateAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.IoState!>!
+ControlId.Access.IAccessClient.GetKioskIconAsync(string! filename, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+ControlId.Access.IAccessClient.GetKioskIconsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.ScreenImageList!>!
+ControlId.Access.IAccessClient.GetLastSnapshotAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+ControlId.Access.IAccessClient.GetLastWiegandReadAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.WiegandCardRead!>!
+ControlId.Access.IAccessClient.GetMasterPasswordInfoAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.MasterPasswordInfo!>!
+ControlId.Access.IAccessClient.GetNtpServerAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.NtpServers!>!
+ControlId.Access.IAccessClient.GetNtpServerStatusAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.IAccessClient.GetObjectMetadataAsync(ControlId.Access.ObjectMetadataFilter filter = ControlId.Access.ObjectMetadataFilter.All, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<string!, ControlId.Access.ObjectMetadata!>!>!
+ControlId.Access.IAccessClient.GetOsdpConnectionStatusAsync(int panelId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<int, int>!>!
+ControlId.Access.IAccessClient.GetOsdpInstallationModeAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.IAccessClient.GetOsdpOutputCapabilitiesAsync(int address, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.OsdpOutputCapabilities!>!
+ControlId.Access.IAccessClient.GetOsdpScbkAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.OsdpScbkInfo!>!
+ControlId.Access.IAccessClient.GetPhoneIconAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+ControlId.Access.IAccessClient.GetRfidModuleAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.IAccessClient.GetSecBoxFirmwareUpdateStatusAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.SecBoxFirmwareUpdateStatus!>!
+ControlId.Access.IAccessClient.GetSecBoxFirmwareVersionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+ControlId.Access.IAccessClient.GetSecBoxSerialNumberAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.IAccessClient.GetSlideshowImageAsync(string! filename, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+ControlId.Access.IAccessClient.GetSlideshowImagesAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.ScreenImageList!>!
+ControlId.Access.IAccessClient.GetSslCertificateAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.IAccessClient.GetStreamingLogoAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+ControlId.Access.IAccessClient.GetTurnstileCountersAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.TurnstileCounters!>!
+ControlId.Access.IAccessClient.GetUpdateModePasswordStatusAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.IAccessClient.GetVpnIpAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.IAccessClient.GetWifiDataAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.WifiData!>!
+ControlId.Access.IAccessClient.IsIdentifyingAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.IAccessClient.IsSecBoxActiveAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.IAccessClient.MakeSipConferenceAsync(string? target = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.MatchFaceTemplateAsync(string! faceTemplate, long? userId = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.FaceTemplateMatchResult!>!
+ControlId.Access.IAccessClient.MatchFingerprintTemplatesAsync(System.Collections.Generic.IReadOnlyList<byte[]!>! templates, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.IAccessClient.PersistEapTlsPrivateKeyAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.RedirectRequestAsync(ControlId.Access.RedirectTarget! target, string! command, object? body = null, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? query = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.IAccessClient.RefreshOsdpAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.RemoveAllSlideshowImagesAsync(ControlId.DataLossConfirmation confirmation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.RemoveCustomFieldsAsync(ControlId.DataLossConfirmation confirmation, System.Collections.Generic.IEnumerable<long>! fieldIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<long>!>!
+ControlId.Access.IAccessClient.RemovePhoneIconAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.RemoveStreamingLogoAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.RemoveUpdateModePasswordAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.ResetSecBoxCryptoKeyAsync(ControlId.DataLossConfirmation confirmation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.SecBoxKeyChangeResult!>!
+ControlId.Access.IAccessClient.ResetToFactoryDefaultAsync(ControlId.DataLossConfirmation confirmation, ControlId.Access.FactoryResetOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.ScanWifiAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<ControlId.Access.WifiNetwork!>!>!
+ControlId.Access.IAccessClient.SendSlideshowImageAsync(string! filename, byte[]! jpeg, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.SetDualSidedSecretAsync(string! secret, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.SetKioskIconAsync(string! filename, byte[]! image, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.SetMasterPasswordAsync(string! password, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.SetNtpServerAsync(string! server1, string? server2 = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.SetOsdpScbkAsync(string! scbk, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.SetOsdpSecureKeyAsync(int panelId, int address, string! scbkHex, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.SetOsdpSecureTypeAsync(int panelId, int address, ControlId.Access.OsdpSecureType secureType, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.SetPhoneIconAsync(byte[]! png, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.SetProOperationModeAndRebootAsync(string! mode, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.SetStreamingLogoAsync(byte[]! png, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.SetUpdateModePasswordAsync(string! password, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.SetUserImageAsync(long userId, byte[]! image, ControlId.Access.UserImageUploadOptions! options, System.DateTimeOffset? timestamp = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.FaceImageResult!>!
+ControlId.Access.IAccessClient.SetUserImagesAsync(System.Collections.Generic.IEnumerable<ControlId.Access.UserImage!>! images, ControlId.Access.UserImageUploadOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<ControlId.Access.FaceImageResult!>!>!
+ControlId.Access.IAccessClient.SetWifiSettingsAsync(string! ssid, string! psk, string? bssid = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.WifiConnectionResult>!
+ControlId.Access.IAccessClient.SetWifiSourceAsync(ControlId.Access.WifiSource source, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.StartCameraCalibrationAsync(int? timeoutSeconds = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.UpdateCustomFieldAsync(long fieldId, ControlId.Access.CustomFieldDefinition! field, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.UpdateSecBoxFirmwareAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.IAccessClient.UpgradeFingerprintCapacityAsync(string! password, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.UploadEapCaCertificateAsync(byte[]! certificate, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.UploadEapCaCertificateWifiAsync(byte[]! certificate, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.UploadEapTlsClientCertificateAsync(byte[]! certificate, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.UploadEapTlsPrivateKeyAsync(byte[]! privateKey, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessClient.WaitCameraCalibrationAsync(System.TimeSpan? pollInterval = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.CameraCalibrationStatus!>!
+ControlId.Access.IAccessClient.WaitSecBoxFirmwareUpdateAsync(System.TimeSpan? pollInterval = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.SecBoxFirmwareUpdateStatus!>!
+ControlId.Access.Ieee8021XEapMethod
+ControlId.Access.Ieee8021XEapMethod.Peap = 0 -> ControlId.Access.Ieee8021XEapMethod
+ControlId.Access.Ieee8021XEapMethod.Tls = 2 -> ControlId.Access.Ieee8021XEapMethod
+ControlId.Access.Ieee8021XEapMethod.Ttls = 1 -> ControlId.Access.Ieee8021XEapMethod
+ControlId.Access.Ieee8021XSettings
+ControlId.Access.Ieee8021XSettings.EapMethod.get -> ControlId.Access.Ieee8021XEapMethod?
+ControlId.Access.Ieee8021XSettings.EapMethod.set -> void
+ControlId.Access.Ieee8021XSettings.Enabled.get -> bool
+ControlId.Access.Ieee8021XSettings.Enabled.set -> void
+ControlId.Access.Ieee8021XSettings.Ieee8021XSettings() -> void
+ControlId.Access.Ieee8021XSettings.InnerAuthentication.get -> ControlId.Access.Ieee8021XInnerAuthentication
+ControlId.Access.Ieee8021XSettings.InnerAuthentication.set -> void
+ControlId.Access.Ieee8021XSettings.Interface.get -> string?
+ControlId.Access.Ieee8021XSettings.Interface.set -> void
+ControlId.Access.Ieee8021XSettings.Login.get -> string?
+ControlId.Access.Ieee8021XSettings.Login.set -> void
+ControlId.Access.Ieee8021XSettings.Password.get -> string?
+ControlId.Access.Ieee8021XSettings.Password.set -> void
+ControlId.Access.Ieee8021XSettings.UsesCertificate.get -> bool?
+ControlId.Access.Ieee8021XSettings.UsesCertificate.set -> void
+ControlId.Access.Ieee8021XStatus
+ControlId.Access.Ieee8021XStatus.Aborting = 5 -> ControlId.Access.Ieee8021XStatus
+ControlId.Access.Ieee8021XStatus.Authenticated = 4 -> ControlId.Access.Ieee8021XStatus
+ControlId.Access.Ieee8021XStatus.Authenticating = 3 -> ControlId.Access.Ieee8021XStatus
+ControlId.Access.Ieee8021XStatus.Connecting = 2 -> ControlId.Access.Ieee8021XStatus
+ControlId.Access.Ieee8021XStatus.DeviceUnknown = 10 -> ControlId.Access.Ieee8021XStatus
+ControlId.Access.Ieee8021XStatus.Disabled = 11 -> ControlId.Access.Ieee8021XStatus
+ControlId.Access.Ieee8021XStatus.Disconnected = 1 -> ControlId.Access.Ieee8021XStatus
+ControlId.Access.Ieee8021XStatus.ForceAuth = 7 -> ControlId.Access.Ieee8021XStatus
+ControlId.Access.Ieee8021XStatus.ForceUnauth = 8 -> ControlId.Access.Ieee8021XStatus
+ControlId.Access.Ieee8021XStatus.Held = 6 -> ControlId.Access.Ieee8021XStatus
+ControlId.Access.Ieee8021XStatus.Initialize = 0 -> ControlId.Access.Ieee8021XStatus
+ControlId.Access.Ieee8021XStatus.Restart = 9 -> ControlId.Access.Ieee8021XStatus
+ControlId.Access.Ieee8021XStatus.Unknown = -1 -> ControlId.Access.Ieee8021XStatus
+ControlId.Access.IoGpioState
+ControlId.Access.IoGpioState.ActivationMode.get -> int?
+ControlId.Access.IoGpioState.ActivationMode.set -> void
+ControlId.Access.IoGpioState.Active.get -> bool?
+ControlId.Access.IoGpioState.Active.set -> void
+ControlId.Access.IoGpioState.Available.get -> bool
+ControlId.Access.IoGpioState.Available.set -> void
+ControlId.Access.IoGpioState.DebounceMs.get -> int?
+ControlId.Access.IoGpioState.DebounceMs.set -> void
+ControlId.Access.IoGpioState.Enabled.get -> bool
+ControlId.Access.IoGpioState.Enabled.set -> void
+ControlId.Access.IoGpioState.ExtId.get -> int?
+ControlId.Access.IoGpioState.ExtId.set -> void
+ControlId.Access.IoGpioState.Idle.get -> int?
+ControlId.Access.IoGpioState.Idle.set -> void
+ControlId.Access.IoGpioState.In.get -> bool?
+ControlId.Access.IoGpioState.In.set -> void
+ControlId.Access.IoGpioState.Index.get -> int
+ControlId.Access.IoGpioState.Index.set -> void
+ControlId.Access.IoGpioState.IoGpioState() -> void
+ControlId.Access.IoGpioState.Mode.get -> int?
+ControlId.Access.IoGpioState.Mode.set -> void
+ControlId.Access.IoGpioState.Notified.get -> int?
+ControlId.Access.IoGpioState.Notified.set -> void
+ControlId.Access.IoGpioState.Notify.get -> bool?
+ControlId.Access.IoGpioState.Notify.set -> void
+ControlId.Access.IoGpioState.Role.get -> string?
+ControlId.Access.IoGpioState.Role.set -> void
+ControlId.Access.IoGpioState.Value.get -> int?
+ControlId.Access.IoGpioState.Value.set -> void
+ControlId.Access.IoRelayState
+ControlId.Access.IoRelayState.Active.get -> bool?
+ControlId.Access.IoRelayState.Active.set -> void
+ControlId.Access.IoRelayState.AutoClose.get -> bool
+ControlId.Access.IoRelayState.AutoClose.set -> void
+ControlId.Access.IoRelayState.Available.get -> bool
+ControlId.Access.IoRelayState.Available.set -> void
+ControlId.Access.IoRelayState.Enabled.get -> bool
+ControlId.Access.IoRelayState.Enabled.set -> void
+ControlId.Access.IoRelayState.Gpio.get -> int
+ControlId.Access.IoRelayState.Gpio.set -> void
+ControlId.Access.IoRelayState.Id.get -> int
+ControlId.Access.IoRelayState.Id.set -> void
+ControlId.Access.IoRelayState.IoRelayState() -> void
+ControlId.Access.IoRelayState.OutputMode.get -> int
+ControlId.Access.IoRelayState.OutputMode.set -> void
+ControlId.Access.IoRelayState.TimeoutMs.get -> int
+ControlId.Access.IoRelayState.TimeoutMs.set -> void
+ControlId.Access.IoSecBoxState
+ControlId.Access.IoSecBoxState.DoorSensor.get -> bool
+ControlId.Access.IoSecBoxState.DoorSensor.set -> void
+ControlId.Access.IoSecBoxState.DoorSensorActive.get -> bool
+ControlId.Access.IoSecBoxState.DoorSensorActive.set -> void
+ControlId.Access.IoSecBoxState.DoorSensorEnabled.get -> bool
+ControlId.Access.IoSecBoxState.DoorSensorEnabled.set -> void
+ControlId.Access.IoSecBoxState.DoorSensorIdle.get -> int
+ControlId.Access.IoSecBoxState.DoorSensorIdle.set -> void
+ControlId.Access.IoSecBoxState.Enabled.get -> bool
+ControlId.Access.IoSecBoxState.Enabled.set -> void
+ControlId.Access.IoSecBoxState.Id.get -> long
+ControlId.Access.IoSecBoxState.Id.set -> void
+ControlId.Access.IoSecBoxState.IoSecBoxState() -> void
+ControlId.Access.IoSecBoxState.Open.get -> bool
+ControlId.Access.IoSecBoxState.Open.set -> void
+ControlId.Access.IoSecBoxState.Relay.get -> bool
+ControlId.Access.IoSecBoxState.Relay.set -> void
+ControlId.Access.IoSecBoxState.Rex.get -> bool
+ControlId.Access.IoSecBoxState.Rex.set -> void
+ControlId.Access.IoSecBoxState.RexActive.get -> bool
+ControlId.Access.IoSecBoxState.RexActive.set -> void
+ControlId.Access.IoSecBoxState.Serial.get -> string?
+ControlId.Access.IoSecBoxState.Serial.set -> void
+ControlId.Access.IoSecBoxState.Version.get -> string?
+ControlId.Access.IoSecBoxState.Version.set -> void
+ControlId.Access.IoState
+ControlId.Access.IoState.Gpios.get -> System.Collections.Generic.List<ControlId.Access.IoGpioState!>!
+ControlId.Access.IoState.Gpios.set -> void
+ControlId.Access.IoState.IoState() -> void
+ControlId.Access.IoState.Relays.get -> System.Collections.Generic.List<ControlId.Access.IoRelayState!>!
+ControlId.Access.IoState.Relays.set -> void
+ControlId.Access.IoState.SecBoxes.get -> System.Collections.Generic.List<ControlId.Access.IoSecBoxState!>!
+ControlId.Access.IoState.SecBoxes.set -> void
+ControlId.Access.MasterPasswordInfo
+ControlId.Access.MasterPasswordInfo.Hash.get -> string!
+ControlId.Access.MasterPasswordInfo.Hash.set -> void
+ControlId.Access.MasterPasswordInfo.MasterPasswordInfo() -> void
+ControlId.Access.MasterPasswordInfo.Salt.get -> string!
+ControlId.Access.MasterPasswordInfo.Salt.set -> void
+ControlId.Access.NetworkInterfaceKind
+ControlId.Access.NetworkInterfaceKind.Wired = 0 -> ControlId.Access.NetworkInterfaceKind
+ControlId.Access.NetworkInterfaceKind.Wireless = 1 -> ControlId.Access.NetworkInterfaceKind
+ControlId.Access.NetworkSettings.DhcpEnabled.get -> bool?
+ControlId.Access.NetworkSettings.DhcpEnabled.set -> void
+ControlId.Access.NetworkSettings.Interface.get -> string?
+ControlId.Access.NetworkSettings.Interface.set -> void
+ControlId.Access.NetworkSettings.TenMbps.get -> bool?
+ControlId.Access.NetworkSettings.TenMbps.set -> void
+ControlId.Access.NtpServers
+ControlId.Access.NtpServers.NtpServers() -> void
+ControlId.Access.NtpServers.Server1.get -> string?
+ControlId.Access.NtpServers.Server1.set -> void
+ControlId.Access.NtpServers.Server2.get -> string?
+ControlId.Access.NtpServers.Server2.set -> void
+ControlId.Access.ObjectFieldMetadata
+ControlId.Access.ObjectFieldMetadata.DefaultValue.get -> System.Text.Json.JsonElement?
+ControlId.Access.ObjectFieldMetadata.DefaultValue.set -> void
+ControlId.Access.ObjectFieldMetadata.ForeignKey.get -> ControlId.Access.ForeignKey?
+ControlId.Access.ObjectFieldMetadata.ForeignKey.set -> void
+ControlId.Access.ObjectFieldMetadata.NotNull.get -> bool
+ControlId.Access.ObjectFieldMetadata.NotNull.set -> void
+ControlId.Access.ObjectFieldMetadata.ObjectFieldMetadata() -> void
+ControlId.Access.ObjectFieldMetadata.PrimaryKey.get -> bool
+ControlId.Access.ObjectFieldMetadata.PrimaryKey.set -> void
+ControlId.Access.ObjectFieldMetadata.Type.get -> string?
+ControlId.Access.ObjectFieldMetadata.Type.set -> void
+ControlId.Access.ObjectFieldMetadata.Unique.get -> bool
+ControlId.Access.ObjectFieldMetadata.Unique.set -> void
+ControlId.Access.ObjectMetadata
+ControlId.Access.ObjectMetadata.Fields.get -> System.Collections.Generic.Dictionary<string!, ControlId.Access.ObjectFieldMetadata!>!
+ControlId.Access.ObjectMetadata.Fields.set -> void
+ControlId.Access.ObjectMetadata.Joins.get -> System.Collections.Generic.Dictionary<string!, System.Collections.Generic.List<ControlId.Access.ForeignKey!>!>!
+ControlId.Access.ObjectMetadata.Joins.set -> void
+ControlId.Access.ObjectMetadata.ObjectMetadata() -> void
+ControlId.Access.ObjectMetadataFilter
+ControlId.Access.ObjectMetadataFilter.All = 0 -> ControlId.Access.ObjectMetadataFilter
+ControlId.Access.ObjectMetadataFilter.Custom = 1 -> ControlId.Access.ObjectMetadataFilter
+ControlId.Access.ObjectMetadataFilter.Default = 2 -> ControlId.Access.ObjectMetadataFilter
+ControlId.Access.Online.FaceTemplateEvent
+ControlId.Access.Online.FaceTemplateEvent.Template.get -> string?
+ControlId.Access.Online.FaceTemplateEvent.TemplateFF.get -> string?
+ControlId.Access.Online.FaceTemplateEvent.TemplateMF.get -> string?
+ControlId.Access.Online.FaceTemplateEvent.TemplateMM.get -> string?
+ControlId.Access.Online.KioskEnrollmentEvent
+ControlId.Access.Online.KioskEnrollmentEvent.DeviceId.get -> long?
+ControlId.Access.Online.KioskEnrollmentEvent.FaceTemplate.get -> string?
+ControlId.Access.Online.KioskEnrollmentEvent.ImageTimestamp.get -> long?
+ControlId.Access.Online.KioskEnrollmentEvent.UserId.get -> long?
+ControlId.Access.Online.KioskEnrollmentEvent.UserImage.get -> byte[]?
+ControlId.Access.Online.OnlineIdentificationKind.FaceTemplate = 8 -> ControlId.Access.Online.OnlineIdentificationKind
+ControlId.Access.Online.OnlineIdentificationKind.Pin = 7 -> ControlId.Access.Online.OnlineIdentificationKind
+ControlId.Access.Online.PinEvent
+ControlId.Access.Online.PinEvent.Pin.get -> string?
+ControlId.Access.OsdpOutputCapabilities
+ControlId.Access.OsdpOutputCapabilities.ComplianceLevel.get -> int
+ControlId.Access.OsdpOutputCapabilities.ComplianceLevel.set -> void
+ControlId.Access.OsdpOutputCapabilities.NumOutputs.get -> int
+ControlId.Access.OsdpOutputCapabilities.NumOutputs.set -> void
+ControlId.Access.OsdpOutputCapabilities.OsdpOutputCapabilities() -> void
+ControlId.Access.OsdpScbkInfo
+ControlId.Access.OsdpScbkInfo.OsdpScbkInfo() -> void
+ControlId.Access.OsdpScbkInfo.Scbk.get -> string!
+ControlId.Access.OsdpScbkInfo.Scbk.set -> void
+ControlId.Access.OsdpSecureType
+ControlId.Access.OsdpSecureType.Insecure = 0 -> ControlId.Access.OsdpSecureType
+ControlId.Access.OsdpSecureType.Installation = 1 -> ControlId.Access.OsdpSecureType
+ControlId.Access.OsdpSecureType.SecureOnly = 2 -> ControlId.Access.OsdpSecureType
+ControlId.Access.PortAvailabilityResult
+ControlId.Access.PortAvailabilityResult.IsAvailable.get -> bool
+ControlId.Access.PortAvailabilityResult.PortAvailabilityResult() -> void
+ControlId.Access.PortAvailabilityResult.Status.get -> string?
+ControlId.Access.PortAvailabilityResult.Status.set -> void
+ControlId.Access.Push.IPushCommandStoreMaintenance
+ControlId.Access.Push.IPushCommandStoreMaintenance.RemoveExpiredAsync(System.DateTimeOffset pendingCreatedBefore, System.DateTimeOffset inFlightDeliveredBefore, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<ControlId.Access.Push.PushEnvelope!>!>!
+ControlId.Access.Push.InMemoryPushCommandStore.RemoveExpiredAsync(System.DateTimeOffset pendingCreatedBefore, System.DateTimeOffset inFlightDeliveredBefore, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<ControlId.Access.Push.PushEnvelope!>!>!
+ControlId.Access.Push.PushQueueFullException
+ControlId.Access.Push.PushQueueFullException.DeviceId.get -> long
+ControlId.Access.Push.PushQueueFullException.Limit.get -> int
+ControlId.Access.Push.PushQueueFullException.PushQueueFullException(long deviceId, int limit) -> void
+ControlId.Access.Push.PushServer.PurgeExpiredAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+ControlId.Access.Push.PushServer.PushServer(ControlId.Access.Push.IPushCommandStore! store, ControlId.Access.Push.PushServerOptions! options, ControlId.Access.Push.IPushResultHandler? unclaimedResultHandler = null) -> void
+ControlId.Access.Push.PushServerOptions
+ControlId.Access.Push.PushServerOptions.CommandTimeout.get -> System.TimeSpan?
+ControlId.Access.Push.PushServerOptions.CommandTimeout.set -> void
+ControlId.Access.Push.PushServerOptions.CommandTtl.get -> System.TimeSpan?
+ControlId.Access.Push.PushServerOptions.CommandTtl.set -> void
+ControlId.Access.Push.PushServerOptions.InFlightTimeout.get -> System.TimeSpan?
+ControlId.Access.Push.PushServerOptions.InFlightTimeout.set -> void
+ControlId.Access.Push.PushServerOptions.LoggerFactory.get -> Microsoft.Extensions.Logging.ILoggerFactory?
+ControlId.Access.Push.PushServerOptions.LoggerFactory.set -> void
+ControlId.Access.Push.PushServerOptions.MaxPendingPerDevice.get -> int
+ControlId.Access.Push.PushServerOptions.MaxPendingPerDevice.set -> void
+ControlId.Access.Push.PushServerOptions.MaxTrackedDevices.get -> int
+ControlId.Access.Push.PushServerOptions.MaxTrackedDevices.set -> void
+ControlId.Access.Push.PushServerOptions.PurgeInterval.get -> System.TimeSpan?
+ControlId.Access.Push.PushServerOptions.PurgeInterval.set -> void
+ControlId.Access.Push.PushServerOptions.PushServerOptions() -> void
+ControlId.Access.Push.PushServerOptions.RequireUuid.get -> bool
+ControlId.Access.Push.PushServerOptions.RequireUuid.set -> void
+ControlId.Access.Push.PushServerOptions.ResultHandlerTimeout.get -> System.TimeSpan
+ControlId.Access.Push.PushServerOptions.ResultHandlerTimeout.set -> void
+ControlId.Access.RedirectTarget
+ControlId.Access.RedirectTarget.Address.get -> string?
+ControlId.Access.RedirectTarget.DeviceId.get -> int?
+ControlId.Access.RedirectTarget.Login.get -> string?
+ControlId.Access.RemoteEnrollResult.NumBits.get -> int?
+ControlId.Access.RemoteEnrollResult.NumBits.set -> void
+ControlId.Access.RemoteEnrollResult.Registration.get -> string?
+ControlId.Access.RemoteEnrollResult.Registration.set -> void
+ControlId.Access.RemoteEnrollResult.TagValue.get -> string?
+ControlId.Access.RemoteEnrollResult.TagValue.set -> void
+ControlId.Access.RemoteEnrollType.Tag = 5 -> ControlId.Access.RemoteEnrollType
+ControlId.Access.ScreenFrame
+ControlId.Access.ScreenFrame.Display = 1 -> ControlId.Access.ScreenFrame
+ControlId.Access.ScreenFrame.Screen = 0 -> ControlId.Access.ScreenFrame
+ControlId.Access.ScreenImageList
+ControlId.Access.ScreenImageList.Filenames.get -> System.Collections.Generic.IReadOnlyList<string!>!
+ControlId.Access.ScreenImageList.MaxFiles.get -> int
+ControlId.Access.ScreenImageList.ScreenImageList(System.Collections.Generic.IReadOnlyList<string!>! filenames, int maxFiles) -> void
+ControlId.Access.SecBoxFirmwareUpdateStatus
+ControlId.Access.SecBoxFirmwareUpdateStatus.BitsWritten.get -> int
+ControlId.Access.SecBoxFirmwareUpdateStatus.BitsWritten.set -> void
+ControlId.Access.SecBoxFirmwareUpdateStatus.IsFinished.get -> bool
+ControlId.Access.SecBoxFirmwareUpdateStatus.IsFinished.set -> void
+ControlId.Access.SecBoxFirmwareUpdateStatus.SecBoxFirmwareUpdateStatus() -> void
+ControlId.Access.SecBoxKeyChangeResult
+ControlId.Access.SecBoxKeyChangeResult.SecBoxKeyChangeResult() -> void
+ControlId.Access.SecBoxKeyChangeResult.StatusKey.get -> string!
+ControlId.Access.SecBoxKeyChangeResult.StatusKey.set -> void
+ControlId.Access.SecBoxKeyChangeResult.Succeeded.get -> bool
+ControlId.Access.TurnstileCounters
+ControlId.Access.TurnstileCounters.EntranceTurns.get -> long
+ControlId.Access.TurnstileCounters.EntranceTurns.set -> void
+ControlId.Access.TurnstileCounters.ExitTurns.get -> long
+ControlId.Access.TurnstileCounters.ExitTurns.set -> void
+ControlId.Access.TurnstileCounters.LeftTurns.get -> long
+ControlId.Access.TurnstileCounters.LeftTurns.set -> void
+ControlId.Access.TurnstileCounters.RightTurns.get -> long
+ControlId.Access.TurnstileCounters.RightTurns.set -> void
+ControlId.Access.TurnstileCounters.TotalTurns.get -> long
+ControlId.Access.TurnstileCounters.TotalTurns.set -> void
+ControlId.Access.TurnstileCounters.TurnstileCounters() -> void
+ControlId.Access.UserImageUploadOptions
+ControlId.Access.UserImageUploadOptions.BypassQualityScore.get -> bool
+ControlId.Access.UserImageUploadOptions.BypassQualityScore.set -> void
+ControlId.Access.UserImageUploadOptions.RejectExistingFace.get -> bool
+ControlId.Access.UserImageUploadOptions.RejectExistingFace.set -> void
+ControlId.Access.UserImageUploadOptions.UserImageUploadOptions() -> void
+ControlId.Access.VpnStatus.Unknown = -1 -> ControlId.Access.VpnStatus
+ControlId.Access.WiegandCardRead
+ControlId.Access.WiegandCardRead.CardNumber.get -> string?
+ControlId.Access.WiegandCardRead.CardNumber.set -> void
+ControlId.Access.WiegandCardRead.CardReadNumBits.get -> int
+ControlId.Access.WiegandCardRead.CardReadNumBits.set -> void
+ControlId.Access.WiegandCardRead.CardReadValue.get -> string?
+ControlId.Access.WiegandCardRead.CardReadValue.set -> void
+ControlId.Access.WiegandCardRead.FacilityCode.get -> string?
+ControlId.Access.WiegandCardRead.FacilityCode.set -> void
+ControlId.Access.WiegandCardRead.LastReadTime.get -> string?
+ControlId.Access.WiegandCardRead.LastReadTime.set -> void
+ControlId.Access.WiegandCardRead.Parities.get -> int
+ControlId.Access.WiegandCardRead.Parities.set -> void
+ControlId.Access.WiegandCardRead.WiegandCardRead() -> void
+ControlId.Access.WiegandMode
+ControlId.Access.WiegandMode.Format.get -> string?
+ControlId.Access.WiegandMode.Format.set -> void
+ControlId.Access.WiegandMode.Id.get -> int?
+ControlId.Access.WiegandMode.Id.set -> void
+ControlId.Access.WiegandMode.InvertedCard.get -> int?
+ControlId.Access.WiegandMode.InvertedCard.set -> void
+ControlId.Access.WiegandMode.InvertedFacility.get -> int?
+ControlId.Access.WiegandMode.InvertedFacility.set -> void
+ControlId.Access.WiegandMode.Name.get -> string?
+ControlId.Access.WiegandMode.Name.set -> void
+ControlId.Access.WiegandMode.Parities.get -> string?
+ControlId.Access.WiegandMode.Parities.set -> void
+ControlId.Access.WiegandMode.ParitiesCalculationOrder.get -> string?
+ControlId.Access.WiegandMode.ParitiesCalculationOrder.set -> void
+ControlId.Access.WiegandMode.Size.get -> int?
+ControlId.Access.WiegandMode.Size.set -> void
+ControlId.Access.WiegandMode.WiegandMode() -> void
+ControlId.Access.WifiConnectionResult
+ControlId.Access.WifiConnectionResult.Connected = 0 -> ControlId.Access.WifiConnectionResult
+ControlId.Access.WifiConnectionResult.NetworkNotFound = 2 -> ControlId.Access.WifiConnectionResult
+ControlId.Access.WifiConnectionResult.Timeout = 3 -> ControlId.Access.WifiConnectionResult
+ControlId.Access.WifiConnectionResult.Unknown = -1 -> ControlId.Access.WifiConnectionResult
+ControlId.Access.WifiConnectionResult.UnknownError = 4 -> ControlId.Access.WifiConnectionResult
+ControlId.Access.WifiConnectionResult.WrongPassword = 1 -> ControlId.Access.WifiConnectionResult
+ControlId.Access.WifiData
+ControlId.Access.WifiData.AvailableAdapters.get -> System.Collections.Generic.List<string!>!
+ControlId.Access.WifiData.AvailableAdapters.set -> void
+ControlId.Access.WifiData.ConnectedSsid.get -> string?
+ControlId.Access.WifiData.ConnectedSsid.set -> void
+ControlId.Access.WifiData.IsConnected.get -> bool
+ControlId.Access.WifiData.Priority.get -> string?
+ControlId.Access.WifiData.Priority.set -> void
+ControlId.Access.WifiData.PriorityInterface.get -> ControlId.Access.NetworkInterfaceKind?
+ControlId.Access.WifiData.Psk.get -> string?
+ControlId.Access.WifiData.Psk.set -> void
+ControlId.Access.WifiData.Source.get -> string?
+ControlId.Access.WifiData.Source.set -> void
+ControlId.Access.WifiData.SourceKind.get -> ControlId.Access.WifiSource
+ControlId.Access.WifiData.Ssid.get -> string?
+ControlId.Access.WifiData.Ssid.set -> void
+ControlId.Access.WifiData.Status.get -> string?
+ControlId.Access.WifiData.Status.set -> void
+ControlId.Access.WifiData.WifiData() -> void
+ControlId.Access.WifiNetwork
+ControlId.Access.WifiNetwork.Bssid.get -> string?
+ControlId.Access.WifiNetwork.Bssid.set -> void
+ControlId.Access.WifiNetwork.Frequency.get -> int
+ControlId.Access.WifiNetwork.Frequency.set -> void
+ControlId.Access.WifiNetwork.Signal.get -> int
+ControlId.Access.WifiNetwork.Signal.set -> void
+ControlId.Access.WifiNetwork.Ssid.get -> string?
+ControlId.Access.WifiNetwork.Ssid.set -> void
+ControlId.Access.WifiNetwork.WifiNetwork() -> void
+ControlId.Access.WifiSource
+ControlId.Access.WifiSource.Disabled = 0 -> ControlId.Access.WifiSource
+ControlId.Access.WifiSource.Internal = 1 -> ControlId.Access.WifiSource
+ControlId.Access.WifiSource.Usb = 2 -> ControlId.Access.WifiSource
+ControlId.IControlIdClientDiagnostics
+ControlId.IControlIdClientDiagnostics.CircuitState.get -> ControlId.ControlIdCircuitState
+ControlId.IControlIdClientDiagnostics.ResetCircuit() -> void
+ControlId.IControlIdClientDiagnostics.Session.get -> string?
+ControlId.Rep.RepAbout.ApiRevisionText.get -> string!
+ControlId.Rep.RepClient.RepClient(string! baseAddress, string! login = "admin", string! password = "admin", ControlId.Rep.RepMode mode = ControlId.Rep.RepMode.Portaria671, string? serverCertificateSha256 = null) -> void
+ControlId.Rep.RepClient.ResetCircuit() -> void
+ControlId.Rep.RepClient.Session.get -> string?
+const ControlId.Access.SecBoxKeyChangeResult.SuccessCode = "00" -> string!
+override ControlId.Access.MasterPasswordInfo.ToString() -> string!
+override ControlId.Access.OsdpScbkInfo.ToString() -> string!
+override ControlId.Access.RedirectTarget.ToString() -> string!
+override ControlId.Access.WifiData.ToString() -> string!
+static ControlId.Access.Online.OnlineEvents.ParseKioskEnrollment(string! json) -> ControlId.Access.Online.KioskEnrollmentEvent!
+static ControlId.Access.RedirectTarget.ByAddress(string! address, string! login, string! password) -> ControlId.Access.RedirectTarget!
+static ControlId.Access.RedirectTarget.ByDeviceId(int deviceId) -> ControlId.Access.RedirectTarget!
+ControlId.Access.AccessProvisioningClientExtensions
+ControlId.Access.HidConfigResetStatus
+ControlId.Access.HidConfigResetStatus.HidConfigResetStatus() -> void
+ControlId.Access.HidConfigResetStatus.IsDone.get -> bool
+ControlId.Access.HidConfigResetStatus.IsResetting.get -> bool
+ControlId.Access.HidConfigResetStatus.IsResetting.set -> void
+ControlId.Access.HidConfigResetStatus.Status.get -> string!
+ControlId.Access.HidConfigResetStatus.Status.set -> void
+ControlId.Access.HidKeyInfo
+ControlId.Access.HidKeyInfo.HidKeyInfo() -> void
+ControlId.Access.HidKeyInfo.IsKek.get -> bool
+ControlId.Access.HidKeyInfo.IsMediaKey.get -> bool
+ControlId.Access.HidKeyInfo.KeyId.get -> string!
+ControlId.Access.HidKeyInfo.KeyId.set -> void
+ControlId.Access.HidKeyInfo.KeyType.get -> string!
+ControlId.Access.HidKeyInfo.KeyType.set -> void
+ControlId.Access.HidOidValue
+ControlId.Access.HidOidValue.Boolean.get -> bool
+ControlId.Access.HidOidValue.Hex.get -> string!
+ControlId.Access.HidOidValue.Integer.get -> int
+ControlId.Access.HidOidValue.Kind.get -> ControlId.Access.HidOidValueKind
+ControlId.Access.HidOidValue.ToBytes() -> byte[]!
+ControlId.Access.HidOidValueKind
+ControlId.Access.HidOidValueKind.Boolean = 0 -> ControlId.Access.HidOidValueKind
+ControlId.Access.HidOidValueKind.Bytes = 2 -> ControlId.Access.HidOidValueKind
+ControlId.Access.HidOidValueKind.Integer = 1 -> ControlId.Access.HidOidValueKind
+ControlId.Access.IAccessProvisioningClient
+ControlId.Access.IAccessProvisioningClient.ClearOemApprovedFirmwareAsync(string! oemCode, string! license, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessProvisioningClient.GetHidConfigResetStatusAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.HidConfigResetStatus!>!
+ControlId.Access.IAccessProvisioningClient.GetHidKeyInfoAsync(string! targetRef, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.HidKeyInfo!>!
+ControlId.Access.IAccessProvisioningClient.GetHidOidAsync(string! oid, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.HidOidValue!>!
+ControlId.Access.IAccessProvisioningClient.GetOemCodeAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+ControlId.Access.IAccessProvisioningClient.GetOemDowngradeApprovedVersionsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+ControlId.Access.IAccessProvisioningClient.InjectHidCustomKekAsync(string! targetRef, string! kekRef, string! key, string? kek = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.IAccessProvisioningClient.InjectHidDefaultKekAsync(string! key, string? currentKek = null, string? keyId = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.IAccessProvisioningClient.InjectHidMediaKeyAsync(string! targetRef, string! kekRef, string! key, string? kek = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.IAccessProvisioningClient.ResetHidConfigAsync(ControlId.DataLossConfirmation confirmation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.HidConfigResetStatus!>!
+ControlId.Access.IAccessProvisioningClient.RestoreHidConfigAsync(ControlId.DataLossConfirmation confirmation, byte[]! orcoFile, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.HidConfigResetStatus!>!
+ControlId.Access.IAccessProvisioningClient.SetHidOidAsync(string! oid, bool value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.IAccessProvisioningClient.SetHidOidAsync(string! oid, byte[]! value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.IAccessProvisioningClient.SetHidOidAsync(string! oid, int value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+ControlId.Access.IAccessProvisioningClient.SetOemApprovedFirmwareAsync(string! oemCode, string! license, string! approvedFirmware, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessProvisioningClient.SetOemCodeAsync(string! oemCode, string! license, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+ControlId.Access.IAccessProvisioningClient.WaitHidConfigResetAsync(System.TimeSpan? pollInterval = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<ControlId.Access.HidConfigResetStatus!>!
+override ControlId.Access.HidOidValue.ToString() -> string!
+static ControlId.Access.AccessProvisioningClientExtensions.CreateProvisioningClient(this ControlId.Access.IAccessClient! client) -> ControlId.Access.IAccessProvisioningClient!
