@@ -23,7 +23,8 @@ public sealed class DeviceHealthEndToEndTests
         builder.Logging.SetMinimumLevel(LogLevel.Critical);
         builder.Services.AddControlIdPush();
         builder.Services.AddControlIdAccess("portaria", o => o.BaseAddress = sim.BaseAddress);
-        builder.Services.AddHealthChecks().AddControlIdDeviceChecks();
+        // Este teste cobre o último contato, não lentidão: folga no limite para a primeira sonda (login + JIT).
+        builder.Services.AddHealthChecks().AddControlIdDeviceChecks(o => o.SlowThreshold = TimeSpan.FromMinutes(1));
         await using var server = builder.Build();
         server.MapControlIdPush();
         await server.StartAsync();
