@@ -26,6 +26,12 @@ public sealed class UserSyncEndToEndTests
         return state.GetProperty("requests").EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetInt64());
     }
 
+    private static async Task<long> TableCountAsync(RunningSimulator sim, string table)
+    {
+        var state = await sim.Control.GetFromJsonAsync<JsonElement>("/simulator/state");
+        return state.GetProperty("tables").GetProperty(table).GetInt64();
+    }
+
     private static long Writes(Dictionary<string, long> requests) =>
         WriteCommands.Sum(command => requests.TryGetValue(command, out var count) ? count : 0);
 
@@ -49,6 +55,7 @@ public sealed class UserSyncEndToEndTests
 
         Assert.All(first, r => Assert.True(r.Success));
         Assert.All(first, r => Assert.True(r.Created));
+        Assert.All(first, r => Assert.Equal(UserSyncStatus.Created, r.Status));
         Assert.Equal(new[] { "João", "Maria" }, (await device.GetUsersAsync()).Select(u => u.Name).Order());
         Assert.Equal(new long[] { 111, 112 }, (await device.GetCardsAsync(1)).Select(c => c.Value).Order());
         Assert.Equal(Photo, await device.GetUserImageAsync(1));
@@ -61,6 +68,7 @@ public sealed class UserSyncEndToEndTests
         Assert.Equal(Writes(afterFirst), Writes(afterSecond));
         Assert.All(second, r => Assert.True(r.Success));
         Assert.All(second, r => Assert.False(r.Changed));
+        Assert.All(second, r => Assert.Equal(UserSyncStatus.Unchanged, r.Status));
         Assert.True(afterSecond["load_objects"] > afterFirst["load_objects"], "a segunda execução só lê");
     }
 
@@ -75,17 +83,42 @@ public sealed class UserSyncEndToEndTests
         var people = People();
         people[0].Cards = [111, 113];
         people[0].Photo = OtherPhoto();
-        var results = await device.SyncUsersAsync(people);
+        var results = await device.SyncUsersAsync(people, new UserSyncOptions { RemoveUnlisted = true });
 
         var after = await RequestsAsync(sim);
         Assert.Equal(new long[] { 112 }, results[0].CardsRemoved);
         Assert.Equal(new long[] { 113 }, results[0].CardsAdded);
         Assert.True(results[0].PhotoUpdated);
+        Assert.Equal(UserSyncStatus.Changed, results[0].Status);
         Assert.False(results[1].Changed);
         // um destroy_objects (cartão 112), um create_objects (cartão 113) e uma foto.
         Assert.Equal(Writes(before) + 3, Writes(after));
         Assert.Equal(new long[] { 111, 113 }, (await device.GetCardsAsync(1)).Select(c => c.Value).Order());
         Assert.Equal(OtherPhoto(), await device.GetUserImageAsync(1));
+    }
+
+    [Fact]
+    public async Task By_default_surplus_cards_and_groups_are_not_removed()
+    {
+        await using var sim = await RunningSimulator.StartAsync(o => o.SeedSampleData = false);
+        using var device = sim.CreateClient();
+        await device.SyncUsersAsync(People());
+        var groupLinks = await TableCountAsync(sim, "user_groups");
+
+        var people = People();
+        people[0].Cards = [111];
+        people[0].GroupIds = [1];
+        var before = await RequestsAsync(sim);
+        var results = await device.SyncUsersAsync(people);
+        var after = await RequestsAsync(sim);
+
+        Assert.Equal(Writes(before), Writes(after));
+        Assert.Equal(new long[] { 111, 112 }, (await device.GetCardsAsync(1)).Select(c => c.Value).Order());
+        Assert.Empty(results[0].CardsRemoved);
+        Assert.Empty(results[0].GroupsRemoved);
+        Assert.False(results[0].Changed);
+        Assert.Equal(UserSyncStatus.Unchanged, results[0].Status);
+        Assert.Equal(groupLinks, await TableCountAsync(sim, "user_groups"));
     }
 
     [Fact]
@@ -104,6 +137,7 @@ public sealed class UserSyncEndToEndTests
 
         Assert.False(results[0].Success);
         Assert.Equal("card:777", Assert.Single(results[0].Errors).Item);
+        Assert.Equal(UserSyncStatus.Failed, results[0].Status);
         Assert.Equal(new long[] { 778 }, results[0].CardsAdded);
         Assert.True(results[1].Success);
         Assert.Equal(new long[] { 881 }, results[1].CardsAdded);
@@ -127,7 +161,9 @@ public sealed class UserSyncEndToEndTests
 
         Assert.Equal(2, results.Count);
         Assert.False(results[0].Changed);
+        Assert.Equal(UserSyncStatus.Unchanged, results[0].Status);
         Assert.True(results[1].Removed);
+        Assert.Equal(UserSyncStatus.Removed, results[1].Status);
         Assert.Equal(2, results[1].UserId);
         Assert.Equal("Maria", Assert.Single(await device.GetUsersAsync()).Name);
     }
