@@ -146,6 +146,9 @@ public static class ControlIdEndpointRouteBuilderExtensions
             return;
         }
 
+        await CallbackObservation.NotifyAsync(
+            context, ControlIdCallbackKind.PushResult, deviceId, bytes).ConfigureAwait(false);
+
         CallbackGuard.RecordContact(context, deviceId, DeviceContactSource.Push);
         var push = GetPushServer(context);
         var uuid = GetUuid(context);
@@ -188,6 +191,14 @@ public static class ControlIdEndpointRouteBuilderExtensions
             // Sem o deviceId da notificação, só vale o token único; o corpo inválido nunca vira 200.
             if (authorizeFirst || CallbackGuard.Authorize(context, null, LoggerCategory))
             {
+                // O corpo inválido não impede o observador; sem ele, o device_id só pode vir da query.
+                var queryDeviceId = MonitorQueryDeviceId(context);
+                if (CallbackGuard.IsKnownDevice(context, queryDeviceId, LoggerCategory))
+                {
+                    await CallbackObservation.NotifyAsync(
+                        context, ControlIdCallbackKind.Monitor, queryDeviceId, bytes).ConfigureAwait(false);
+                }
+
                 Log.InvalidMonitorNotification(GetLogger(context), ex, endpoint);
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
             }
@@ -204,6 +215,10 @@ public static class ControlIdEndpointRouteBuilderExtensions
         {
             return;
         }
+
+        // Só depois do Parse (o deviceId vem do corpo), do token e da lista de equipamentos; antes dos handlers.
+        await CallbackObservation.NotifyAsync(
+            context, ControlIdCallbackKind.Monitor, notification.DeviceId, bytes).ConfigureAwait(false);
 
         if (notification.DeviceId is { } monitored)
         {
@@ -237,6 +252,17 @@ public static class ControlIdEndpointRouteBuilderExtensions
 
     private static bool TryGetDeviceId(HttpContext context, out long deviceId) =>
         long.TryParse(context.Request.Query["deviceId"], NumberStyles.Integer, CultureInfo.InvariantCulture, out deviceId);
+
+    private static long? MonitorQueryDeviceId(HttpContext context)
+    {
+        if (long.TryParse(context.Request.Query["device_id"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var id)
+            || long.TryParse(context.Request.Query["deviceId"], NumberStyles.Integer, CultureInfo.InvariantCulture, out id))
+        {
+            return id;
+        }
+
+        return null;
+    }
 
     private static string? GetUuid(HttpContext context)
     {
