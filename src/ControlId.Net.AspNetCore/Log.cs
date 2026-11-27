@@ -67,4 +67,10 @@ internal static partial class Log
         Level = LogLevel.Warning,
         Message = "Modo online: o equipamento {DeviceId} recebeu a resposta de contingência (ControlIdOnlineOptions.FallbackAuthorization) pelo motivo '{Reason}'.")]
     public static partial void OnlineFallback(ILogger logger, Exception? exception, long? deviceId, string reason);
+
+    [LoggerMessage(
+        EventId = 2015,
+        Level = LogLevel.Error,
+        Message = "IControlIdCallbackObserver {ObserverType} falhou na rota {Route}; a resposta segue.")]
+    public static partial void CallbackObserverFailed(ILogger logger, Exception exception, string observerType, string route);
 }
