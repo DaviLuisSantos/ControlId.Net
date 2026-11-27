@@ -66,7 +66,8 @@ public sealed class UserSyncOptions
 {
     /// <summary>
     /// Remove do equipamento as pessoas que não estão na lista desejada. Exige
-    /// <see cref="DataLossConfirmation"/> igual a <see cref="ControlId.DataLossConfirmation.Confirmed"/>.
+    /// <see cref="DataLossConfirmation"/> igual a <see cref="ControlId.DataLossConfirmation.Confirmed"/>, a não ser com
+    /// <see cref="DryRun"/> = <c>true</c> (que só relata as remoções e não apaga nada).
     /// </summary>
     public bool RemoveMissing { get; set; }
 
@@ -77,8 +78,34 @@ public sealed class UserSyncOptions
     /// </summary>
     public bool RemoveUnlisted { get; set; }
 
-    /// <summary>Confirmação de perda de dados, exigida por <see cref="RemoveMissing"/>.</summary>
+    /// <summary>
+    /// Confirmação de perda de dados, exigida por <see cref="RemoveMissing"/> (exceto com <see cref="DryRun"/> =
+    /// <c>true</c>). Não é usada para <see cref="RemoveUnlisted"/>.
+    /// </summary>
     public DataLossConfirmation DataLossConfirmation { get; set; }
+
+    /// <summary>
+    /// Faz só a comparação, sem escrever no equipamento: nada é criado, alterado ou removido, nenhuma senha é cifrada
+    /// (<see cref="IAccessClient.HashPasswordAsync"/>) e nenhuma foto é enviada, só as leituras necessárias
+    /// (<c>load_objects</c> e, para comparar uma foto sem marca, <see cref="IAccessClient.GetUserImageAsync"/>). As marcas
+    /// internas de senha e foto desta instância não são gravadas nem apagadas, então a execução real seguinte compara o
+    /// mesmo estado e aplica a diferença relatada aqui.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// O <see cref="UserSyncResult"/> descreve o que <b>seria</b> feito (<see cref="UserSyncResult.Created"/>,
+    /// <see cref="UserSyncResult.ChangedFields"/>, <see cref="UserSyncResult.CardsAdded"/>,
+    /// <see cref="UserSyncResult.CardsRemoved"/>, <see cref="UserSyncResult.GroupsAdded"/>,
+    /// <see cref="UserSyncResult.GroupsRemoved"/>, <see cref="UserSyncResult.PhotoUpdated"/> e
+    /// <see cref="UserSyncResult.Removed"/>), respeitando <see cref="RemoveUnlisted"/> e <see cref="RemoveMissing"/>.
+    /// </para>
+    /// <para>
+    /// A checagem de cartão que já pertence a outra pessoa continua valendo e gera o mesmo erro no resultado. Com
+    /// <c>true</c>, <see cref="RemoveMissing"/> não exige <see cref="DataLossConfirmation"/>, porque nada é apagado. O
+    /// padrão é <c>false</c>.
+    /// </para>
+    /// </remarks>
+    public bool DryRun { get; set; }
 }
 
 /// <summary>Resultado resumido da sincronização de uma pessoa.</summary>
@@ -129,7 +156,11 @@ public sealed class UserSyncError
     public override string ToString() => Item + ": " + Message;
 }
 
-/// <summary>Resultado da sincronização de uma pessoa: o que mudou e o que falhou, sem derrubar as demais.</summary>
+/// <summary>
+/// Resultado da sincronização de uma pessoa: o que mudou e o que falhou, sem derrubar as demais. Com
+/// <see cref="UserSyncOptions.DryRun"/> = <c>true</c>, os mesmos membros descrevem o que mudaria, sem que nada tenha sido
+/// escrito no equipamento.
+/// </summary>
 public sealed class UserSyncResult
 {
     internal readonly List<string> ChangedFieldList = new();
@@ -144,36 +175,47 @@ public sealed class UserSyncResult
     /// <summary>ID da pessoa.</summary>
     public long UserId { get; }
 
-    /// <summary>Tudo foi aplicado: não há erros.</summary>
+    /// <summary>
+    /// Tudo foi aplicado, ou, em <see cref="UserSyncOptions.DryRun"/>, tudo pôde ser comparado: não há erros.
+    /// </summary>
     public bool Success => ErrorList.Count == 0;
 
-    /// <summary>Houve alguma escrita bem-sucedida para esta pessoa.</summary>
+    /// <summary>
+    /// Houve alguma escrita bem-sucedida para esta pessoa ou, em <see cref="UserSyncOptions.DryRun"/>, alguma mudança que
+    /// seria aplicada.
+    /// </summary>
     public bool Changed =>
         Created || Removed || PhotoUpdated || ChangedFieldList.Count > 0
         || CardsAddedList.Count > 0 || CardsRemovedList.Count > 0 || GroupsAddedList.Count > 0 || GroupsRemovedList.Count > 0;
 
-    /// <summary>A pessoa não existia e foi criada.</summary>
+    /// <summary>A pessoa não existia e foi criada (ou, em <see cref="UserSyncOptions.DryRun"/>, seria criada).</summary>
     public bool Created { get; internal set; }
 
-    /// <summary>A pessoa foi removida (<see cref="UserSyncOptions.RemoveMissing"/>).</summary>
+    /// <summary>
+    /// A pessoa foi removida por <see cref="UserSyncOptions.RemoveMissing"/> (ou, em
+    /// <see cref="UserSyncOptions.DryRun"/>, seria removida).
+    /// </summary>
     public bool Removed { get; internal set; }
 
-    /// <summary>A foto foi enviada.</summary>
+    /// <summary>A foto foi enviada (ou, em <see cref="UserSyncOptions.DryRun"/>, seria enviada).</summary>
     public bool PhotoUpdated { get; internal set; }
 
-    /// <summary>Campos do usuário gravados: <c>name</c>, <c>registration</c>, <c>begin_time</c>, <c>end_time</c>, <c>password</c>.</summary>
+    /// <summary>
+    /// Campos do usuário gravados (ou, em <see cref="UserSyncOptions.DryRun"/>, que seriam gravados): <c>name</c>,
+    /// <c>registration</c>, <c>begin_time</c>, <c>end_time</c>, <c>password</c>.
+    /// </summary>
     public IReadOnlyList<string> ChangedFields => ChangedFieldList;
 
-    /// <summary>Cartões criados.</summary>
+    /// <summary>Cartões criados (ou, em <see cref="UserSyncOptions.DryRun"/>, que seriam criados).</summary>
     public IReadOnlyList<long> CardsAdded => CardsAddedList;
 
-    /// <summary>Cartões removidos.</summary>
+    /// <summary>Cartões removidos (ou, em <see cref="UserSyncOptions.DryRun"/>, que seriam removidos).</summary>
     public IReadOnlyList<long> CardsRemoved => CardsRemovedList;
 
-    /// <summary>Vínculos com grupos criados.</summary>
+    /// <summary>Vínculos com grupos criados (ou, em <see cref="UserSyncOptions.DryRun"/>, que seriam criados).</summary>
     public IReadOnlyList<long> GroupsAdded => GroupsAddedList;
 
-    /// <summary>Vínculos com grupos removidos.</summary>
+    /// <summary>Vínculos com grupos removidos (ou, em <see cref="UserSyncOptions.DryRun"/>, que seriam removidos).</summary>
     public IReadOnlyList<long> GroupsRemoved => GroupsRemovedList;
 
     /// <summary>Erros por item. Um item com erro não impede os demais itens da mesma pessoa, nem as outras pessoas.</summary>
