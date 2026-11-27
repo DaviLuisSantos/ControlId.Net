@@ -4,7 +4,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Unreleased]
 
-Resolve as issues abertas do repositório. Tem duas mudanças de comportamento: veja **Changed**.
+## [0.11.0-alpha.1] - 2026-11-27
+
+Resolve as issues abertas do repositório. Tem mudanças de comportamento: veja **Changed** e o [guia de migração para a 0.11](docs/migrando-para-0.11.md).
 
 ### Added
 - **Exceções por desfecho** (#32, [ADR 0026](docs/adr/0026-excecoes-por-desfecho.md)): `ControlIdTimeoutException`, `ControlIdConnectionException` (o comando não saiu, seguro repetir), `ControlIdOutcomeUnknownException` (escrita enviada sem resposta; confira o estado antes de repetir), `ControlIdDeviceErrorException` e `ControlIdNotSupportedException`, todas derivadas de `ControlIdException`. `ControlIdDeviceOptions.ExceptionResponseBody` (`ErrorOnly`, `Full`, `None`) decide o que vai em `ResponseBody` (#39).
@@ -17,6 +19,8 @@ Resolve as issues abertas do repositório. Tem duas mudanças de comportamento: 
 - **`CardNumber`** (#57): converte entre `facility,número` e o inteiro do equipamento (`FromFacility`, `ToFacility`, `Parse`, `TryParse`, `Format`).
 - **`EnrollAndWaitAsync`** (#36): cadastro remoto que acompanha o `enroller_state` até o fim, com prazo e cancelamento.
 - **Sincronização de pessoas** (#54): `SyncUserAsync` e `SyncUsersAsync` aplicam só a diferença para o estado desejado (`DesiredUser`), com um resultado por pessoa.
+- **Sincronização opt-in e prévia** (#66): `UserSyncOptions.RemoveUnlisted` (padrão `false`) decide se cartões e vínculos de grupo que sobram são removidos; `UserSyncOptions.DryRun` faz só a comparação e devolve o que seria criado, alterado ou removido, sem escrever no equipamento; e `UserSyncResult.Status` (`UserSyncStatus`) resume cada pessoa em `Unchanged`, `Created`, `Changed`, `Removed`, `Failed` ou `OutcomeUnknown`.
+- **Observador de callbacks no ASP.NET Core** (#65): `IControlIdCallbackObserver` e `AddControlIdCallbackObserver<TObserver>()` recebem, antes do `Parse` e dos handlers, uma cópia de cada callback (`ControlIdRawCallback`) com `ControlIdCallbackKind`, rota, cabeçalhos, `DeviceId` e corpo bruto. Os observadores são scoped, rodam todos na ordem de registro e não enxergam `Authorization`, `Cookie` nem `Proxy-Authorization`; `session`, `login`, `password`, `salt`, `image` e `template` vão mascarados com `***` no corpo. Uma exceção do observador vira o log 2015 e não muda a resposta ao equipamento.
 - **Guardião de configuração** (#55): `AddControlIdConfigurationGuard` no pacote DI confere `general.online`, monitor, seções extras e o relógio a cada ciclo, com log, contador `controlid.guard.corrections` e `AddControlIdConfigurationGuard()` para health checks.
 - **Descoberta de equipamentos** (#58): `ControlIdDiscovery.ScanAsync` e `ExpandCidr`, com os status `Found`, `PortClosed`, `NotControlId`, `CredentialRejected` e `Error`.
 - **Pacote `ControlId.Net.Testing`** (#31): `RecordingHandler`, `ReplayHandler` e `Cassette` gravam e reproduzem a conversa com o equipamento, com segredos mascarados ([migração de um cliente próprio](docs/migrando-de-cliente-proprio.md)).
@@ -27,7 +31,14 @@ Resolve as issues abertas do repositório. Tem duas mudanças de comportamento: 
 ### Changed
 - **`MaxConcurrentRequests` passa de 4 para 1** (#37, [ADR 0025](docs/adr/0025-uma-requisicao-por-vez.md)): o equipamento atende melhor uma requisição por vez. **Migração:** quem dependia do paralelismo define `MaxConcurrentRequests = 4` (ou o valor desejado) nas opções.
 - **Propriedades `*Utc` dos eventos ficam `[Obsolete]`** (#50): o equipamento grava a hora local dele, então o valor nunca foi UTC. **Migração:** troque pelas propriedades `Local*` (veja **Added**) e converta com o fuso do equipamento quando precisar de UTC.
+- **Cartões e grupos sobrando só são removidos com `RemoveUnlisted = true`** (#66): a sincronização passa a só criar o que falta; cartões e vínculos de grupo que estão no equipamento e não aparecem em `DesiredUser.Cards`/`DesiredUser.GroupIds` continuam lá. Com `RemoveUnlisted = true`, uma lista vazia remove todos os cartões ou grupos daquela pessoa; sem ele, nada é removido. `RemoveMissing` continua removendo pessoas e exigindo `DataLossConfirmation.Confirmed` (exceto em `DryRun`). **Migração:** defina `RemoveUnlisted = true` para manter o comportamento anterior (veja o [guia de migração](docs/migrando-para-0.11.md)).
 - **Exceções mais específicas** (#32): falhas que antes eram `ControlIdException` agora chegam como subtipos dela. Quem captura `ControlIdException` continua funcionando; quem comparava o tipo exato precisa ajustar.
+
+### Documentation
+- **Contrato do JSON do modo online** (#64): [docs/modo-online-respostas.md](docs/modo-online-respostas.md) documenta o envelope `result`, os campos e os códigos de `event`, o formato de `actions`, o fallback de `ControlIdOnlineOptions` e as regras de `device_id` e token; `OnlineResponseContractTests` verifica o contrato.
+- **Upsert parcial** (#66): a documentação de `CreateOrModifyObjectsAsync` descreve o que fica gravado quando o fallback falha no meio e que repetir a chamada converge para o estado desejado sem duplicar registros.
+- **Matriz de validação e cassetes** (#67): [docs/matriz-validacao.md](docs/matriz-validacao.md) reúne modelo × firmware × operação do que foi observado em equipamento real e ensina a gravar um cassete; `CassetteRegressionTests` reproduz os cassetes com `ReplayHandler`, e o cassete sintético cobre login + `system_information`.
+- **ADR 0031** (#68): [docs/adr/0031-sem-camada-result.md](docs/adr/0031-sem-camada-result.md) registra a decisão de não criar `TryXxxAsync` nem `Result<T>`/`CommandOutcome` por ora e mostra como adaptar o desfecho no consumidor.
 
 ### Fixed
 - **Hora dos eventos** (#50): a hora local do equipamento era devolvida como se fosse UTC.
@@ -321,7 +332,8 @@ Cobertura completa da documentação pública da API de acesso (veja [docs/COBER
 - `RepClient.GetAfdFileFromNsrAsync`/`GetAfdFileFromDateAsync`/`GetAfdFileAsync` devolvem o AFD interpretado.
 - `RepClient` (REP iDClass): about, informações do sistema, data/hora, usuários (PIS/CPF) e download de AFD (incluindo modo Portaria 671).
 
-[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.10.0-alpha.1...HEAD
+[Unreleased]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.11.0-alpha.1...HEAD
+[0.11.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.10.0-alpha.1...v0.11.0-alpha.1
 [0.10.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.9.0-alpha.1...v0.10.0-alpha.1
 [0.9.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.8.0-alpha.1...v0.9.0-alpha.1
 [0.8.0-alpha.1]: https://github.com/DaviLuisSantos/ControlId.Net/compare/v0.7.0-alpha.1...v0.8.0-alpha.1

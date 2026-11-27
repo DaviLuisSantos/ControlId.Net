@@ -6,6 +6,12 @@
   href: COBERTURA.md
 - name: Migrando de um cliente próprio
   href: migrando-de-cliente-proprio.md
+- name: Migrando para a 0.11
+  href: migrando-para-0.11.md
+- name: Respostas do modo online
+  href: modo-online-respostas.md
+- name: Matriz de validação
+  href: matriz-validacao.md
 - name: Decisões (ADRs)
   href: adr/README.md
 - name: API
