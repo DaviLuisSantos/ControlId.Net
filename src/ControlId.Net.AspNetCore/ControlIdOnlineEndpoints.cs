@@ -163,6 +163,10 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
                 return;
             }
 
+            // Corpo que não dá para interpretar ainda é observado, mas só depois de o token e o equipamento serem aceitos.
+            await CallbackObservation.NotifyAsync(
+                context, ControlIdCallbackKind.Online, queryDeviceId, bytes).ConfigureAwait(false);
+
             Touch(context, queryDeviceId);
             await WriteFallbackAsync(context, options, CallbackTelemetry.FallbackException, parseError, queryDeviceId).ConfigureAwait(false);
             return;
@@ -177,6 +181,13 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
         {
             return;
         }
+
+        // Só depois de o token e o equipamento serem aceitos, e antes do handler: o observador vê os bytes originais.
+        await CallbackObservation.NotifyAsync(
+            context,
+            ControlIdCallbackKind.Online,
+            identification.DeviceId ?? queryDeviceId,
+            bytes).ConfigureAwait(false);
 
         Touch(context, identification.DeviceId);
         var (authorization, reason, error) = await DecideAsync(context, identification, options).ConfigureAwait(false);
@@ -309,6 +320,13 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
         {
             if (authorizeFirst || CallbackGuard.Authorize(context, queryDeviceId, LoggerCategory))
             {
+                // Corpo inválido continua observado, mas nunca para um equipamento recusado; a resposta segue 400.
+                if (CallbackGuard.IsKnownDevice(context, queryDeviceId, LoggerCategory))
+                {
+                    await CallbackObservation.NotifyAsync(
+                        context, ControlIdCallbackKind.Online, queryDeviceId, bytes).ConfigureAwait(false);
+                }
+
                 Log.InvalidEnrollResult(GetLogger(context), ex, endpoint);
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
             }
@@ -329,6 +347,10 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
         {
             return;
         }
+
+        // Só depois de o token, o equipamento e a coincidência de device_id serem aceitos; antes do handler.
+        await CallbackObservation.NotifyAsync(
+            context, ControlIdCallbackKind.Online, deviceId, bytes).ConfigureAwait(false);
 
         Touch(context, deviceId);
         var handler = GetHandler(context);
@@ -364,6 +386,13 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
         {
             if (authorizeFirst || CallbackGuard.Authorize(context, queryDeviceId, LoggerCategory))
             {
+                // Corpo inválido continua observado, mas nunca para um equipamento recusado; a resposta segue 400.
+                if (CallbackGuard.IsKnownDevice(context, queryDeviceId, LoggerCategory))
+                {
+                    await CallbackObservation.NotifyAsync(
+                        context, ControlIdCallbackKind.Online, queryDeviceId, bytes).ConfigureAwait(false);
+                }
+
                 Log.InvalidEnrollResult(GetLogger(context), ex, endpoint);
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
             }
@@ -384,6 +413,10 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
         {
             return;
         }
+
+        // Só depois de o token, o equipamento e a coincidência de device_id serem aceitos; antes do handler.
+        await CallbackObservation.NotifyAsync(
+            context, ControlIdCallbackKind.Online, deviceId, bytes).ConfigureAwait(false);
 
         Touch(context, deviceId);
         var handler = GetHandler(context);
@@ -418,6 +451,13 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
         {
             if (authorizeFirst || CallbackGuard.Authorize(context, queryDeviceId, LoggerCategory))
             {
+                // Corpo inválido continua observado, mas nunca para um equipamento recusado; a resposta segue 400.
+                if (CallbackGuard.IsKnownDevice(context, queryDeviceId, LoggerCategory))
+                {
+                    await CallbackObservation.NotifyAsync(
+                        context, ControlIdCallbackKind.Online, queryDeviceId, bytes).ConfigureAwait(false);
+                }
+
                 Log.InvalidExitButton(GetLogger(context), ex);
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
             }
@@ -437,6 +477,10 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
         {
             return;
         }
+
+        // Só depois de o token, o equipamento e a coincidência de device_id serem aceitos; antes do handler.
+        await CallbackObservation.NotifyAsync(
+            context, ControlIdCallbackKind.Online, deviceId, bytes).ConfigureAwait(false);
 
         Touch(context, deviceId);
         var handler = GetHandler(context);
