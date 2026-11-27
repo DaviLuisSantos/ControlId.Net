@@ -23,6 +23,11 @@
     <Using Include="System.Net.Http" />
   </ItemGroup>
 
+  <!-- Os cassetes de CassetteRegressionTests são lidos da pasta de saída, em todos os alvos. -->
+  <ItemGroup>
+    <None Update="Cassettes/**/*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\ControlId.Net\ControlId.Net.csproj" />
     <ProjectReference Include="..\..\src\ControlId.Net.DependencyInjection\ControlId.Net.DependencyInjection.csproj" />
