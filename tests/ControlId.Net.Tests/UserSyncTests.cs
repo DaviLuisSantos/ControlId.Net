@@ -286,6 +286,7 @@ public class UserSyncTests
 
         Assert.All(first, r => Assert.True(r.Success));
         Assert.All(first, r => Assert.True(r.Created));
+        Assert.All(first, r => Assert.Equal(UserSyncStatus.Created, r.Status));
         Assert.Equal(new long[] { 111, 112 }, device.CardValues(1));
         Assert.Equal(new long[] { 1, 2 }, device.GroupIds(1));
         Assert.Equal("hash1", (string?)device.User(1)!["password"]);
@@ -298,6 +299,7 @@ public class UserSyncTests
         Assert.Equal(writes, device.WriteCount);
         Assert.All(second, r => Assert.True(r.Success));
         Assert.All(second, r => Assert.False(r.Changed));
+        Assert.All(second, r => Assert.Equal(UserSyncStatus.Unchanged, r.Status));
         Assert.Equal(1, device.Count("user_hash_password.fcgi"));
     }
 
@@ -355,6 +357,7 @@ public class UserSyncTests
 
         Assert.Equal(new[] { "name" }, result.ChangedFields);
         Assert.False(result.Created);
+        Assert.Equal(UserSyncStatus.Changed, result.Status);
         var body = Assert.Single(device.Calls, c => c.Endpoint == "create_or_modify_objects.fcgi").Body;
         Assert.Contains("\"name\":\"Novo\"", body);
         Assert.DoesNotContain("registration", body);
@@ -373,7 +376,9 @@ public class UserSyncTests
         device.AddGroup(1, 2);
         using var client = new AccessClient(Options(), new HttpClient(device));
 
-        var result = await client.SyncUserAsync(Person(1, p => { p.Cards = new long[] { 2, 4 }; p.GroupIds = new long[] { 2, 3 }; }));
+        var result = (await client.SyncUsersAsync(
+            new[] { Person(1, p => { p.Cards = new long[] { 2, 4 }; p.GroupIds = new long[] { 2, 3 }; }) },
+            new UserSyncOptions { RemoveUnlisted = true })).Single();
 
         Assert.True(result.Success);
         Assert.Equal(new long[] { 2, 4 }, device.CardValues(1));
@@ -382,6 +387,55 @@ public class UserSyncTests
         Assert.Equal(new long[] { 2, 3 }, device.GroupIds(1));
         Assert.Equal(new long[] { 1 }, result.GroupsRemoved);
         Assert.Equal(new long[] { 3 }, result.GroupsAdded);
+    }
+
+    [Fact]
+    public async Task Surplus_cards_and_groups_are_kept_by_default()
+    {
+        var device = new SyncDevice();
+        device.AddUser(1, "Pessoa 1");
+        device.AddCard(1, 1);
+        device.AddCard(1, 2);
+        device.AddGroup(1, 1);
+        device.AddGroup(1, 2);
+        using var client = new AccessClient(Options(), new HttpClient(device));
+
+        var result = await client.SyncUserAsync(Person(1, p => { p.Cards = new long[] { 2, 4 }; p.GroupIds = new long[] { 2, 3 }; }));
+
+        Assert.True(result.Success);
+        Assert.Equal(new long[] { 1, 2, 4 }, device.CardValues(1));
+        Assert.Empty(result.CardsRemoved);
+        Assert.Equal(new long[] { 4 }, result.CardsAdded);
+        Assert.Equal(new long[] { 1, 2, 3 }, device.GroupIds(1));
+        Assert.Empty(result.GroupsRemoved);
+        Assert.Equal(new long[] { 3 }, result.GroupsAdded);
+        Assert.Equal(UserSyncStatus.Changed, result.Status);
+    }
+
+    [Fact]
+    public async Task An_empty_desired_list_removes_all_cards_and_groups_only_with_RemoveUnlisted()
+    {
+        var device = new SyncDevice();
+        device.AddUser(1, "Pessoa 1");
+        device.AddCard(1, 1);
+        device.AddGroup(1, 1);
+        using var client = new AccessClient(Options(), new HttpClient(device));
+
+        var kept = await client.SyncUserAsync(Person(1, p => { p.Cards = Array.Empty<long>(); p.GroupIds = Array.Empty<long>(); }));
+
+        Assert.Equal(UserSyncStatus.Unchanged, kept.Status);
+        Assert.Equal(new long[] { 1 }, device.CardValues(1));
+        Assert.Equal(new long[] { 1 }, device.GroupIds(1));
+
+        var removed = (await client.SyncUsersAsync(
+            new[] { Person(1, p => { p.Cards = Array.Empty<long>(); p.GroupIds = Array.Empty<long>(); }) },
+            new UserSyncOptions { RemoveUnlisted = true })).Single();
+
+        Assert.Equal(UserSyncStatus.Changed, removed.Status);
+        Assert.Empty(device.CardValues(1));
+        Assert.Empty(device.GroupIds(1));
+        Assert.Equal(new long[] { 1 }, removed.CardsRemoved);
+        Assert.Equal(new long[] { 1 }, removed.GroupsRemoved);
     }
 
     [Fact]
@@ -400,6 +454,22 @@ public class UserSyncTests
         Assert.Equal(new long[] { 9 }, device.GroupIds(1));
         Assert.Equal(0, device.WriteCount);
         Assert.Equal(1, device.Calls.Count(c => c.Endpoint == "load_objects.fcgi"));
+    }
+
+    [Fact]
+    public async Task By_default_people_outside_the_desired_list_are_not_removed()
+    {
+        var device = new SyncDevice();
+        device.AddUser(1, "Pessoa 1");
+        device.AddUser(2, "Sobrando");
+        using var client = new AccessClient(Options(), new HttpClient(device));
+
+        var result = await client.SyncUserAsync(Person(1));
+
+        Assert.True(result.Success);
+        Assert.Equal(UserSyncStatus.Unchanged, result.Status);
+        Assert.Equal(2, device.Table("users").Count);
+        Assert.Equal(0, device.Count("destroy_objects.fcgi"));
     }
 
     [Fact]
@@ -447,6 +517,7 @@ public class UserSyncTests
         var error = Assert.Single(results[0].Errors);
         Assert.Equal("card:666", error.Item);
         Assert.NotNull(error.Exception);
+        Assert.Equal(UserSyncStatus.Failed, results[0].Status);
         Assert.Equal(new long[] { 1 }, results[0].CardsAdded);
         Assert.True(results[1].Success);
         Assert.Equal(new long[] { 1 }, device.CardValues(1));
@@ -479,6 +550,31 @@ public class UserSyncTests
         Assert.Empty(device.CardValues(2));
         Assert.Equal(new long[] { 10 }, device.CardValues(1));
         Assert.Equal(new long[] { 30 }, device.CardValues(3));
+    }
+
+    [Fact]
+    public async Task Status_is_OutcomeUnknown_when_a_write_may_have_reached_the_device()
+    {
+        var device = new SyncDevice
+        {
+            Intercept = (endpoint, body) =>
+            {
+                if (endpoint == "create_or_modify_objects.fcgi")
+                {
+                    throw new TaskCanceledException("O prazo do cliente venceu.");
+                }
+
+                return null;
+            },
+        };
+        using var client = new AccessClient(Options(), new HttpClient(device));
+
+        var result = await client.SyncUserAsync(Person(1));
+
+        Assert.False(result.Success);
+        Assert.False(result.Created);
+        Assert.Equal(UserSyncStatus.OutcomeUnknown, result.Status);
+        Assert.IsType<ControlIdOutcomeUnknownException>(Assert.Single(result.Errors).Exception);
     }
 
     [Fact]
@@ -533,7 +629,9 @@ public class UserSyncTests
             new UserSyncOptions { RemoveMissing = true, DataLossConfirmation = DataLossConfirmation.Confirmed });
 
         Assert.Equal(2, results.Count);
+        Assert.Equal(UserSyncStatus.Unchanged, results[0].Status);
         Assert.True(results[1].Removed);
+        Assert.Equal(UserSyncStatus.Removed, results[1].Status);
         Assert.Equal(2, results[1].UserId);
         Assert.Equal(1L, (long)Assert.Single(device.Table("users"))["id"]!);
     }

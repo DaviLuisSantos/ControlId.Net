@@ -68,6 +68,7 @@ public sealed partial class AccessClient
         var list = desired.ToList();
         ValidateDesiredUsers(list);
         var removeMissing = options?.RemoveMissing == true;
+        var removeUnlisted = options?.RemoveUnlisted == true;
         if (removeMissing)
         {
             DataLoss.Require(options!.DataLossConfirmation, "Sincronizar com RemoveMissing");
@@ -84,8 +85,8 @@ public sealed partial class AccessClient
             await RemoveMissingUsersAsync(new HashSet<long>(active.Select(a => a.Desired.Id)), removed, cancellationToken).ConfigureAwait(false);
         }
 
-        await SyncCardsAsync(active, cancellationToken).ConfigureAwait(false);
-        await SyncGroupsAsync(active, cancellationToken).ConfigureAwait(false);
+        await SyncCardsAsync(active, removeUnlisted, cancellationToken).ConfigureAwait(false);
+        await SyncGroupsAsync(active, removeUnlisted, cancellationToken).ConfigureAwait(false);
         await SyncPhotosAsync(active, cancellationToken).ConfigureAwait(false);
 
         var all = new List<UserSyncResult>(active.Count + removed.Count);
@@ -321,28 +322,31 @@ public sealed partial class AccessClient
         }
     }
 
-    // Etapa 2: cartões. Remove os que sobram, depois cria os que faltam (recusando o que é de outra pessoa).
-    private async Task SyncCardsAsync(List<SyncBinding> active, CancellationToken cancellationToken)
+    // Etapa 2: cartões. Com RemoveUnlisted, remove os que sobram; depois cria os que faltam (recusando o que é de outra pessoa).
+    private async Task SyncCardsAsync(List<SyncBinding> active, bool removeUnlisted, CancellationToken cancellationToken)
     {
         var managed = active.Where(a => !a.Failed && a.Desired.Cards is not null).ToList();
 
-        foreach (var binding in managed)
+        if (removeUnlisted)
         {
-            var wanted = new HashSet<long>(binding.Desired.Cards!);
-            var surplus = binding.DeviceCards.Where(c => c.Id is not null && !wanted.Contains(c.Value)).ToList();
-            if (surplus.Count == 0)
+            foreach (var binding in managed)
             {
-                continue;
-            }
+                var wanted = new HashSet<long>(binding.Desired.Cards!);
+                var surplus = binding.DeviceCards.Where(c => c.Id is not null && !wanted.Contains(c.Value)).ToList();
+                if (surplus.Count == 0)
+                {
+                    continue;
+                }
 
-            try
-            {
-                await DestroyObjectsAsync("cards", Where.In("cards", "id", surplus.Select(c => c.Id!.Value).ToList()), cancellationToken).ConfigureAwait(false);
-                binding.Result.CardsRemovedList.AddRange(surplus.Select(c => c.Value));
-            }
-            catch (ControlIdException ex)
-            {
-                binding.Result.Fail("cards", ex.Message, ex);
+                try
+                {
+                    await DestroyObjectsAsync("cards", Where.In("cards", "id", surplus.Select(c => c.Id!.Value).ToList()), cancellationToken).ConfigureAwait(false);
+                    binding.Result.CardsRemovedList.AddRange(surplus.Select(c => c.Value));
+                }
+                catch (ControlIdException ex)
+                {
+                    binding.Result.Fail("cards", ex.Message, ex);
+                }
             }
         }
 
@@ -412,23 +416,26 @@ public sealed partial class AccessClient
     }
 
     // Etapa 3: vínculos com grupos.
-    private async Task SyncGroupsAsync(List<SyncBinding> active, CancellationToken cancellationToken)
+    private async Task SyncGroupsAsync(List<SyncBinding> active, bool removeUnlisted, CancellationToken cancellationToken)
     {
         foreach (var binding in active.Where(a => !a.Failed && a.Desired.GroupIds is not null))
         {
             var wanted = new HashSet<long>(binding.Desired.GroupIds!);
             var current = new HashSet<long>(binding.DeviceGroups);
 
-            foreach (var groupId in current.Where(g => !wanted.Contains(g)).OrderBy(g => g))
+            if (removeUnlisted)
             {
-                try
+                foreach (var groupId in current.Where(g => !wanted.Contains(g)).OrderBy(g => g))
                 {
-                    await UnlinkAsync(AccessLink.UserGroup(binding.Desired.Id, groupId), cancellationToken).ConfigureAwait(false);
-                    binding.Result.GroupsRemovedList.Add(groupId);
-                }
-                catch (ControlIdException ex)
-                {
-                    binding.Result.Fail($"group:{groupId.ToString(CultureInfo.InvariantCulture)}", ex.Message, ex);
+                    try
+                    {
+                        await UnlinkAsync(AccessLink.UserGroup(binding.Desired.Id, groupId), cancellationToken).ConfigureAwait(false);
+                        binding.Result.GroupsRemovedList.Add(groupId);
+                    }
+                    catch (ControlIdException ex)
+                    {
+                        binding.Result.Fail($"group:{groupId.ToString(CultureInfo.InvariantCulture)}", ex.Message, ex);
+                    }
                 }
             }
 

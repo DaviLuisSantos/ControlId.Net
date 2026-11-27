@@ -53,6 +53,8 @@ ControlId.Access.UserSyncOptions.DataLossConfirmation.get -> ControlId.DataLossC
 ControlId.Access.UserSyncOptions.DataLossConfirmation.set -> void
 ControlId.Access.UserSyncOptions.RemoveMissing.get -> bool
 ControlId.Access.UserSyncOptions.RemoveMissing.set -> void
+ControlId.Access.UserSyncOptions.RemoveUnlisted.get -> bool
+ControlId.Access.UserSyncOptions.RemoveUnlisted.set -> void
 ControlId.Access.UserSyncOptions.UserSyncOptions() -> void
 ControlId.Access.UserSyncResult
 ControlId.Access.UserSyncResult.CardsAdded.get -> System.Collections.Generic.IReadOnlyList<long>!
@@ -65,8 +67,16 @@ ControlId.Access.UserSyncResult.GroupsAdded.get -> System.Collections.Generic.IR
 ControlId.Access.UserSyncResult.GroupsRemoved.get -> System.Collections.Generic.IReadOnlyList<long>!
 ControlId.Access.UserSyncResult.PhotoUpdated.get -> bool
 ControlId.Access.UserSyncResult.Removed.get -> bool
+ControlId.Access.UserSyncResult.Status.get -> ControlId.Access.UserSyncStatus
 ControlId.Access.UserSyncResult.Success.get -> bool
 ControlId.Access.UserSyncResult.UserId.get -> long
+ControlId.Access.UserSyncStatus
+ControlId.Access.UserSyncStatus.Changed = 2 -> ControlId.Access.UserSyncStatus
+ControlId.Access.UserSyncStatus.Created = 1 -> ControlId.Access.UserSyncStatus
+ControlId.Access.UserSyncStatus.Failed = 4 -> ControlId.Access.UserSyncStatus
+ControlId.Access.UserSyncStatus.OutcomeUnknown = 5 -> ControlId.Access.UserSyncStatus
+ControlId.Access.UserSyncStatus.Removed = 3 -> ControlId.Access.UserSyncStatus
+ControlId.Access.UserSyncStatus.Unchanged = 0 -> ControlId.Access.UserSyncStatus
 ControlId.ControlIdConnectionException
 ControlId.ControlIdConnectionException.ControlIdConnectionException(string! message, System.Exception? innerException = null) -> void
 ControlId.ControlIdDeviceErrorException
