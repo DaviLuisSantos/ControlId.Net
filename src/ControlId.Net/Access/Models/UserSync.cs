@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace ControlId.Access;
 
 /// <summary>
-/// Estado desejado de uma pessoa no equipamento, para <see cref="IAccessClient.SyncUserAsync"/> e
+/// Estado desejado de uma pessoa no equipamento, para <see cref="IAccessClient.SyncUserAsync(DesiredUser, System.Threading.CancellationToken)"/> e
 /// <see cref="IAccessClient.SyncUsersAsync"/>. Os campos que são <c>null</c> (exceto as datas, ver abaixo) não são
 /// gerenciados: a sincronização os deixa como estão no equipamento.
 /// </summary>

@@ -73,4 +73,10 @@ internal static partial class Log
         Level = LogLevel.Error,
         Message = "IControlIdCallbackObserver {ObserverType} falhou na rota {Route}; a resposta segue.")]
     public static partial void CallbackObserverFailed(ILogger logger, Exception exception, string observerType, string route);
+
+    [LoggerMessage(
+        EventId = 2016,
+        Level = LogLevel.Error,
+        Message = "IControlIdCallbackObserver {ObserverType} passou do prazo {Timeout} na rota {Route}; a resposta segue.")]
+    public static partial void CallbackObserverTimedOut(ILogger logger, string observerType, string route, TimeSpan timeout);
 }

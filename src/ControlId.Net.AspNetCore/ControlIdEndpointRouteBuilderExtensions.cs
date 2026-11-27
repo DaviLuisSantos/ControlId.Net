@@ -181,6 +181,9 @@ public static class ControlIdEndpointRouteBuilderExtensions
             return;
         }
 
+        await CallbackObservation.NotifyBeforeParseAsync(
+            context, ControlIdCallbackKind.Monitor, authorizeFirst, MonitorQueryDeviceId(context), bytes).ConfigureAwait(false);
+
         MonitorNotification notification;
         try
         {
@@ -216,7 +219,7 @@ public static class ControlIdEndpointRouteBuilderExtensions
             return;
         }
 
-        // Só depois do Parse (o deviceId vem do corpo), do token e da lista de equipamentos; antes dos handlers.
+        // Quem não pôde ser observado antes do Parse é observado aqui, depois do token e da lista; antes dos handlers.
         await CallbackObservation.NotifyAsync(
             context, ControlIdCallbackKind.Monitor, notification.DeviceId, bytes).ConfigureAwait(false);
 

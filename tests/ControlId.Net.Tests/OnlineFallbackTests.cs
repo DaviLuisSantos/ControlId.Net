@@ -16,6 +16,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace ControlId.Tests;
 
 /// <summary>Modo online: o handler que falha, devolve null ou demora não derruba o equipamento em um 500 (issues #51 e #52).</summary>
+[Collection("OnlineFallbackMetrics")] // o contador de fallback é global ao processo
 public sealed class OnlineFallbackTests : IAsyncDisposable
 {
     private WebApplication? _app;

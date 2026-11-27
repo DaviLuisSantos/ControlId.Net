@@ -6,6 +6,9 @@ ControlId.AspNetCore.ControlIdOnlineOptions.DecisionTimeout.set -> void
 ControlId.AspNetCore.ControlIdOnlineOptions.FallbackAuthorization.get -> ControlId.Access.Online.OnlineAuthorization!
 ControlId.AspNetCore.ControlIdOnlineOptions.FallbackAuthorization.set -> void
 static readonly ControlId.AspNetCore.ControlIdOnlineOptions.DefaultDecisionTimeout -> System.TimeSpan
+ControlId.AspNetCore.ControlIdCallbackOptions.ObserverTimeout.get -> System.TimeSpan
+ControlId.AspNetCore.ControlIdCallbackOptions.ObserverTimeout.set -> void
+static readonly ControlId.AspNetCore.ControlIdCallbackOptions.DefaultObserverTimeout -> System.TimeSpan
 ControlId.AspNetCore.ControlIdCallbackKind
 ControlId.AspNetCore.ControlIdCallbackKind.Monitor = 1 -> ControlId.AspNetCore.ControlIdCallbackKind
 ControlId.AspNetCore.ControlIdCallbackKind.Online = 0 -> ControlId.AspNetCore.ControlIdCallbackKind

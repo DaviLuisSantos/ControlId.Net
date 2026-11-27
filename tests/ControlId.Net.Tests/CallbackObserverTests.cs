@@ -19,6 +19,7 @@ namespace ControlId.Tests;
 /// Observador do corpo bruto (#65): o callback chega antes do <c>Parse</c> e do handler, com os segredos mascarados, sem
 /// alterar a resposta. Requisições não autorizadas ou de equipamentos recusados não são observadas.
 /// </summary>
+[Collection("OnlineFallbackMetrics")] // o contador de fallback é global ao processo
 public sealed class CallbackObserverTests : IAsyncDisposable
 {
     private const string DoorBody = """{"door":{"id":1,"open":true},"device_id":10,"time":1575475894}""";
@@ -297,6 +298,70 @@ public sealed class CallbackObserverTests : IAsyncDisposable
         Assert.Single(_online.Enrollments);
         Assert.Single(_online.Kiosk);
         Assert.Single(_online.ExitButtons);
+    }
+
+    [Fact]
+    public async Task Single_token_route_observes_before_parse_and_only_once()
+    {
+        var http = await StartAsync(app => app.MapControlIdOnline("/api").AllowAnonymousControlIdCallbacks());
+
+        // A recusa por device_id divergente só é decidida depois do Parse: o observador já recebeu o callback.
+        var response = await http.PostAsync(
+            "/api/card_create.fcgi?device_id=1", Json("""{"user_id":1,"card_value":5,"device_id":2}"""));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(1L, Assert.Single(Observed).DeviceId);
+        Assert.Empty(_online.Enrollments);
+    }
+
+    [Fact]
+    public async Task Device_id_is_read_from_the_body_when_observing_before_parse()
+    {
+        var http = await StartAsync(app => app.MapControlIdMonitor().AllowAnonymousControlIdCallbacks());
+
+        Assert.Equal(HttpStatusCode.OK, (await http.PostAsync("/api/notifications/door", Json(DoorBody))).StatusCode);
+
+        Assert.Equal(10L, Assert.Single(Observed).DeviceId);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Slow_observer_does_not_hold_the_answer_beyond_the_timeout(bool blocksSynchronously)
+    {
+        using var release = new ManualResetEventSlim();
+        var never = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cancelled = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _observer.Observe = (_, token) =>
+        {
+            token.Register(() => cancelled.TrySetResult(true));
+            if (blocksSynchronously)
+            {
+                release.Wait(TimeSpan.FromSeconds(30));
+            }
+
+            return never.Task;
+        };
+        var http = await StartAsync(
+            app => app.MapControlIdOnline("/api").AllowAnonymousControlIdCallbacks(),
+            services => services.Configure<ControlIdCallbackOptions>(o => o.ObserverTimeout = TimeSpan.FromMilliseconds(100)));
+        http.Timeout = TimeSpan.FromSeconds(10);
+
+        var response = await http.PostAsync("/api/new_card.fcgi", Card());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Single(_online.Identifications);
+        Assert.Same(cancelled.Task, await Task.WhenAny(cancelled.Task, Task.Delay(TimeSpan.FromSeconds(5))));
+        release.Set();
+        never.TrySetResult(true);
+    }
+
+    [Fact]
+    public void Observer_timeout_rejects_non_positive_values()
+    {
+        var options = new ControlIdCallbackOptions { ObserverTimeout = Timeout.InfiniteTimeSpan };
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => options.ObserverTimeout = TimeSpan.Zero);
     }
 
     public async ValueTask DisposeAsync()

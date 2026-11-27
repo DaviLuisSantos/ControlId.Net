@@ -8,13 +8,22 @@ public partial interface IAccessClient
 {
     /// <summary>
     /// Leva uma pessoa ao estado desejado: cria ou atualiza o usuário, ajusta cartões e grupos e envia a foto. Equivale a
-    /// <see cref="SyncUsersAsync"/> com uma só pessoa, sem remoção. Rodar de novo com o mesmo estado não escreve nada.
+    /// <see cref="SyncUsersAsync"/> com uma só pessoa, sem remover nada. Rodar de novo com o mesmo estado não escreve nada.
     /// </summary>
     /// <remarks>
     /// Falhas de um item (um cartão recusado, uma foto inválida) voltam em <see cref="UserSyncResult.Errors"/>, sem lançar
     /// exceção. Só dado inválido (<see cref="DesiredUser"/> sem ID ou sem nome) e falha ao ler o estado do equipamento lançam.
     /// </remarks>
     Task<UserSyncResult> SyncUserAsync(DesiredUser desired, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Como <see cref="SyncUserAsync(DesiredUser, CancellationToken)"/>, com opções:
+    /// <see cref="UserSyncOptions.RemoveUnlisted"/> remove os cartões e grupos que sobram e
+    /// <see cref="UserSyncOptions.DryRun"/> só compara.
+    /// </summary>
+    /// <exception cref="System.ArgumentException">Além dos casos de dado inválido,
+    /// <see cref="UserSyncOptions.RemoveMissing"/> ligado: com uma só pessoa, apagaria todas as outras.</exception>
+    Task<UserSyncResult> SyncUserAsync(DesiredUser desired, UserSyncOptions? options, CancellationToken cancellationToken);
 
     /// <summary>
     /// Leva as pessoas ao estado desejado. Lê <c>users</c>, <c>cards</c>, <c>user_groups</c> e o <c>image_timestamp</c> só das

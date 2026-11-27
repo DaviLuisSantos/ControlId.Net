@@ -45,14 +45,25 @@ public sealed partial class AccessClient
     }
 
     /// <inheritdoc/>
-    public async Task<UserSyncResult> SyncUserAsync(DesiredUser desired, CancellationToken cancellationToken = default)
+    public Task<UserSyncResult> SyncUserAsync(DesiredUser desired, CancellationToken cancellationToken = default) =>
+        SyncUserAsync(desired, null, cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<UserSyncResult> SyncUserAsync(
+        DesiredUser desired, UserSyncOptions? options, CancellationToken cancellationToken)
     {
         if (desired is null)
         {
             throw new ArgumentNullException(nameof(desired));
         }
 
-        var results = await SyncUsersAsync(new[] { desired }, null, cancellationToken).ConfigureAwait(false);
+        if (options?.RemoveMissing == true)
+        {
+            // Com uma só pessoa na lista, RemoveMissing apagaria todas as outras do equipamento.
+            throw new ArgumentException("RemoveMissing não vale para uma só pessoa; use SyncUsersAsync.", nameof(options));
+        }
+
+        var results = await SyncUsersAsync(new[] { desired }, options, cancellationToken).ConfigureAwait(false);
         return results[0];
     }
 

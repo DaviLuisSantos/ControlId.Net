@@ -1,13 +1,17 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace ControlId.AspNetCore.Internal;
 
@@ -42,9 +46,28 @@ internal static class CallbackObservation
         "template",
     };
 
+    private static readonly object NotifiedKey = new();
+
     /// <summary>
-    /// Chama, na ordem de registro, todos os observadores resolvidos no escopo da requisição. Sem observadores não faz
-    /// nada. A exceção de um observador é logada (2015) e não impede os seguintes nem a resposta ao equipamento.
+    /// Entrega o callback antes do <c>Parse</c> quando o corpo não é necessário para aceitar a requisição: a rota já
+    /// autorizou (token único ou anônima) e não há <see cref="ControlIdCallbackOptions.IsKnownDevice"/>, que pode depender
+    /// do <c>device_id</c> do corpo. Nos demais casos não faz nada, e a rota notifica depois de aceitar a requisição.
+    /// </summary>
+    public static Task NotifyBeforeParseAsync(
+        HttpContext context,
+        ControlIdCallbackKind kind,
+        bool authorized,
+        long? queryDeviceId,
+        byte[] body) =>
+        authorized && GetOptions(context)?.IsKnownDevice is null
+            ? NotifyAsync(context, kind, queryDeviceId ?? PeekDeviceId(body, context.Request.ContentType), body)
+            : Task.CompletedTask;
+
+    /// <summary>
+    /// Chama, na ordem de registro, todos os observadores resolvidos no escopo da requisição, uma única vez por requisição.
+    /// Sem observadores não faz nada. A exceção de um observador, ou o estouro de
+    /// <see cref="ControlIdCallbackOptions.ObserverTimeout"/>, é logada (2015 ou 2016) e não impede os seguintes nem a
+    /// resposta ao equipamento.
     /// </summary>
     public static async Task NotifyAsync(
         HttpContext context,
@@ -60,6 +83,11 @@ internal static class CallbackObservation
         if (body is null)
         {
             throw new ArgumentNullException(nameof(body));
+        }
+
+        if (!context.Items.TryAdd(NotifiedKey, true))
+        {
+            return;
         }
 
         IControlIdCallbackObserver[] observers;
@@ -81,11 +109,15 @@ internal static class CallbackObservation
 
         var callback = CreateCallback(context, kind, deviceId, body);
         var logger = GetLogger(context);
+        var timeout = GetOptions(context)?.ObserverTimeout ?? ControlIdCallbackOptions.DefaultObserverTimeout;
         foreach (var observer in observers)
         {
             try
             {
-                await (observer.OnCallbackAsync(callback, context.RequestAborted) ?? Task.CompletedTask).ConfigureAwait(false);
+                if (!await ObserveAsync(observer, callback, timeout, context.RequestAborted).ConfigureAwait(false))
+                {
+                    Log.CallbackObserverTimedOut(logger, TypeName(observer), callback.Route, timeout);
+                }
             }
             catch (Exception ex)
             {
@@ -93,6 +125,88 @@ internal static class CallbackObservation
             }
         }
     }
+
+    private static ControlIdCallbackOptions? GetOptions(HttpContext context) =>
+        context.RequestServices.GetService<IOptions<ControlIdCallbackOptions>>()?.Value;
+
+    /// <summary>
+    /// <see langword="false"/> quando o prazo vence. Com prazo, o observador roda fora do fluxo da requisição, para um
+    /// bloqueio síncrono também respeitá-lo.
+    /// </summary>
+    private static async Task<bool> ObserveAsync(
+        IControlIdCallbackObserver observer, ControlIdRawCallback callback, TimeSpan timeout, CancellationToken aborted)
+    {
+        if (timeout == Timeout.InfiniteTimeSpan)
+        {
+            await (observer.OnCallbackAsync(callback, aborted) ?? Task.CompletedTask).ConfigureAwait(false);
+            return true;
+        }
+
+        // Sem Dispose: o observador que estourou o prazo ainda pode estar usando o token.
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(aborted);
+        var token = cts.Token;
+        var observation = Task.Run(() => observer.OnCallbackAsync(callback, token) ?? Task.CompletedTask, CancellationToken.None);
+        using var delayCts = new CancellationTokenSource();
+        var first = await Task.WhenAny(observation, Task.Delay(timeout, delayCts.Token)).ConfigureAwait(false);
+        if (!ReferenceEquals(first, observation))
+        {
+            _ = observation.ContinueWith(
+                static t => _ = t.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+
+            // CancelAfter não roda os registros do observador nesta thread.
+            cts.CancelAfter(TimeSpan.Zero);
+            return false;
+        }
+
+        delayCts.Cancel();
+        await observation.ConfigureAwait(false);
+        return true;
+    }
+
+    /// <summary>
+    /// <c>device_id</c> lido do corpo (JSON ou formulário) sem validar o restante; <see langword="null"/> quando não dá
+    /// para ler. Nunca lança.
+    /// </summary>
+    private static long? PeekDeviceId(byte[] body, string? contentType)
+    {
+        try
+        {
+            var text = CallbackBody.ToText(body);
+            if (contentType is not null && contentType.IndexOf(FormContentType, StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                foreach (var part in text.Split('&'))
+                {
+                    if (part.StartsWith("device_id=", StringComparison.Ordinal))
+                    {
+                        return ParseId(part.Substring("device_id=".Length));
+                    }
+                }
+
+                return null;
+            }
+
+            using var json = JsonDocument.Parse(text);
+            if (json.RootElement.ValueKind != JsonValueKind.Object
+                || !json.RootElement.TryGetProperty("device_id", out var value))
+            {
+                return null;
+            }
+
+            if (value.ValueKind == JsonValueKind.Number)
+            {
+                return value.TryGetInt64(out var number) ? number : null;
+            }
+
+            return value.ValueKind == JsonValueKind.String ? ParseId(value.GetString()) : null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    private static long? ParseId(string? text) =>
+        long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id) ? id : null;
 
     private static ControlIdRawCallback CreateCallback(
         HttpContext context,

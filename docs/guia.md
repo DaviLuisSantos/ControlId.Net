@@ -599,7 +599,7 @@ No Push, a mesma ideia vale para `transactions`: veja [Prazos e limites do Push]
 
 ### Sincronizar pessoas pelo estado desejado (#54, #66)
 
-`SyncUserAsync` e `SyncUsersAsync` levam o equipamento ao estado que você descreve com `DesiredUser`: criam ou atualizam o
+`SyncUserAsync` e `SyncUsersAsync` (os dois aceitam `UserSyncOptions`; para uma só pessoa, sem `RemoveMissing`) levam o equipamento ao estado que você descreve com `DesiredUser`: criam ou atualizam o
 usuário, ajustam cartões e grupos e enviam a foto. Rodar de novo com o mesmo estado não escreve nada. O campo `null` não é
 gerenciado; uma lista vazia de `Cards` só remove todos os cartões com `RemoveUnlisted = true`.
 
@@ -1108,6 +1108,7 @@ O pacote `ControlId.Net.AspNetCore` registra os eventos das rotas:
 | 2013 | Information | Varredura automática do Push desligada (`PurgeInterval = null`) |
 | 2014 | Warning | Modo online respondeu com o fallback (exceção, `null` ou `DecisionTimeout`) |
 | 2015 | Error | Um `IControlIdCallbackObserver` falhou; a resposta ao equipamento segue |
+| 2016 | Error | Um `IControlIdCallbackObserver` passou do `ObserverTimeout`; a resposta ao equipamento segue |
 
 O guardião de configuração (pacote `ControlId.Net.DependencyInjection`) registra:
 
@@ -1290,8 +1291,8 @@ métrica `controlid.server.callback.requests`.
 
 ### Observador de callbacks (#65)
 
-Um observador vê o callback **antes** dos handlers — e, quando a rota autoriza sem o corpo (token único ou rota anônima),
-antes do `Parse` —, para gravar o evento bruto (auditoria, reprocessamento). Registre um ou vários; cada um é scoped (pode
+Um observador vê o callback **antes** dos handlers — e, quando a rota autoriza sem o corpo (token único ou rota anônima)
+e não há `IsKnownDevice`, antes do `Parse` —, para gravar o evento bruto (auditoria, reprocessamento). Registre um ou vários; cada um é scoped (pode
 receber `DbContext`) e todos rodam na ordem de registro. Registrar o mesmo tipo de novo não tem efeito.
 
 ```csharp
@@ -1322,10 +1323,16 @@ public sealed class AuditoriaDeCallbacks(MeuDbContext db) : IControlIdCallbackOb
   binário) é entregue byte a byte, e o `Parse`/handler continua lendo o original: o mascaramento vale só para o observador.
 - Um corpo inválido não impede o observador: depois de a requisição ser autorizada, ele recebe os bytes e a resposta segue
   o contrato da rota (fallback no modo online, 400 no Monitor).
-- O observador só é chamado depois do token e de `IsKnownDevice`; requisição recusada (401, 403 ou 413) não é entregue. Com
+- O observador só é chamado depois do token; requisição com 401 ou 413 não é entregue, nem a de equipamento recusado por
+  `IsKnownDevice`. Quando a observação é antes do `Parse`, uma requisição recusada depois por `device_id` divergente (403)
+  já foi entregue, e o `DeviceId` vem da query ou, sem ela, de uma leitura simples do `device_id` do corpo. Com
   **token por equipamento**, o `device_id` pode vir do corpo, então o callback só chega ao observador depois do `Parse` e
   da autorização; um callback sem `device_id` é recusado (salvo `AllowTokenFallback` com token global) e não aparece.
   A exceção do observador vira o log 2015, não muda a resposta e não impede os demais.
+- A resposta espera cada observador por no máximo `ControlIdCallbackOptions.ObserverTimeout` (padrão **1 s**); depois
+  disso o token é cancelado, sai o log 2016 e a requisição segue. No modo online esse tempo se soma ao `DecisionTimeout`,
+  então mantenha o observador rápido: se a gravação pode demorar, enfileire e grave fora da requisição, com um escopo
+  próprio.
 - No Push, só o `POST /result` é observado (`Kind = PushResult`); o `GET /push` não passa pelo observador.
 
 ## Fila de Push durável

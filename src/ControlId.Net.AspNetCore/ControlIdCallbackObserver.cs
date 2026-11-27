@@ -21,8 +21,8 @@ public enum ControlIdCallbackKind
 }
 
 /// <summary>
-/// Cópia do callback recebida por um <see cref="IControlIdCallbackObserver"/> antes de qualquer interpretação: rota,
-/// cabeçalhos relevantes, equipamento e corpo bruto.
+/// Cópia do callback recebida por um <see cref="IControlIdCallbackObserver"/>: rota, cabeçalhos relevantes, equipamento
+/// e corpo bruto.
 /// </summary>
 /// <remarks>
 /// Os cabeçalhos nunca incluem <c>Authorization</c>, <c>Cookie</c> nem <c>Proxy-Authorization</c>, e os campos sensíveis
@@ -70,17 +70,27 @@ public sealed class ControlIdRawCallback
 }
 
 /// <summary>
-/// Observa os callbacks antes do <c>Parse</c> e dos handlers. Registre com
+/// Observa os callbacks antes dos handlers e, quando o corpo não é necessário para aceitar a requisição, antes do
+/// <c>Parse</c>. Registre com
 /// <c>services.AddControlIdCallbackObserver&lt;TObserver&gt;()</c>; pode haver vários, chamados na ordem de registro.
 /// </summary>
 /// <remarks>
-/// Uma exceção lançada pelo observador é registrada em log e não altera a resposta enviada ao equipamento.
+/// <para>
+/// Antes do <c>Parse</c>: rota com token único ou anônima e sem <see cref="ControlIdCallbackOptions.IsKnownDevice"/>.
+/// Nesse caso, uma requisição recusada depois por <c>device_id</c> divergente (403) já terá sido observada. Com token por
+/// equipamento ou com <c>IsKnownDevice</c>, a observação acontece depois de a requisição ser aceita. O <c>POST /result</c>
+/// do Push é sempre observado antes de qualquer interpretação.
+/// </para>
+/// <para>
+/// A resposta espera cada observador por no máximo <see cref="ControlIdCallbackOptions.ObserverTimeout"/>. Uma exceção ou
+/// o estouro do prazo é registrado em log e não altera a resposta enviada ao equipamento.
+/// </para>
 /// </remarks>
 public interface IControlIdCallbackObserver
 {
-    /// <summary>Observa o callback antes de qualquer interpretação.</summary>
+    /// <summary>Observa o callback.</summary>
     /// <param name="callback">Cópia do callback com o corpo bruto.</param>
-    /// <param name="cancellationToken">Cancelado quando a requisição é abortada.</param>
+    /// <param name="cancellationToken">Cancelado quando a requisição é abortada ou o prazo vence.</param>
     Task OnCallbackAsync(ControlIdRawCallback callback, CancellationToken cancellationToken);
 }
 

@@ -111,6 +111,13 @@ await device.SyncUsersAsync(desejados, new UserSyncOptions
 });
 ```
 
+Para uma só pessoa, `SyncUserAsync(desejado)` também deixou de remover. **Quem revoga cartão ou grupo por ele precisa
+passar as opções**, senão o cartão antigo continua valendo no equipamento:
+
+```csharp
+await device.SyncUserAsync(desejado, new UserSyncOptions { RemoveUnlisted = true }, cancellationToken);
+```
+
 Detalhes que mudam o resultado:
 
 - Com `RemoveUnlisted = true`, uma lista vazia de `Cards` ou `GroupIds` remove **todos** os cartões ou vínculos de

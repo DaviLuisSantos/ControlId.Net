@@ -427,9 +427,10 @@ public class UserSyncTests
         Assert.Equal(new long[] { 1 }, device.CardValues(1));
         Assert.Equal(new long[] { 1 }, device.GroupIds(1));
 
-        var removed = (await client.SyncUsersAsync(
-            new[] { Person(1, p => { p.Cards = Array.Empty<long>(); p.GroupIds = Array.Empty<long>(); }) },
-            new UserSyncOptions { RemoveUnlisted = true })).Single();
+        var removed = await client.SyncUserAsync(
+            Person(1, p => { p.Cards = Array.Empty<long>(); p.GroupIds = Array.Empty<long>(); }),
+            new UserSyncOptions { RemoveUnlisted = true },
+            CancellationToken.None);
 
         Assert.Equal(UserSyncStatus.Changed, removed.Status);
         Assert.Empty(device.CardValues(1));
@@ -659,6 +660,8 @@ public class UserSyncTests
         using var client = new AccessClient(Options(), new HttpClient(device));
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => client.SyncUserAsync(null!));
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => client.SyncUserAsync(Person(1), new UserSyncOptions { RemoveMissing = true }, CancellationToken.None));
         await Assert.ThrowsAsync<ArgumentNullException>(() => client.SyncUsersAsync(null!));
         await Assert.ThrowsAsync<ArgumentException>(() => client.SyncUserAsync(new DesiredUser { Id = 0, Name = "X" }));
         await Assert.ThrowsAsync<ArgumentException>(() => client.SyncUserAsync(new DesiredUser { Id = 1, Name = " " }));

@@ -141,6 +141,9 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
             return;
         }
 
+        await CallbackObservation.NotifyBeforeParseAsync(
+            context, ControlIdCallbackKind.Online, authorizeFirst, queryDeviceId, bytes).ConfigureAwait(false);
+
         var options = GetOnlineOptions(context);
         OnlineIdentificationEvent? identification;
         Exception? parseError = null;
@@ -182,7 +185,7 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
             return;
         }
 
-        // Só depois de o token e o equipamento serem aceitos, e antes do handler: o observador vê os bytes originais.
+        // Quem não pôde ser observado antes do Parse é observado aqui, antes do handler.
         await CallbackObservation.NotifyAsync(
             context,
             ControlIdCallbackKind.Online,
@@ -311,6 +314,9 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
             return;
         }
 
+        await CallbackObservation.NotifyBeforeParseAsync(
+            context, ControlIdCallbackKind.Online, authorizeFirst, queryDeviceId, bytes).ConfigureAwait(false);
+
         OnlineEnrollEvent enrollment;
         try
         {
@@ -348,7 +354,7 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
             return;
         }
 
-        // Só depois de o token, o equipamento e a coincidência de device_id serem aceitos; antes do handler.
+        // Quem não pôde ser observado antes do Parse é observado aqui, antes do handler.
         await CallbackObservation.NotifyAsync(
             context, ControlIdCallbackKind.Online, deviceId, bytes).ConfigureAwait(false);
 
@@ -376,6 +382,9 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
         {
             return;
         }
+
+        await CallbackObservation.NotifyBeforeParseAsync(
+            context, ControlIdCallbackKind.Online, authorizeFirst, queryDeviceId, bytes).ConfigureAwait(false);
 
         KioskEnrollmentEvent enrollment;
         try
@@ -414,7 +423,7 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
             return;
         }
 
-        // Só depois de o token, o equipamento e a coincidência de device_id serem aceitos; antes do handler.
+        // Quem não pôde ser observado antes do Parse é observado aqui, antes do handler.
         await CallbackObservation.NotifyAsync(
             context, ControlIdCallbackKind.Online, deviceId, bytes).ConfigureAwait(false);
 
@@ -441,6 +450,9 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
         {
             return;
         }
+
+        await CallbackObservation.NotifyBeforeParseAsync(
+            context, ControlIdCallbackKind.Online, authorizeFirst, queryDeviceId, bytes).ConfigureAwait(false);
 
         ExitButtonEvent? exitButton;
         try
@@ -478,7 +490,7 @@ public static class ControlIdOnlineEndpointRouteBuilderExtensions
             return;
         }
 
-        // Só depois de o token, o equipamento e a coincidência de device_id serem aceitos; antes do handler.
+        // Quem não pôde ser observado antes do Parse é observado aqui, antes do handler.
         await CallbackObservation.NotifyAsync(
             context, ControlIdCallbackKind.Online, deviceId, bytes).ConfigureAwait(false);
 
