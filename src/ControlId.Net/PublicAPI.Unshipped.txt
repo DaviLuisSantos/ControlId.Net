@@ -51,6 +51,8 @@ ControlId.Access.UserSyncError.Message.get -> string!
 ControlId.Access.UserSyncOptions
 ControlId.Access.UserSyncOptions.DataLossConfirmation.get -> ControlId.DataLossConfirmation
 ControlId.Access.UserSyncOptions.DataLossConfirmation.set -> void
+ControlId.Access.UserSyncOptions.DryRun.get -> bool
+ControlId.Access.UserSyncOptions.DryRun.set -> void
 ControlId.Access.UserSyncOptions.RemoveMissing.get -> bool
 ControlId.Access.UserSyncOptions.RemoveMissing.set -> void
 ControlId.Access.UserSyncOptions.RemoveUnlisted.get -> bool

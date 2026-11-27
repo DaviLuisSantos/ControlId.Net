@@ -698,4 +698,154 @@ public class UserSyncTests
         Assert.Equal(0L, (long)device.User(1)!["begin_time"]!);
         Assert.Equal(0L, (long)device.User(1)!["end_time"]!);
     }
+
+    [Fact]
+    public async Task Dry_run_reports_the_diff_without_writing_and_the_next_run_applies_it()
+    {
+        var device = new SyncDevice();
+        device.AddUser(1, "Antigo", u => u["registration"] = "R1");
+        device.AddUser(9, "Sobrando");
+        device.AddCard(1, 1);
+        device.AddCard(1, 2);
+        device.AddCard(9, 777);
+        device.AddGroup(1, 1);
+        device.AddGroup(1, 2);
+        using var client = new AccessClient(Options(), new HttpClient(device));
+        var people = new[]
+        {
+            Person(1, p =>
+            {
+                p.Name = "Novo";
+                p.Registration = "R1";
+                p.BeginTime = new DateTime(2026, 1, 2, 8, 0, 0);
+                p.Password = "1234";
+                p.Cards = new long[] { 2, 4 };
+                p.GroupIds = new long[] { 2, 3 };
+                p.Photo = Jpeg(1);
+            }),
+            Person(2, p => { p.Cards = new long[] { 777 }; p.Photo = Jpeg(2); }),
+        };
+
+        // RemoveMissing sem DataLossConfirmation é permitido no dry-run, que não apaga nada.
+        var dry = await client.SyncUsersAsync(
+            people,
+            new UserSyncOptions { DryRun = true, RemoveUnlisted = true, RemoveMissing = true });
+
+        Assert.Equal(0, device.WriteCount);
+        Assert.Equal(0, device.Count("user_hash_password.fcgi"));
+        Assert.Equal(0, device.Count("user_set_image_list.fcgi"));
+
+        Assert.Equal(3, dry.Count);
+        var changed = dry[0];
+        Assert.False(changed.Created);
+        Assert.True(changed.Changed);
+        Assert.Equal(new[] { "name", "begin_time", "password" }, changed.ChangedFields);
+        Assert.Equal(new long[] { 1 }, changed.CardsRemoved);
+        Assert.Equal(new long[] { 4 }, changed.CardsAdded);
+        Assert.Equal(new long[] { 1 }, changed.GroupsRemoved);
+        Assert.Equal(new long[] { 3 }, changed.GroupsAdded);
+        Assert.True(changed.PhotoUpdated);
+        Assert.True(changed.Success);
+        Assert.Equal(UserSyncStatus.Changed, changed.Status);
+
+        var created = dry[1];
+        Assert.True(created.Created);
+        Assert.Equal(new[] { "name" }, created.ChangedFields);
+        Assert.Equal(new long[] { 777 }, created.CardsAdded);
+        Assert.Empty(created.CardsRemoved);
+        Assert.True(created.PhotoUpdated);
+        Assert.Equal(UserSyncStatus.Created, created.Status);
+
+        var removed = dry[2];
+        Assert.Equal(9, removed.UserId);
+        Assert.True(removed.Removed);
+        Assert.Equal(UserSyncStatus.Removed, removed.Status);
+
+        // O estado do equipamento continua intacto depois do dry-run.
+        Assert.Equal(new long[] { 1, 2 }, device.CardValues(1));
+        Assert.Equal(new long[] { 1, 2 }, device.GroupIds(1));
+        Assert.Empty(device.CardValues(2));
+        Assert.NotNull(device.User(9));
+
+        var real = await client.SyncUsersAsync(
+            people,
+            new UserSyncOptions { RemoveUnlisted = true, RemoveMissing = true, DataLossConfirmation = DataLossConfirmation.Confirmed });
+
+        // A senha não foi cifrada nem marcada no dry-run: a execução real ainda precisa gravá-la uma vez.
+        Assert.Equal(1, device.Count("user_hash_password.fcgi"));
+        Assert.Equal(dry.Count, real.Count);
+        for (var i = 0; i < dry.Count; i++)
+        {
+            Assert.Equal(dry[i].UserId, real[i].UserId);
+            Assert.Equal(dry[i].Created, real[i].Created);
+            Assert.Equal(dry[i].Removed, real[i].Removed);
+            Assert.Equal(dry[i].PhotoUpdated, real[i].PhotoUpdated);
+            Assert.Equal(dry[i].ChangedFields, real[i].ChangedFields);
+            Assert.Equal(dry[i].CardsAdded, real[i].CardsAdded);
+            Assert.Equal(dry[i].CardsRemoved, real[i].CardsRemoved);
+            Assert.Equal(dry[i].GroupsAdded, real[i].GroupsAdded);
+            Assert.Equal(dry[i].GroupsRemoved, real[i].GroupsRemoved);
+            Assert.Equal(dry[i].Status, real[i].Status);
+        }
+
+        Assert.Equal(new long[] { 2, 4 }, device.CardValues(1));
+        Assert.Equal(new long[] { 777 }, device.CardValues(2));
+        Assert.Empty(device.CardValues(9));
+        Assert.Equal(new long[] { 2, 3 }, device.GroupIds(1));
+        Assert.Null(device.User(9));
+        Assert.Equal("hash1", (string?)device.User(1)!["password"]);
+    }
+
+    [Fact]
+    public async Task Dry_run_still_reports_a_card_owned_by_someone_else()
+    {
+        var device = new SyncDevice();
+        device.AddUser(1, "Pessoa 1");
+        device.AddUser(9, "Dono");
+        device.AddCard(9, 111);
+        using var client = new AccessClient(Options(), new HttpClient(device));
+
+        var result = (await client.SyncUsersAsync(
+            new[] { Person(1, p => p.Cards = new long[] { 111, 112 }) },
+            new UserSyncOptions { DryRun = true })).Single();
+
+        Assert.False(result.Success);
+        Assert.Equal("card:111", Assert.Single(result.Errors).Item);
+        Assert.Equal(new long[] { 112 }, result.CardsAdded);
+        Assert.Equal(UserSyncStatus.Failed, result.Status);
+        Assert.Equal(0, device.WriteCount);
+        Assert.Equal(new long[] { 111 }, device.CardValues(9));
+        Assert.Empty(device.CardValues(1));
+    }
+
+    [Fact]
+    public async Task Dry_run_keeps_the_password_and_photo_marks_for_the_next_real_run()
+    {
+        var device = new SyncDevice();
+        using var client = new AccessClient(Options(), new HttpClient(device));
+        var people = new[] { Person(1, p => { p.Password = "1234"; p.Photo = Jpeg(1); }) };
+        await client.SyncUsersAsync(people);
+        device.AddUser(9, "Sobrando");
+        var hashes = device.Count("user_hash_password.fcgi");
+        var images = device.Count("user_set_image_list.fcgi");
+
+        var dry = await client.SyncUsersAsync(people, new UserSyncOptions { DryRun = true, RemoveMissing = true });
+
+        Assert.Equal(2, dry.Count);
+        Assert.Equal(UserSyncStatus.Unchanged, dry[0].Status);
+        Assert.True(dry[1].Removed);
+        Assert.Equal(hashes, device.Count("user_hash_password.fcgi"));
+        Assert.Equal(images, device.Count("user_set_image_list.fcgi"));
+        Assert.Equal(0, device.Count("user_get_image.fcgi"));
+        Assert.NotNull(device.User(9));
+
+        var real = await client.SyncUsersAsync(
+            people,
+            new UserSyncOptions { RemoveMissing = true, DataLossConfirmation = DataLossConfirmation.Confirmed });
+
+        Assert.Equal(UserSyncStatus.Unchanged, real[0].Status);
+        Assert.Equal(hashes, device.Count("user_hash_password.fcgi"));
+        Assert.Equal(images, device.Count("user_set_image_list.fcgi"));
+        Assert.Null(device.User(9));
+    }
 }
