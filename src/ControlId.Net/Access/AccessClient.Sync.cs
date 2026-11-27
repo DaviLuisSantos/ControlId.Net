@@ -69,7 +69,8 @@ public sealed partial class AccessClient
         ValidateDesiredUsers(list);
         var removeMissing = options?.RemoveMissing == true;
         var removeUnlisted = options?.RemoveUnlisted == true;
-        if (removeMissing)
+        var dryRun = options?.DryRun == true;
+        if (removeMissing && !dryRun)
         {
             DataLoss.Require(options!.DataLossConfirmation, "Sincronizar com RemoveMissing");
         }
@@ -77,17 +78,23 @@ public sealed partial class AccessClient
         var active = list.Select(d => new SyncBinding(d, new UserSyncResult(d.Id))).ToList();
 
         await ReadSyncStateAsync(active, cancellationToken).ConfigureAwait(false);
-        await SyncUsersStepAsync(active, cancellationToken).ConfigureAwait(false);
+        await SyncUsersStepAsync(active, dryRun, cancellationToken).ConfigureAwait(false);
 
         var removed = new List<UserSyncResult>();
+        var removedUserIds = new HashSet<long>();
         if (removeMissing)
         {
-            await RemoveMissingUsersAsync(new HashSet<long>(active.Select(a => a.Desired.Id)), removed, cancellationToken).ConfigureAwait(false);
+            await RemoveMissingUsersAsync(new HashSet<long>(active.Select(a => a.Desired.Id)), removed, dryRun, cancellationToken).ConfigureAwait(false);
+            if (dryRun)
+            {
+                // A execução real remove essas pessoas antes de ler os cartões, então os cartões delas ficam livres.
+                removedUserIds.UnionWith(removed.Where(r => r.Removed).Select(r => r.UserId));
+            }
         }
 
-        await SyncCardsAsync(active, removeUnlisted, cancellationToken).ConfigureAwait(false);
-        await SyncGroupsAsync(active, removeUnlisted, cancellationToken).ConfigureAwait(false);
-        await SyncPhotosAsync(active, cancellationToken).ConfigureAwait(false);
+        await SyncCardsAsync(active, removeUnlisted, dryRun, removedUserIds, cancellationToken).ConfigureAwait(false);
+        await SyncGroupsAsync(active, removeUnlisted, dryRun, cancellationToken).ConfigureAwait(false);
+        await SyncPhotosAsync(active, dryRun, cancellationToken).ConfigureAwait(false);
 
         var all = new List<UserSyncResult>(active.Count + removed.Count);
         all.AddRange(active.Select(a => a.Result));
@@ -201,8 +208,8 @@ public sealed partial class AccessClient
         return all;
     }
 
-    // Etapa 1: cria ou atualiza os usuários (nome, matrícula, validade, senha).
-    private async Task SyncUsersStepAsync(List<SyncBinding> active, CancellationToken cancellationToken)
+    // Etapa 1: cria ou atualiza os usuários (nome, matrícula, validade, senha). No dry-run só compara: não cifra a senha.
+    private async Task SyncUsersStepAsync(List<SyncBinding> active, bool dryRun, CancellationToken cancellationToken)
     {
         var writes = new List<(SyncBinding Binding, Dictionary<string, object?> Values, List<string> Fields, string? PasswordMark)>();
         foreach (var binding in active)
@@ -245,26 +252,51 @@ public sealed partial class AccessClient
                 var known = _syncPasswordMarks.TryGetValue(desired.Id, out var stored) && stored == mark;
                 if (existing is null || string.IsNullOrEmpty(existing.Password) || !known)
                 {
-                    try
+                    if (dryRun)
                     {
-                        var hash = await HashPasswordAsync(desired.Password!, cancellationToken).ConfigureAwait(false);
-                        values["password"] = hash.Hash;
-                        values["salt"] = hash.Salt;
+                        // Sem HashPasswordAsync e sem gravar a marca: a execução real volta a ver a senha como desconhecida.
                         fields.Add("password");
-                        passwordMark = mark;
                     }
-                    catch (ControlIdException ex)
+                    else
                     {
-                        binding.Result.Fail("password", ex.Message, ex);
-                        continue;
+                        try
+                        {
+                            var hash = await HashPasswordAsync(desired.Password!, cancellationToken).ConfigureAwait(false);
+                            values["password"] = hash.Hash;
+                            values["salt"] = hash.Salt;
+                            fields.Add("password");
+                            passwordMark = mark;
+                        }
+                        catch (ControlIdException ex)
+                        {
+                            binding.Result.Fail("password", ex.Message, ex);
+                            continue;
+                        }
                     }
                 }
             }
 
             if (existing is null || fields.Count > 0)
             {
-                writes.Add((binding, values, fields, passwordMark));
+                if (dryRun)
+                {
+                    if (existing is null)
+                    {
+                        binding.Result.Created = true;
+                    }
+
+                    binding.Result.ChangedFieldList.AddRange(fields);
+                }
+                else
+                {
+                    writes.Add((binding, values, fields, passwordMark));
+                }
             }
+        }
+
+        if (dryRun)
+        {
+            return;
         }
 
         await ApplyIsolatedAsync(
@@ -290,7 +322,8 @@ public sealed partial class AccessClient
     }
 
     // Remove do equipamento quem não está na lista desejada. A foto vai junto com o usuário.
-    private async Task RemoveMissingUsersAsync(HashSet<long> wanted, List<UserSyncResult> removed, CancellationToken cancellationToken)
+    // No dry-run só enumera e relata, sem apagar pessoas nem marcas em memória.
+    private async Task RemoveMissingUsersAsync(HashSet<long> wanted, List<UserSyncResult> removed, bool dryRun, CancellationToken cancellationToken)
     {
         var extra = new List<long>();
         await foreach (var user in EnumerateUsersAsync(DefaultPageSize, cancellationToken).ConfigureAwait(false))
@@ -304,6 +337,13 @@ public sealed partial class AccessClient
         foreach (var id in extra)
         {
             var result = new UserSyncResult(id);
+            if (dryRun)
+            {
+                result.Removed = true;
+                removed.Add(result);
+                continue;
+            }
+
             try
             {
                 if (await DeleteUserAsync(id, cancellationToken).ConfigureAwait(false))
@@ -323,9 +363,16 @@ public sealed partial class AccessClient
     }
 
     // Etapa 2: cartões. Com RemoveUnlisted, remove os que sobram; depois cria os que faltam (recusando o que é de outra pessoa).
-    private async Task SyncCardsAsync(List<SyncBinding> active, bool removeUnlisted, CancellationToken cancellationToken)
+    // No dry-run nada é destruído nem criado: o resultado recebe o diff e a checagem de dono continua sendo feita por leitura.
+    private async Task SyncCardsAsync(
+        List<SyncBinding> active,
+        bool removeUnlisted,
+        bool dryRun,
+        IReadOnlyCollection<long> removedUserIds,
+        CancellationToken cancellationToken)
     {
         var managed = active.Where(a => !a.Failed && a.Desired.Cards is not null).ToList();
+        HashSet<long>? ignoredCardIds = dryRun ? new HashSet<long>() : null;
 
         if (removeUnlisted)
         {
@@ -335,6 +382,14 @@ public sealed partial class AccessClient
                 var surplus = binding.DeviceCards.Where(c => c.Id is not null && !wanted.Contains(c.Value)).ToList();
                 if (surplus.Count == 0)
                 {
+                    continue;
+                }
+
+                if (dryRun)
+                {
+                    // Esses cartões seriam apagados antes da leitura de donos da execução real: não contam mais para ninguém.
+                    binding.Result.CardsRemovedList.AddRange(surplus.Select(c => c.Value));
+                    ignoredCardIds!.UnionWith(surplus.Select(c => c.Id!.Value));
                     continue;
                 }
 
@@ -366,7 +421,11 @@ public sealed partial class AccessClient
             return;
         }
 
-        var owners = await ReadCardOwnersAsync(toAdd.SelectMany(t => t.Values).Distinct().ToList(), cancellationToken).ConfigureAwait(false);
+        var owners = await ReadCardOwnersAsync(
+            toAdd.SelectMany(t => t.Values).Distinct().ToList(),
+            ignoredCardIds,
+            dryRun ? removedUserIds : null,
+            cancellationToken).ConfigureAwait(false);
         foreach (var (binding, values) in toAdd)
         {
             var allowed = new List<long>();
@@ -383,6 +442,12 @@ public sealed partial class AccessClient
                 }
             }
 
+            if (dryRun)
+            {
+                binding.Result.CardsAddedList.AddRange(allowed);
+                continue;
+            }
+
             await ApplyIsolatedAsync(
                 allowed,
                 batch => CreateObjectsAsync("cards", batch.Select(v => new AccessCard { UserId = binding.Desired.Id, Value = v }).ToList(), cancellationToken),
@@ -397,13 +462,29 @@ public sealed partial class AccessClient
     }
 
     // Quem já tem cada valor de cartão. Se a leitura falha, segue sem a checagem e deixa o equipamento decidir.
-    private async Task<Dictionary<long, long>> ReadCardOwnersAsync(List<long> values, CancellationToken cancellationToken)
+    // No dry-run, os cartões que seriam apagados (ignoredCardIds) e os das pessoas que seriam removidas (ignoredUserIds)
+    // são desconsiderados, como aconteceria depois das remoções da execução real.
+    private async Task<Dictionary<long, long>> ReadCardOwnersAsync(
+        List<long> values,
+        HashSet<long>? ignoredCardIds,
+        IReadOnlyCollection<long>? ignoredUserIds,
+        CancellationToken cancellationToken)
     {
         var owners = new Dictionary<long, long>();
         try
         {
             foreach (var card in await LoadByIdsAsync<AccessCard>("cards", "value", values, cancellationToken).ConfigureAwait(false))
             {
+                if (ignoredCardIds is not null && card.Id is { } id && ignoredCardIds.Contains(id))
+                {
+                    continue;
+                }
+
+                if (ignoredUserIds is not null && ignoredUserIds.Contains(card.UserId))
+                {
+                    continue;
+                }
+
                 owners[card.Value] = card.UserId;
             }
         }
@@ -415,8 +496,8 @@ public sealed partial class AccessClient
         return owners;
     }
 
-    // Etapa 3: vínculos com grupos.
-    private async Task SyncGroupsAsync(List<SyncBinding> active, bool removeUnlisted, CancellationToken cancellationToken)
+    // Etapa 3: vínculos com grupos. No dry-run só relata os que seriam removidos e criados.
+    private async Task SyncGroupsAsync(List<SyncBinding> active, bool removeUnlisted, bool dryRun, CancellationToken cancellationToken)
     {
         foreach (var binding in active.Where(a => !a.Failed && a.Desired.GroupIds is not null))
         {
@@ -427,6 +508,12 @@ public sealed partial class AccessClient
             {
                 foreach (var groupId in current.Where(g => !wanted.Contains(g)).OrderBy(g => g))
                 {
+                    if (dryRun)
+                    {
+                        binding.Result.GroupsRemovedList.Add(groupId);
+                        continue;
+                    }
+
                     try
                     {
                         await UnlinkAsync(AccessLink.UserGroup(binding.Desired.Id, groupId), cancellationToken).ConfigureAwait(false);
@@ -440,6 +527,12 @@ public sealed partial class AccessClient
             }
 
             var missing = wanted.Where(g => !current.Contains(g)).OrderBy(g => g).ToList();
+            if (dryRun)
+            {
+                binding.Result.GroupsAddedList.AddRange(missing);
+                continue;
+            }
+
             await ApplyIsolatedAsync(
                 missing,
                 batch => CreateObjectsAsync(
@@ -452,8 +545,8 @@ public sealed partial class AccessClient
         }
     }
 
-    // Etapa 4: fotos. Só envia o que mudou (ver DesiredUser.Photo).
-    private async Task SyncPhotosAsync(List<SyncBinding> active, CancellationToken cancellationToken)
+    // Etapa 4: fotos. Só envia o que mudou (ver DesiredUser.Photo). No dry-run só lê e relata; não grava a marca da foto.
+    private async Task SyncPhotosAsync(List<SyncBinding> active, bool dryRun, CancellationToken cancellationToken)
     {
         var toSend = new List<(SyncBinding Binding, string Sha256)>();
         foreach (var binding in active.Where(a => !a.Failed && a.Desired.Photo is not null))
@@ -487,7 +580,11 @@ public sealed partial class AccessClient
                 var onDevice = await GetUserImageAsync(id, cancellationToken).ConfigureAwait(false);
                 if (Sha256Hex(onDevice) == sha)
                 {
-                    _syncPhotoMarks[id] = new SyncPhotoMark(sha, deviceTimestamp);
+                    if (!dryRun)
+                    {
+                        _syncPhotoMarks[id] = new SyncPhotoMark(sha, deviceTimestamp);
+                    }
+
                     continue;
                 }
             }
@@ -506,6 +603,16 @@ public sealed partial class AccessClient
 
         if (toSend.Count == 0)
         {
+            return;
+        }
+
+        if (dryRun)
+        {
+            foreach (var (binding, _) in toSend)
+            {
+                binding.Result.PhotoUpdated = true;
+            }
+
             return;
         }
 
