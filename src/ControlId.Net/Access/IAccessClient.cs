@@ -431,10 +431,21 @@ public partial interface IAccessClient : IControlIdClient
     /// Se o equipamento não tem o comando (firmware 6.9.12, "Invalid command" ou 404, ou
     /// <see cref="GetCapabilitiesAsync"/> já o marcou), o cliente cai para um fallback: <c>modify_objects</c> filtrando
     /// pelo <c>id</c> de cada item e <c>create_objects</c> só para os que não alteraram nenhum registro. Cada item precisa
-    /// do campo <c>id</c>; sem ele, lança <see cref="System.ArgumentException"/> antes de enviar qualquer pedido do fallback. O fallback
-    /// <b>não é atômico</b>: são vários pedidos, e uma falha no meio deixa parte dos itens já gravada. Repetir a chamada
-    /// com os mesmos valores é seguro (idempotente) e termina o que ficou faltando. Um item que sumiu entre o modify e o
-    /// create pode ser recriado por outro cliente no intervalo; nesse caso o create falha com erro do equipamento.
+    /// do campo <c>id</c>; sem ele, lança <see cref="System.ArgumentException"/> antes de enviar qualquer pedido do fallback.
+    /// <para>
+    /// O fallback <b>não é atômico</b>: são vários pedidos, e uma falha no meio deixa o equipamento num estado parcial. Se a
+    /// falha for de transporte, o pedido que falhou pode ter sido executado (a resposta é que não chegou): antes de repetir,
+    /// confira o estado com as leituras normais (por exemplo <see cref="GetUsersAsync"/>). Se a falha acontece durante os
+    /// <c>modify_objects</c>, os itens anteriores já estão gravados e os seguintes ainda não foram tentados; nenhum
+    /// <c>create_objects</c> saiu. Se acontece durante os <c>create_objects</c>, todos os <c>modify_objects</c> já terminaram
+    /// e só parte dos itens novos pode ter sido criada, incluindo os do próprio pedido que falhou.
+    /// </para>
+    /// <para>
+    /// Repetir a chamada com os mesmos valores é seguro (idempotente) e termina o que ficou faltando: os itens já gravados
+    /// são alterados de novo pelo <c>id</c> e os que ainda não existem são criados, sem duplicar registros. Um item que sumiu
+    /// entre o modify e o create pode ser recriado por outro cliente no intervalo; nesse caso o create falha com erro do
+    /// equipamento.
+    /// </para>
     /// </remarks>
     Task<int> CreateOrModifyObjectsAsync<T>(string @object, IEnumerable<T> values, CancellationToken cancellationToken = default);
 
