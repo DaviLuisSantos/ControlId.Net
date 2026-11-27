@@ -6,3 +6,18 @@ ControlId.AspNetCore.ControlIdOnlineOptions.DecisionTimeout.set -> void
 ControlId.AspNetCore.ControlIdOnlineOptions.FallbackAuthorization.get -> ControlId.Access.Online.OnlineAuthorization!
 ControlId.AspNetCore.ControlIdOnlineOptions.FallbackAuthorization.set -> void
 static readonly ControlId.AspNetCore.ControlIdOnlineOptions.DefaultDecisionTimeout -> System.TimeSpan
+ControlId.AspNetCore.ControlIdCallbackKind
+ControlId.AspNetCore.ControlIdCallbackKind.Monitor = 1 -> ControlId.AspNetCore.ControlIdCallbackKind
+ControlId.AspNetCore.ControlIdCallbackKind.Online = 0 -> ControlId.AspNetCore.ControlIdCallbackKind
+ControlId.AspNetCore.ControlIdCallbackKind.PushResult = 2 -> ControlId.AspNetCore.ControlIdCallbackKind
+ControlId.AspNetCore.ControlIdCallbackObserverExtensions
+ControlId.AspNetCore.ControlIdRawCallback
+ControlId.AspNetCore.ControlIdRawCallback.Body.get -> System.ReadOnlyMemory<byte>
+ControlId.AspNetCore.ControlIdRawCallback.ControlIdRawCallback(ControlId.AspNetCore.ControlIdCallbackKind kind, string! route, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! headers, long? deviceId, System.ReadOnlyMemory<byte> body) -> void
+ControlId.AspNetCore.ControlIdRawCallback.DeviceId.get -> long?
+ControlId.AspNetCore.ControlIdRawCallback.Headers.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+ControlId.AspNetCore.ControlIdRawCallback.Kind.get -> ControlId.AspNetCore.ControlIdCallbackKind
+ControlId.AspNetCore.ControlIdRawCallback.Route.get -> string!
+ControlId.AspNetCore.IControlIdCallbackObserver
+ControlId.AspNetCore.IControlIdCallbackObserver.OnCallbackAsync(ControlId.AspNetCore.ControlIdRawCallback! callback, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+static ControlId.AspNetCore.ControlIdCallbackObserverExtensions.AddControlIdCallbackObserver<TObserver>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
