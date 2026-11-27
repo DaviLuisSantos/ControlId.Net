@@ -1,0 +1,24 @@
+{
+  "entries": [
+    {
+      "method": "POST",
+      "path": "/login.fcgi",
+      "requestBody": "{\"login\":\"***\",\"password\":\"***\"}",
+      "requestBodyIsBase64": false,
+      "statusCode": 200,
+      "responseContentType": "application/json; charset=utf-8",
+      "responseBody": "{\"session\":\"***\"}",
+      "responseBodyIsBase64": false
+    },
+    {
+      "method": "POST",
+      "path": "/system_information.fcgi?session=***",
+      "requestBody": "{}",
+      "requestBodyIsBase64": false,
+      "statusCode": 200,
+      "responseContentType": "application/json; charset=utf-8",
+      "responseBody": "{\"serial\":\"SINTETICO-0001\",\"version\":\"0.0.0-sintetico\",\"device_id\":\"sintetico\",\"time\":1760000000,\"online\":false,\"uptime\":{\"days\":1,\"hours\":2,\"minutes\":3,\"seconds\":4},\"network\":{\"mac\":\"00:00:00:00:00:00\",\"ip\":\"192.0.2.10\",\"netmask\":\"255.255.255.0\",\"gateway\":\"192.0.2.1\",\"web_server_port\":80,\"ssl_enabled\":false,\"dhcp_enabled\":false}}",
+      "responseBodyIsBase64": false
+    }
+  ]
+}
