@@ -35,3 +35,4 @@ muda; ela ganha o status "Substituída" (ou "Complementada", quando a nova só a
 | [0028](0028-hora-local-dos-eventos.md) | Hora local dos eventos | Aceita |
 | [0029](0029-compatibilidade-e-criterios-para-a-1-0.md) | Compatibilidade e critérios para a 1.0 | Aceita |
 | [0030](0030-versoes-minimas-das-dependencias.md) | Versões mínimas das dependências no netstandard2.0 | Aceita; complementa a 0010 |
+| [0031](0031-sem-camada-result.md) | Sem camada `Result<T>`/`CommandOutcome`; manter as exceções por desfecho | Aceita; complementa a 0026 |

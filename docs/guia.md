@@ -8,7 +8,8 @@ decisões de arquitetura, em [adr/](adr/README.md).
 
 O pacote cobre **toda a documentação pública da API de acesso**: os 85 endpoints, os 37 objetos, os eventos do Monitor,
 do Push e do modo online e as 34 seções de configuração têm métodos, modelos ou rotas tipados. A matriz completa, com
-as divergências da documentação e como foram tratadas, está em [COBERTURA.md](COBERTURA.md).
+as divergências da documentação e como foram tratadas, está em [COBERTURA.md](COBERTURA.md). O que já foi validado em
+equipamento real (modelo × firmware × operação) — e o que ainda não foi — está em [matriz-validacao.md](matriz-validacao.md).
 
 ```csharp
 using ControlId.Access;
@@ -544,6 +545,10 @@ Cada fallback gera o log 2014 e soma em `controlid.server.online.fallbacks`, com
 `device_is_alive.fcgi` e `session_is_valid.fcgi` respondem a **GET e POST**, com a mesma regra de token das demais rotas.
 - Sem ASP.NET Core: `OnlineEvents.Parse(rota, campos, corpo)` interpreta a requisição, `authorization.ToResponseJson()` gera a resposta e `OnlineEvents.ParseEnroll(rota, json)` lê os resultados de cadastro remoto.
 
+O JSON exato que o equipamento recebe (`event`, `user_id`, `portal_id`, `user_name`, `user_image`/`user_image_hash` e
+`actions`), a tabela de códigos de `event` e as regras de `device_id` e do fallback estão em
+[Respostas do modo online](modo-online-respostas.md).
+
 ### Hora local dos eventos (#50)
 
 O equipamento grava a **hora local dele**, não UTC. As propriedades `*Utc` antigas (as de cada modelo da
@@ -592,11 +597,11 @@ IReadOnlyList<long> novos = await device.CreateObjectsAsync("groups", grupos);  
 
 No Push, a mesma ideia vale para `transactions`: veja [Prazos e limites do Push](#prazos-e-limites-do-push).
 
-### Sincronizar pessoas pelo estado desejado (#54)
+### Sincronizar pessoas pelo estado desejado (#54, #66)
 
 `SyncUserAsync` e `SyncUsersAsync` levam o equipamento ao estado que você descreve com `DesiredUser`: criam ou atualizam o
 usuário, ajustam cartões e grupos e enviam a foto. Rodar de novo com o mesmo estado não escreve nada. O campo `null` não é
-gerenciado; uma lista vazia de `Cards` remove todos os cartões.
+gerenciado; uma lista vazia de `Cards` só remove todos os cartões com `RemoveUnlisted = true`.
 
 ```csharp
 var resultados = await device.SyncUsersAsync(new[]
@@ -625,9 +630,24 @@ await device.SyncUsersAsync(desejados, new UserSyncOptions
 });
 ```
 
+- **Nada fora do estado desejado é removido por padrão.** `RemoveUnlisted` (padrão `false`) só remove os cartões e vínculos de grupo que sobram; sem ele, a sincronização cria o que falta e deixa o restante como está (uma lista vazia de `Cards`/`GroupIds` não apaga nada). `RemoveMissing`, que remove pessoas, não mudou e continua exigindo `DataLossConfirmation.Confirmed`.
+- **`DryRun = true` devolve o diff sem escrever.** Nada é criado, alterado ou removido, nenhuma senha é cifrada (`HashPasswordAsync`) e nenhuma foto é enviada; as marcas em memória de senha e foto não são gravadas nem apagadas. Os mesmos membros do resultado descrevem o que mudaria (`Created`, `ChangedFields`, `CardsAdded`/`CardsRemoved`, `GroupsAdded`/`GroupsRemoved`, `PhotoUpdated`, `Removed`), e `RemoveMissing` não exige confirmação nesse modo. A execução real seguinte compara o mesmo estado e aplica o diff.
+- **`Status` resume cada pessoa.** `UserSyncResult.Status` (enum `UserSyncStatus`) devolve `OutcomeUnknown` se algum erro tem `ControlIdOutcomeUnknownException`; senão `Failed` se há erros; senão `Removed`, `Created`, `Changed` ou `Unchanged`, nessa ordem. `Errors` continua com o detalhe por item.
+- **Falha no fallback do upsert deixa estado parcial.** Sem `create_or_modify_objects`, `CreateOrModifyObjectsAsync` cai para `modify_objects` + `create_objects`, que não é atômico. Falha no meio dos `modify_objects`: os itens anteriores já estão gravados e os seguintes nem foram tentados, e nenhum `create_objects` saiu. Falha no meio dos `create_objects`: todos os `modify_objects` terminaram e parte dos novos pode ter sido criada, inclusive os do pedido que falhou. Numa falha de transporte, o pedido sem resposta pode ter sido executado: confira o estado (`GetUsersAsync`) antes de repetir. Repetir com os mesmos valores é idempotente e converge sem duplicar: quem já existe é alterado de novo pelo `id` e quem falta é criado. Em `SyncUsersAsync`, a falha ao gravar o usuário vira `user` em `Errors`, os cartões, grupos e foto daquela pessoa são pulados e `Status` fica `Failed` ou `OutcomeUnknown`, conforme a exceção.
 - Uma falha por pessoa não derruba o lote: um cartão recusado (por exemplo, já é de outra pessoa) aparece só em `Errors` daquela pessoa. A sincronização não é transacional: uma execução interrompida deixa o que já foi gravado, e repetir termina o trabalho.
 - O equipamento não devolve a senha em claro nem um hash da foto, então a comparação usa **marcas mantidas em memória por instância de `AccessClient`**: o que essa instância enviou por último. Na primeira sincronização de cada instância, a senha de quem já existe é regravada, e a foto é baixada e comparada byte a byte (reenviada se diferir); depois disso, repetir o mesmo estado não faz nenhuma escrita. As marcas se perdem ao reiniciar o processo ou ao trocar de instância, então mantenha uma instância de longa duração (como faz o pacote de DI).
-- Para saber o que mudou, use `Created`, `Removed`, `PhotoUpdated`, `ChangedFields`, `CardsAdded`/`CardsRemoved` e `GroupsAdded`/`GroupsRemoved`.
+- Para saber o que mudou, use `Created`, `Removed`, `PhotoUpdated`, `ChangedFields`, `CardsAdded`/`CardsRemoved` e `GroupsAdded`/`GroupsRemoved`, ou o `Status`.
+
+```csharp
+// Veja o diff sem escrever e depois aplique o mesmo estado, agora removendo cartões e grupos que sobram:
+var previa = await device.SyncUsersAsync(desejados, new UserSyncOptions { DryRun = true });
+foreach (var r in previa)
+{
+    Console.WriteLine($"Usuário {r.UserId}: {r.Status}");   // Unchanged, Created, Changed, Removed, Failed ou OutcomeUnknown
+}
+
+await device.SyncUsersAsync(desejados, new UserSyncOptions { RemoveUnlisted = true });
+```
 
 ### Capacidades por firmware (#34)
 
@@ -1087,6 +1107,7 @@ O pacote `ControlId.Net.AspNetCore` registra os eventos das rotas:
 | 2012 | Error | A varredura do Push falhou; nova tentativa no próximo intervalo |
 | 2013 | Information | Varredura automática do Push desligada (`PurgeInterval = null`) |
 | 2014 | Warning | Modo online respondeu com o fallback (exceção, `null` ou `DecisionTimeout`) |
+| 2015 | Error | Um `IControlIdCallbackObserver` falhou; a resposta ao equipamento segue |
 
 O guardião de configuração (pacote `ControlId.Net.DependencyInjection`) registra:
 
@@ -1266,6 +1287,46 @@ app.MapControlIdPush().RequireControlIdToken(token).RequireRateLimiting("control
 
 Atrás de um proxy reverso, o IP é o do proxy: use `UseForwardedHeaders`. As recusas aparecem nos logs 2005–2010 e na
 métrica `controlid.server.callback.requests`.
+
+### Observador de callbacks (#65)
+
+Um observador vê o callback **antes** dos handlers — e, quando a rota autoriza sem o corpo (token único ou rota anônima),
+antes do `Parse` —, para gravar o evento bruto (auditoria, reprocessamento). Registre um ou vários; cada um é scoped (pode
+receber `DbContext`) e todos rodam na ordem de registro. Registrar o mesmo tipo de novo não tem efeito.
+
+```csharp
+using ControlId.AspNetCore;
+
+builder.Services.AddControlIdCallbackObserver<AuditoriaDeCallbacks>();
+
+public sealed class AuditoriaDeCallbacks(MeuDbContext db) : IControlIdCallbackObserver
+{
+    public async Task OnCallbackAsync(ControlIdRawCallback callback, CancellationToken ct)
+    {
+        db.Callbacks.Add(new CallbackAudit
+        {
+            Kind = callback.Kind,           // Online, Monitor ou PushResult
+            Route = callback.Route,         // ex.: "/result", sem a query
+            DeviceId = callback.DeviceId,   // null quando não foi possível saber
+            Body = callback.Body.ToArray(), // cópia com os campos sensíveis mascarados
+        });
+        await db.SaveChangesAsync(ct);
+    }
+}
+```
+
+- O `ControlIdRawCallback` traz `Kind`, `Route` (caminho sem a query), `Headers`, `DeviceId` (quando conhecido) e `Body`
+  (bytes). Os cabeçalhos `Authorization`, `Cookie` e `Proxy-Authorization` não são entregues.
+- O mascaramento é o mesmo dos cassetes: `session`, `login`, `password`, `salt`, `image` e `template` viram `***` no JSON
+  (recursivamente) e no formulário `application/x-www-form-urlencoded`. O corpo que não dá para interpretar (inclusive
+  binário) é entregue byte a byte, e o `Parse`/handler continua lendo o original: o mascaramento vale só para o observador.
+- Um corpo inválido não impede o observador: depois de a requisição ser autorizada, ele recebe os bytes e a resposta segue
+  o contrato da rota (fallback no modo online, 400 no Monitor).
+- O observador só é chamado depois do token e de `IsKnownDevice`; requisição recusada (401, 403 ou 413) não é entregue. Com
+  **token por equipamento**, o `device_id` pode vir do corpo, então o callback só chega ao observador depois do `Parse` e
+  da autorização; um callback sem `device_id` é recusado (salvo `AllowTokenFallback` com token global) e não aparece.
+  A exceção do observador vira o log 2015, não muda a resposta e não impede os demais.
+- No Push, só o `POST /result` é observado (`Kind = PushResult`); o `GET /push` não passa pelo observador.
 
 ## Fila de Push durável
 
